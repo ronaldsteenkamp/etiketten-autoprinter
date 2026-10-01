@@ -29,23 +29,22 @@ body {
 /* --- Kopbalk --- */
 #kop {
     height: 62px; padding: 0 10px 0 18px; position: relative;
-    background: #0f172a;
-    background: linear-gradient(120deg, #1f4202 0%, #3a7004 55%, #58a618 100%);
+    background: #407c05;
     display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center;
 }
 #kop:after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
-    background: linear-gradient(90deg, rgba(200,240,150,0), rgba(200,240,150,.7), rgba(200,240,150,0)); }
+    background: rgba(0,0,0,.12); }
 #kop img { width: 36px; height: 36px; margin-right: 12px; }
 #kop .titel { color: #fff; font-family: "Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI"; font-weight: 600; font-size: 17px; letter-spacing: -.01em; }
-#kop .onder { color: #94a3b8; font-size: 11.5px; margin-top: 1px; }
+#kop .onder { color: rgba(255,255,255,.75); font-size: 11.5px; margin-top: 1px; }
 #kop .vul { -ms-flex: 1; flex: 1; }
 #kop .versie { color: #e6f6d3; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
     border-radius: 20px; padding: 1px 9px; font-size: 10.5px; margin: 0 6px 0 4px; }
-.vknop { width: 32px; height: 30px; border-radius: 8px; color: #cbd5e1; font-size: 13px; text-align: center; line-height: 30px; cursor: pointer; }
-.vknop.klein { font-size: 10.5px; }
-.vknop:hover { background: rgba(255,255,255,.1); color: #fff; }
+.vknop { width: 32px; height: 30px; border-radius: 8px; color: rgba(255,255,255,.85); font-size: 13px; text-align: center; line-height: 30px; cursor: pointer; }
+.vknop.vk-klein { font-size: 10.5px; }
+.vknop:hover { background: rgba(255,255,255,.14); color: #fff; }
 .vknop.sluit:hover { background: #e11d48; color: #fff; }
-.scheid { width: 1px; height: 20px; background: rgba(255,255,255,.15); margin: 0 4px; }
+.scheid { width: 1px; height: 20px; background: rgba(255,255,255,.25); margin: 0 4px; }
 
 /* --- Inhoud --- */
 #inhoud { padding: 12px 16px 0 16px; }
@@ -76,9 +75,9 @@ body {
 #voortgang { display: none; margin: 10px 0 0 52px; }
 #voortgang.toon { display: block; }
 #spoor { height: 6px; border-radius: 6px; background: #eef2f7; overflow: hidden; }
-#vulling { height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, #58a618, #407c05); transition: width .45s ease, background .3s; }
-#vulling.groen { background: linear-gradient(90deg, #22c55e, #16a34a); }
-#vulling.oranje { background: linear-gradient(90deg, #fb923c, #ea580c); }
+#vulling { height: 100%; width: 0; border-radius: 6px; background: #58a618; transition: width .45s ease, background .3s; }
+#vulling.groen { background: #16a34a; }
+#vulling.oranje { background: #ea580c; }
 #vtekst { display: -ms-flexbox; display: flex; margin-top: 5px; font-size: 11.5px; color: #64748b; }
 #vtekst .vul { -ms-flex: 1; flex: 1; }
 
@@ -134,9 +133,9 @@ body {
 .knop .ico { font-size: 14px; margin-right: 9px; vertical-align: -2px; }
 .knop:active { transform: translateY(1px); }
 .knop.primair { -ms-flex: 1; flex: 1; margin: 0 10px; color: #fff;
-    background: linear-gradient(135deg, #6cbf28, #407c05); box-shadow: 0 6px 16px -6px rgba(64,124,5,.6); }
-.knop.primair:hover { box-shadow: 0 10px 22px -8px rgba(64,124,5,.75); background: linear-gradient(135deg, #58a618, #2f5e03); }
-.knop.oranje { -ms-flex: 1; flex: 1; margin: 0 10px; color: #fff; background: linear-gradient(135deg, #fb923c, #ea580c); box-shadow: 0 6px 16px -6px rgba(234,88,12,.6); }
+    background: #407c05; box-shadow: 0 1px 2px rgba(15,23,42,.12); }
+.knop.primair:hover { background: #356804; box-shadow: 0 2px 6px rgba(15,23,42,.18); }
+.knop.oranje { -ms-flex: 1; flex: 1; margin: 0 10px; color: #fff; background: #ea580c; box-shadow: 0 1px 2px rgba(15,23,42,.12); }
 .knop.tweede { width: 122px; background: #fff; color: #0f172a; border: 1px solid #dfe5ee; line-height: 42px; box-shadow: 0 1px 2px rgba(15,23,42,.05); }
 .knop.tweede:hover { background: #f8fafc; border-color: #cbd5e1; }
 .knop.stop { width: 104px; background: #fff; color: #dc2626; border: 1px solid #fecaca; line-height: 42px; }
@@ -175,7 +174,7 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
 .d-fout .drond { background: #fef2f2; color: #dc2626; }
 .d-code .drond { background: #eef7e6; color: #407c05; }
 .d-feedback .drond { background: #eef7e6; color: #407c05; }
-.d-over .drond { background: linear-gradient(135deg, #eef7e6, #e9eef6); color: #002664; }
+.d-over .drond { background: #e9eef6; color: #002664; }
 .dknop .ico { margin-right: 7px; vertical-align: -2px; }
 .d-code .dtekst { font-family: Consolas, monospace; font-size: 11.5px; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px; padding: 12px; }
 
@@ -218,8 +217,8 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
     <span class="versie" id="versie" data-sleep="1">v5</span>
     <div class="vknop" id="b-feedback" title="Vraag of idee? Stuur een bericht" onclick="stuur('link/feedback')"><span class="ico" data-i="message-circle"></span></div>
     <div class="scheid" data-sleep="1"></div>
-    <div class="vknop klein" title="Minimaliseren" onclick="stuur('venster/min')"><span class="ico" data-i="minus"></span></div>
-    <div class="vknop klein sluit" title="Sluiten" onclick="stuur('venster/sluit')"><span class="ico" data-i="x"></span></div>
+    <div class="vknop vk-klein" title="Minimaliseren" onclick="stuur('venster/min')"><span class="ico" data-i="minus"></span></div>
+    <div class="vknop vk-klein sluit" title="Sluiten" onclick="stuur('venster/sluit')"><span class="ico" data-i="x"></span></div>
 </div>
 
 <div id="inhoud">
