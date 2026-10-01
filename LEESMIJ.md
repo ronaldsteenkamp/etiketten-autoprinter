@@ -34,6 +34,19 @@ Hij gokt nooit. Verschijnt het afdrukmenu met het juiste item niet binnen
 `MaxWachtPrint` ms (minimaal 1000, standaard 3000), dan stopt de app zonder iets
 te kiezen; die patiënt telt dan als *niet* geprint.
 
+Stopt de app door een fout, dan zet hij Pharmacom zelf terug op de
+aanschrijfbuffer (Escape voor het afdrukmenu en het dossier), zodat **Doorgaan**
+meteen werkt. Stop je zelf (Esc/Stop), of is Pharmacom niet het actieve venster,
+dan laat hij alles staan.
+
+Of er echt een etiket uit de printer kwam, kan de app niet controleren: de
+etikettenprinters (STAR/Zebra) worden via de Pharmacom-server aangestuurd, niet
+via Windows. Het etiket zelf is de bevestiging.
+
+Het dossier telt standaard alleen als juist als het **Pat.nr** erin staat (optie
+*Dossier alleen op Pat.nr controleren*). Zet je die uit, dan mag achternaam +
+geboortedatum ook.
+
 Welk item uit het afdrukmenu gekozen wordt, staat in de ini onder `[Opties]` als
 `PrintMenu=Barcode etiket` (exact de tekst uit het menu, bijv. `Afleveretiket`).
 De sneltoets leest de app zelf uit Pharmacom.
@@ -80,3 +93,9 @@ vergelijkt die versie.
 Stel onder **Instellingen → Updates** een (netwerk)map in. Met *Deze versie in de
 updatemap zetten* publiceer je de huidige versie; andere computers krijgen bij het
 starten de vraag of ze willen bijwerken.
+
+Bij het publiceren komt naast de .exe een controlewaarde
+(`Etiketten_autoprinter.exe.sha256`). Een computer werkt alleen bij als de
+gekopieerde .exe precies die controlewaarde heeft; een half gekopieerde of
+beschadigde versie wordt geweigerd. Dit beschermt niet tegen iemand die beide
+bestanden vervangt: geef daarom alleen beheerders schrijfrechten op de updatemap.

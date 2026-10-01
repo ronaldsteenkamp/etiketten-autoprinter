@@ -51,7 +51,7 @@ SetBatchLines, -1
 ; =====================================================================
 
 AppTitel  := "Etiketten autoprinter"
-AppVersie := "5.7.3"
+AppVersie := "5.8.0"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (A_PriorLine:
@@ -179,6 +179,7 @@ IniRead, OptBevestigen, %IniFile%, Opties, Bevestigen, 1
 IniRead, OptBovenop,    %IniFile%, Opties, Bovenop, 1
 IniRead, OptDeelbaar,   %IniFile%, Opties, AlleenDeelbaar, 1
 IniRead, OptControle,   %IniFile%, Opties, DossierControleren, 1
+IniRead, OptPatnr,      %IniFile%, Opties, DossierAlleenPatnr, 1
 IniRead, OptBlokkeer,   %IniFile%, Opties, InvoerBlokkeren, 1
 IniRead, OptGeluid,     %IniFile%, Opties, Geluid, 1
 ; Item in het afdrukmenu (Ctrl+P in het dossier) dat gekozen wordt; de
@@ -630,6 +631,15 @@ StartRun() {
     }
 
     ; --- Afronden ---
+    ; Na een fout: Pharmacom netjes terugzetten op de aanschrijfbuffer, zodat
+    ; Doorgaan meteen werkt. Niet als de gebruiker zelf stopte of in een
+    ; ander venster bezig is.
+    If (Afgebroken && StopReden != "gestopt door gebruiker" && StopReden != "Pharmacom was niet meer het actieve venster")
+    {
+        ZetSub("Pharmacom terugzetten op de aanschrijfbuffer" . Ellips)
+        If (TerugNaarBuffer())
+            StopReden .= " (Pharmacom staat weer op de aanschrijfbuffer)"
+    }
     InvoerBlokkeren(false)
     Bezig := false
     Ui("bezig", 0)
@@ -937,10 +947,11 @@ PrintPatient(p) {
     return {ok: true, tekst: etiket}
 }
 
-; Zoekt in het dossiervenster naar het Pat.nr, of naar achternaam +
-; geboortedatum. Probeert het een paar seconden (het dossier kan nog laden).
+; Zoekt in het dossiervenster naar het Pat.nr, of (als OptPatnr uit staat)
+; naar achternaam + geboortedatum. Probeert het een paar seconden (het
+; dossier kan nog laden).
 BevestigDossier(p, Hwnd) {
-    global Jab, Wt, Stoppen
+    global Jab, Wt, Stoppen, OptPatnr
     Achternaam := Trim(StrSplit(p.naam, ",")[1])
     GebPatroon := ""
     If RegExMatch(p.gebdatum, "^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$", G)
@@ -952,7 +963,7 @@ BevestigDossier(p, Hwnd) {
         HeeftPatnr := (p.patnr != "" && RegExMatch(Tekst, "(?<!\d)" . p.patnr . "(?!\d)"))
         HeeftNaam  := (Achternaam != "" && InStr(Tekst, Achternaam))
         HeeftGeb   := (GebPatroon != "" && RegExMatch(Tekst, GebPatroon))
-        If (HeeftPatnr || (HeeftNaam && HeeftGeb))
+        If (HeeftPatnr || (!OptPatnr && HeeftNaam && HeeftGeb))
         {
             LogBestand("  dossier bevestigd (" . (HeeftPatnr ? "Pat.nr" : "naam + geboortedatum") . ")")
             return true
@@ -1224,6 +1235,45 @@ WachtTerug(Dossier := 0) {
             return false
         Wacht(60)
     }
+}
+
+; Na een fout: met Escape (afdrukmenu, dossier) terug naar het hoofdvenster
+; met de aanschrijfbuffer. Stuurt alleen toetsen als een venster van
+; Pharmacom actief is; geeft true als de aanschrijfbuffer weer zichtbaar is.
+TerugNaarBuffer() {
+    global PhPID, PhHwnd, BufferKoppen, HistorieKoppen
+    Loop, 5
+    {
+        a := WinExist("A")
+        WinGet, apid, PID, ahk_id %a%
+        If (apid != PhPID)
+        {
+            LogBestand("  terugzetten: Pharmacom is niet het actieve venster, niets gedaan")
+            return false
+        }
+        If (a = PhHwnd)
+        {
+            h := JabZoekTabel(HistorieKoppen)
+            t := IsObject(h) ? "" : JabZoekTabel(BufferKoppen)
+            ok := !IsObject(h) && IsObject(t)
+            JabVrijgeven(h)
+            JabVrijgeven(t)
+            LogBestand(ok ? "  terugzetten: aanschrijfbuffer zichtbaar" : "  terugzetten: aanschrijfbuffer niet herkend")
+            return ok
+        }
+        If (A_Index = 5)
+            break
+        Send, {Escape}
+        LogBestand("  terugzetten: Escape")
+        ; Wachten tot het venster dicht is (een afdrukmenu sluiten laat het
+        ; venster open; dan volgt de volgende Escape na de wachttijd)
+        eind := A_TickCount + 2000
+        While (WinExist("A") = a && A_TickCount < eind)
+            Sleep, 50
+        Sleep, 150
+    }
+    LogBestand("  terugzetten mislukt")
+    return false
 }
 
 WachtOpTabel(Koppen, Timeout) {
@@ -1893,7 +1943,7 @@ KnopTekst(Naam, Tekst) {
 
 UiOpties() {
     global
-    Ui("opties", {deelbaar: OptDeelbaar, controle: OptControle, blokkeer: OptBlokkeer, bevestigen: OptBevestigen, bovenop: OptBovenop, geluid: OptGeluid})
+    Ui("opties", {deelbaar: OptDeelbaar, controle: OptControle, patnr: OptPatnr, blokkeer: OptBlokkeer, bevestigen: OptBevestigen, bovenop: OptBovenop, geluid: OptGeluid})
 }
 
 ZetHint() {
@@ -2079,6 +2129,8 @@ ZetOptie(Naam, Aan) {
         OptDeelbaar := Aan
     Else If (Naam = "controle")
         OptControle := Aan
+    Else If (Naam = "patnr")
+        OptPatnr := Aan
     Else If (Naam = "blokkeer")
         OptBlokkeer := Aan
     Else If (Naam = "bevestigen")
@@ -2092,6 +2144,7 @@ ZetOptie(Naam, Aan) {
     IniWrite, %OptBovenop%,    %IniFile%, Opties, Bovenop
     IniWrite, %OptDeelbaar%,   %IniFile%, Opties, AlleenDeelbaar
     IniWrite, %OptControle%,   %IniFile%, Opties, DossierControleren
+    IniWrite, %OptPatnr%,      %IniFile%, Opties, DossierAlleenPatnr
     IniWrite, %OptBlokkeer%,   %IniFile%, Opties, InvoerBlokkeren
     If (OptBovenop)
         Gui, 1:+AlwaysOnTop
@@ -2261,8 +2314,14 @@ InstellingActie(A) {
             Melding("Updates", "Dit kan alleen vanuit de gecompileerde .exe.", "waarschuwing")
         Else
         {
+            ; Eerst de controlewaarde weghalen: zo installeert niemand een
+            ; half gekopieerde .exe terwijl het kopi"eren nog bezig is
+            FileDelete, %Doel%\Etiketten_autoprinter.exe.sha256
             FileCopy, %A_ScriptFullPath%, %Doel%\Etiketten_autoprinter.exe, 1
-            If (ErrorLevel)
+            Hash := ErrorLevel ? "" : Sha256(A_ScriptFullPath)
+            If (Hash != "" && Sha256(Doel . "\Etiketten_autoprinter.exe") = Hash)
+                FileAppend, %Hash%, %Doel%\Etiketten_autoprinter.exe.sha256
+            If (Hash = "" || !FileExist(Doel . "\Etiketten_autoprinter.exe.sha256"))
                 Melding("Updates", "Kopi" . EUml . "ren naar de updatemap is mislukt.", "fout")
             Else
             {
@@ -2405,6 +2464,14 @@ ControleerUpdate(Stil) {
     }
     If !Vraag("Nieuwe versie beschikbaar", "Versie " . NieuweVersie . " staat klaar (je hebt nu " . AppVersie . ").`n`nNu bijwerken? De app wordt daarna opnieuw gestart.", "Bijwerken", "Later")
         return
+    ; Eerst lokaal kopi"eren en daar de controlewaarde (gemaakt bij het
+    ; publiceren) nakijken; daarna alleen die gecontroleerde kopie gebruiken.
+    ; Dit vangt half gekopieerde of beschadigde bestanden af (geen bescherming
+    ; tegen iemand die beide bestanden vervangt: beperk daarvoor de
+    ; schrijfrechten op de updatemap).
+    Nieuw := VeiligeKopie(Nieuw)
+    If (Nieuw = "")
+        return
     ; Een klein hulpscript vervangt de .exe zodra deze app gesloten is
     Hulp := A_Temp . "\Etiketten_autoprinter_update.cmd"
     FileDelete, %Hulp%
@@ -2419,6 +2486,61 @@ ControleerUpdate(Stil) {
     Log("Bijwerken naar versie " . NieuweVersie)
     Run, "%Hulp%",, Hide
     ExitApp
+}
+
+; Kopieert de nieuwe .exe naar de tijdelijke map en controleert die kopie
+; tegen <exe>.sha256 in de updatemap. Geeft het pad van de kopie, of "".
+VeiligeKopie(Bron) {
+    Verwacht := ""
+    FileRead, Verwacht, %Bron%.sha256
+    Verwacht := Format("{:L}", Trim(Verwacht, " `t`r`n"))
+    If !RegExMatch(Verwacht, "^[0-9a-f]{64}$")
+    {
+        Log("Update geweigerd: geen geldige controlewaarde (" . Bron . ".sha256)")
+        Melding("Bijwerken niet mogelijk", "Bij de nieuwe versie in de updatemap ontbreekt de controlewaarde (Etiketten_autoprinter.exe.sha256).`n`nZet de nieuwe versie opnieuw in de updatemap via Instellingen " . Chr(8594) . " Updates " . Chr(8594) . " Deze versie in de updatemap zetten.", "waarschuwing")
+        return ""
+    }
+    Kopie := A_Temp . "\Etiketten_autoprinter_nieuw.exe"
+    FileCopy, %Bron%, %Kopie%, 1
+    If (ErrorLevel || Sha256(Kopie) != Verwacht)
+    {
+        FileDelete, %Kopie%
+        Log("Update geweigerd: controlewaarde klopt niet")
+        Melding("Bijwerken niet mogelijk", "De nieuwe versie in de updatemap is onvolledig of beschadigd (de controlewaarde klopt niet). Er is niets gewijzigd.`n`nProbeer het later opnieuw, of zet de versie opnieuw in de updatemap.", "fout")
+        return ""
+    }
+    return Kopie
+}
+
+; SHA-256 van een bestand (kleine letters), of "" bij een fout.
+Sha256(Bestand) {
+    static PROV_RSA_AES := 24, CALG_SHA_256 := 0x800C, CRYPT_VERIFYCONTEXT := 0xF0000000
+    f := FileOpen(Bestand, "r")
+    If (!IsObject(f))
+        return ""
+    hProv := 0, hHash := 0, Uit := ""
+    If DllCall("advapi32\CryptAcquireContext", "Ptr*", hProv, "Ptr", 0, "Ptr", 0, "UInt", PROV_RSA_AES, "UInt", CRYPT_VERIFYCONTEXT)
+    {
+        If DllCall("advapi32\CryptCreateHash", "Ptr", hProv, "UInt", CALG_SHA_256, "Ptr", 0, "UInt", 0, "Ptr*", hHash)
+        {
+            VarSetCapacity(Buf, 65536)
+            Ok := true
+            While (Ok && !f.AtEOF)
+            {
+                n := f.RawRead(Buf, 65536)
+                Ok := DllCall("advapi32\CryptHashData", "Ptr", hHash, "Ptr", &Buf, "UInt", n, "UInt", 0)
+            }
+            Lengte := 32
+            VarSetCapacity(H, 32, 0)
+            If (Ok && DllCall("advapi32\CryptGetHashParam", "Ptr", hHash, "UInt", 2, "Ptr", &H, "UInt*", Lengte, "UInt", 0))
+                Loop, 32
+                    Uit .= Format("{:02x}", NumGet(H, A_Index - 1, "UChar"))
+            DllCall("advapi32\CryptDestroyHash", "Ptr", hHash)
+        }
+        DllCall("advapi32\CryptReleaseContext", "Ptr", hProv, "UInt", 0)
+    }
+    f.Close()
+    return Uit
 }
 
 ; "5.7.1" -> 5007001 (om versies te kunnen vergelijken). Ontbrekende delen
