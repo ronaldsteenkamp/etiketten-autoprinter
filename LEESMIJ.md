@@ -25,13 +25,18 @@ Eenmalig: klik op **Koppeling inschakelen** en start Pharmacom opnieuw
 4. Selecteert de **bovenste** regel met Ap = de ingelogde apotheek (rechtsonder in
    Pharmacom, bijv. `AN - RS - 183`) en, als die optie aan staat, Herhaal info
    `ASB: Deelbaar`.
-5. Ctrl+P → wacht op het printvenster → Alt+B → Escape, en wacht tot de
-   aanschrijfbuffer terug is.
+5. Ctrl+P → wacht tot het afdrukmenu in het dossier zichtbaar is → kiest
+   **Barcode etiket** (Alt+B) → wacht tot het menu dicht is → Escape, en wacht tot
+   de aanschrijfbuffer terug is.
 
 Klopt iets niet (selectie, scherm, dossier, actief venster), dan stopt de app.
-Hij gokt nooit. Verschijnt het printvenster niet binnen `MaxWachtPrint` ms
-(minimaal 1000, standaard 3000), dan stopt de app zonder Alt+B te sturen; die
-patiënt telt dan als *niet* geprint.
+Hij gokt nooit. Verschijnt het afdrukmenu met het juiste item niet binnen
+`MaxWachtPrint` ms (minimaal 1000, standaard 3000), dan stopt de app zonder iets
+te kiezen; die patiënt telt dan als *niet* geprint.
+
+Welk item uit het afdrukmenu gekozen wordt, staat in de ini onder `[Opties]` als
+`PrintMenu=Barcode etiket` (exact de tekst uit het menu, bijv. `Afleveretiket`).
+De sneltoets leest de app zelf uit Pharmacom.
 
 ## Mappen
 

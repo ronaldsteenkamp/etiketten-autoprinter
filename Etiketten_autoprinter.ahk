@@ -37,7 +37,7 @@ SetBatchLines, -1
 ;        Pharmacom, bijv. "AN - RS - 183" -> AN) en, als die optie aan
 ;        staat, Herhaal info = "ASB: Deelbaar" wordt opgezocht en
 ;        geselecteerd (geen passende regel -> Escape en overslaan);
-;      - Ctrl+P -> wachten op het printvenster -> Alt+B -> Escape ->
+;      - Ctrl+P -> wachten op het afdrukmenu -> "Barcode etiket" (Alt+B) -> Escape ->
 ;        wachten tot de aanschrijfbuffer weer zichtbaar is.
 ;   4. Elke ronde krijgt een rapport (CSV) in de map Rapporten.
 ;
@@ -137,9 +137,9 @@ Wachttijden := [ ["SleepNaCtrlB",    50,    "Nadat het dossier verscheen"]
     , ["SleepNaOmhoog",   100,   "Na pijl omhoog"]
     , ["SleepNaScherm",   100,   "Nadat de aanschrijfbuffer terug is"]
     , ["SleepNavigatie",  50,    "Na elke pijltjestoets"]
-    , ["SleepNaCtrlP",    25,    "Na Ctrl+P (printvenster)"]
-    , ["MaxWachtPrint",   3000,  "Maximaal wachten op het printvenster"]
-    , ["SleepNaAltB",     25,    "Na Alt+B (afdrukken)"]
+    , ["SleepNaCtrlP",    25,    "Na Ctrl+P (afdrukmenu)"]
+    , ["MaxWachtPrint",   3000,  "Maximaal wachten op het afdrukmenu"]
+    , ["SleepNaAltB",     25,    "Na het kiezen in het afdrukmenu"]
     , ["SleepNaEscape",   100,   "Na Escape"]
     , ["MaxWachtScherm",  10000, "Maximaal wachten op een scherm"]
     , ["MaxWachtLeeg",    4000,  "Maximaal wachten op een lege medicatiehistorie"] ]
@@ -154,7 +154,7 @@ If (WtVersie < 2)
     IniWrite, 2, %IniFile%, Wachttijden, Versie
 }
 
-; Ondergrenzen: korter wachten op het printvenster is onveilig (te vroeg
+; Ondergrenzen: korter wachten op het afdrukmenu is onveilig (te vroeg
 ; opgeven = het etiket wordt niet geprint). Het wachten stopt zodra het
 ; venster er is, dus een ruime waarde kost geen tijd.
 WtMinimum := {MaxWachtPrint: 1000}
@@ -181,6 +181,10 @@ IniRead, OptDeelbaar,   %IniFile%, Opties, AlleenDeelbaar, 1
 IniRead, OptControle,   %IniFile%, Opties, DossierControleren, 1
 IniRead, OptBlokkeer,   %IniFile%, Opties, InvoerBlokkeren, 1
 IniRead, OptGeluid,     %IniFile%, Opties, Geluid, 1
+; Item in het afdrukmenu (Ctrl+P in het dossier) dat gekozen wordt; de
+; sneltoets wordt uit Pharmacom gelezen (Barcode etiket = Alt+B).
+IniRead, PrintMenuItem, %IniFile%, Opties, PrintMenu, Barcode etiket
+PrintMenuItem := Trim(PrintMenuItem)
 IniRead, UpdateMap,     %IniFile%, Update, Map, %A_Space%
 UpdateMap := Trim(UpdateMap)
 
@@ -1029,57 +1033,57 @@ Fout(Reden) {
     return {stop: true}
 }
 
-; Ctrl+P, wachten op het printvenster, Alt+B, wachten tot het printvenster
+; Ctrl+P, wachten op het afdrukmenu, item kiezen (Alt+B), wachten tot het menu
 ; weg is, Escape.
 PrintEtiket() {
     global
-    local voor, dlg, eind, a, apid
+    local voor, item, eind, toets
     voor := WinExist("A")
     If !Stap("^p", Wt.SleepNaCtrlP, "Ctrl+P")
         return false
-    dlg := 0
+    ; Ctrl+P opent in het dossier een afdrukmenu (geen apart venster). Wachten
+    ; tot dat menu met het juiste item via de koppeling zichtbaar is.
+    item := ""
     eind := A_TickCount + Wt.MaxWachtPrint
-    While (A_TickCount < eind && !Stoppen)
+    Loop
     {
-        a := WinExist("A")
-        If (a && a != voor)
+        If (Stoppen)
         {
-            WinGet, apid, PID, ahk_id %a%
-            If (apid = PhPID)
-            {
-                dlg := a
-                break
-            }
+            StopReden := "gestopt door gebruiker"
+            return false
         }
-        Sleep, 30
+        item := JabZoekMenuItem(PrintMenuItem)
+        If (IsObject(item) || A_TickCount > eind)
+            break
+        Wacht(30)
     }
-    If (Stoppen)
+    ; Geen menu = niet gokken: de sneltoets zou dan ergens anders terechtkomen
+    ; en de Escape hierna zou een te laat geopend menu weer sluiten.
+    If (!IsObject(item))
     {
-        StopReden := "gestopt door gebruiker"
+        LogBestand("  afdrukmenu met '" . PrintMenuItem . "' verscheen niet binnen " . Wt.MaxWachtPrint . " ms")
+        StopReden := "het afdrukmenu met '" . PrintMenuItem . "' verscheen niet (er is niets geprint)"
         return false
     }
-    ; Geen printvenster = niet gokken: Alt+B zou dan in een ander venster
-    ; terechtkomen, en een te laat verschenen printvenster zou door de
-    ; Escape hierna weer gesloten worden (etiket niet geprint).
-    If (!dlg)
+    If (!item.aan || item.toets = "")
     {
-        LogBestand("  printvenster verscheen niet binnen " . Wt.MaxWachtPrint . " ms")
-        StopReden := "het printvenster verscheen niet (er is niets geprint; sluit een eventueel open printvenster en klik op Doorgaan)"
+        LogBestand("  '" . PrintMenuItem . "' staat uit of heeft geen sneltoets")
+        StopReden := "'" . PrintMenuItem . "' kon niet gekozen worden in het afdrukmenu (er is niets geprint)"
         return false
     }
-    LogBestand("  printvenster verschenen")
-    If !WinActive("ahk_id " . dlg)
+    LogBestand("  afdrukmenu verschenen")
+    If !WinActive("ahk_id " . voor)
     {
-        StopReden := "het printvenster was niet meer het actieve venster"
+        StopReden := "het dossier was niet meer het actieve venster"
         return false
     }
-    If !Stap("!b", 0, "Alt+B - afdrukken")
+    toets := Format("{:L}", item.toets)
+    If !Stap("!" . toets, 0, "Alt+" . Format("{:U}", toets) . " - " . PrintMenuItem)
         return false
     AltBVerstuurd := true
-    ; Wachten tot het printvenster dicht is (anders zou Escape het printen
-    ; annuleren).
-    eind := A_TickCount + 30000
-    While !WinActive("ahk_id " . voor)
+    ; Wachten tot het menu dicht is (anders zou Escape het printen annuleren).
+    eind := A_TickCount + 10000
+    While IsObject(JabZoekMenuItem(PrintMenuItem))
     {
         If (Stoppen)
         {
@@ -1088,13 +1092,95 @@ PrintEtiket() {
         }
         If (A_TickCount > eind)
         {
-            StopReden := "het printvenster sloot niet"
+            StopReden := "het afdrukmenu sloot niet"
             return false
         }
-        Sleep, 50
+        Wacht(50)
     }
     Wacht(Wt.SleepNaAltB)
     return Stap("{Escape}", Wt.SleepNaEscape, "Escape")
+}
+
+; Zoekt in de vensters van Pharmacom een zichtbaar popupmenu met een item
+; met deze naam. Geeft {aan: true/false, toets: sneltoets} of "".
+JabZoekMenuItem(Naam) {
+    global Jab, PhPID
+    If (!IsObject(Jab.f) || !PhPID)
+        return ""
+    WinGet, Lijst, List, ahk_pid %PhPID%
+    Loop, %Lijst%
+    {
+        Hwnd := Lijst%A_Index%
+        If !DllCall(Jab.f.isJavaWindow, "Ptr", Hwnd, "Cdecl Int")
+            continue
+        Vm := 0, Root := 0
+        If !DllCall(Jab.f.getAccessibleContextFromHWND, "Ptr", Hwnd, "Int*", Vm, Jab.jt . "*", Root, "Cdecl Int")
+            continue
+        If (!Root)
+            continue
+        Teller := 0
+        R := JabZoekMenu(Vm, Root, Naam, 0, Teller)
+        JabRelease(Vm, Root)
+        If (IsObject(R))
+            return R
+    }
+    return ""
+}
+
+JabZoekMenu(Vm, Ac, Naam, Diepte, ByRef Teller) {
+    global Jab
+    Teller++
+    If (Teller > 5000)
+        return ""
+    Info := JabInfo(Vm, Ac)
+    If (!IsObject(Info) || !InStr("," . Info.states . ",", ",showing,"))
+        return ""
+    If (Info.role = "popup menu")
+    {
+        n := Info.children > 100 ? 100 : Info.children
+        Loop, %n%
+        {
+            Kind := DllCall(Jab.f.getAccessibleChildFromContext, "Int", Vm, Jab.jt, Ac, "Int", A_Index - 1, "Cdecl " . Jab.jt)
+            If (!Kind)
+                continue
+            Ki := JabInfo(Vm, Kind)
+            R := ""
+            If (IsObject(Ki) && Ki.role = "menu item" && Trim(Ki.name) = Naam)
+                R := {aan: InStr("," . Ki.states . ",", ",enabled,") > 0, toets: JabSneltoets(Vm, Kind)}
+            JabRelease(Vm, Kind)
+            If (IsObject(R))
+                return R
+        }
+        return ""
+    }
+    If (Diepte > 60 || RegExMatch(Info.role, "^(table|menu bar|menu|list|tree|combo box)$"))
+        return ""
+    n := Info.children > 2000 ? 2000 : Info.children
+    Loop, %n%
+    {
+        Kind := DllCall(Jab.f.getAccessibleChildFromContext, "Int", Vm, Jab.jt, Ac, "Int", A_Index - 1, "Cdecl " . Jab.jt)
+        If (!Kind)
+            continue
+        R := JabZoekMenu(Vm, Kind, Naam, Diepte + 1, Teller)
+        JabRelease(Vm, Kind)
+        If (IsObject(R))
+            return R
+    }
+    return ""
+}
+
+; Eerste sneltoets (letter) van een element, of "".
+JabSneltoets(Vm, Ac) {
+    global Jab
+    If (!Jab.f.getAccessibleKeyBindings)
+        return ""
+    VarSetCapacity(Kb, 4 + 10 * 8, 0)
+    If !DllCall(Jab.f.getAccessibleKeyBindings, "Int", Vm, Jab.jt, Ac, "Ptr", &Kb, "Cdecl Int")
+        return ""
+    If (NumGet(Kb, 0, "Int") < 1)
+        return ""
+    c := NumGet(Kb, 4, "UShort")
+    return (c >= 0x30 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) ? Chr(c) : ""
 }
 
 ; Wacht tot de medicatiehistorie weg is en de aanschrijfbuffer weer zichtbaar.
@@ -1305,7 +1391,7 @@ Momentopname(h) {
 }
 
 ; Verstuurt een toets, maar alleen als er niet gestopt is en Pharmacom
-; (of een venster van Pharmacom zelf, zoals het printvenster) actief is.
+; (of een venster van Pharmacom zelf, zoals een dialoog) actief is.
 Stap(Toets, Ms, Label) {
     global Stoppen, StopReden, PhPID
     If (Stoppen)
@@ -1363,7 +1449,8 @@ JabKoppel(Hwnd, JreMap) {
         , "getAccessibleContextInfo", "getAccessibleChildFromContext", "releaseJavaObject"
         , "getAccessibleTableInfo", "getAccessibleTableCellInfo", "getAccessibleTableColumnHeader"
         , "getAccessibleTableColumnDescription", "getAccessibleTableRowSelectionCount"
-        , "getAccessibleTableRowSelections", "getAccessibleTextInfo", "getAccessibleTextRange"]
+        , "getAccessibleTableRowSelections", "getAccessibleTextInfo", "getAccessibleTextRange"
+        , "getAccessibleKeyBindings"]
     If (IsObject(Jab.f) && DllCall(Jab.f.isJavaWindow, "Ptr", Hwnd, "Cdecl Int"))
         return true
     For i, Naam in ["WindowsAccessBridge-32.dll", "WindowsAccessBridge.dll"]
