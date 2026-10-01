@@ -1,4 +1,4 @@
-; Unit-tests voor de planning (tijd, dagen, even/oneven weken). Draaien met:
+﻿; Unit-tests voor de planning (tijd, dagen, even/oneven weken). Draaien met:
 ;   AutoHotkey32.exe tests\Planning.ahk
 ; Het resultaat komt in tests\uitvoer_planning.txt (en in een melding).
 #Requires AutoHotkey v2.0
@@ -17,7 +17,7 @@ T(Naam, Ok) {
     FileAppend (Ok ? "OK   " : "FOUT ") Naam "`n", Uit, "UTF-8"
 }
 It(Extra := {}) {
-    it := {aan: 1, computer: A_ComputerName, dagen: "4", tijd: "08:00", weken: "even"}
+    it := {id: 1, aan: 1, computer: A_ComputerName, dagen: "4", tijd: "08:00", weken: "even"}
     for k, v in Extra.OwnProps()
         it.%k% := v
     return it
@@ -61,5 +61,22 @@ T("Gemist: beide maandagen", Planning.Gemist(Ma, "20261004120000", "202610120815
 T("Gemist: 5-10 wel gedraaid", Planning.Gemist(Ma, "20261004120000", "20261012081500", "202610050801").Length = 1)
 T("Gemist: niet als uitgezet", Planning.Gemist(It({dagen: "1", aan: 0}), "20261004120000", "20261012081500", "").Length = 0)
 T("Gemist: niet voor andere computer", Planning.Gemist(It({dagen: "1", computer: "ANDERE-PC"}), "20261004120000", "20261012081500", "").Length = 0)
+
+; --- Uitstel (pc vergrendeld / Pharmacom bezet): langer startvenster ---
+T("Uitgesteld: om 09:30 nog starten", Planning.NuAan(It(), "20261001093000", "", Planning.MaxUitstel))
+T("Uitgesteld: om 10:00 niet meer", !Planning.NuAan(It(), "20261001100000", "", Planning.MaxUitstel))
+T("Niet uitgesteld: om 09:30 niet", !Planning.NuAan(It(), "20261001093000", ""))
+
+; --- Wakker blijven rond een geplande tijd (08:00, do 1-10) ---
+Planning.Uitgesteld := Map()
+L := [It({weken: "alle"})]
+T("Wakker: 07:35 (25 min ervoor)", Planning.BijnaAanDeBeurt(L, "20261001073500"))
+T("Wakker: 08:10 (in het startvenster)", Planning.BijnaAanDeBeurt(L, "20261001081000"))
+T("Niet wakker: 07:20 (40 min ervoor)", !Planning.BijnaAanDeBeurt(L, "20261001072000"))
+T("Niet wakker: 08:20 (venster voorbij)", !Planning.BijnaAanDeBeurt(L, "20261001082000"))
+T("Niet wakker: andere computer", !Planning.BijnaAanDeBeurt([It({weken: "alle", computer: "ANDERE-PC"})], "20261001075000"))
+Planning.Uitgesteld[1] := {moment: "20261001080000", reden: "test"}
+T("Wakker: zolang iets uitgesteld is", Planning.BijnaAanDeBeurt(L, "20261001120000"))
+Planning.Uitgesteld := Map()
 
 MsgBox Fouten ? Fouten " test(s) mislukt, zie " Uit : "Alle planningstests geslaagd.", "Planning", Fouten ? "Icon!" : "Iconi"

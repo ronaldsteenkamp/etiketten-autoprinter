@@ -1,5 +1,5 @@
 ﻿#Requires AutoHotkey v2.0 32-bit
-#SingleInstance Force
+#SingleInstance Off      ; zie EnkeleInstantie (de waakhond is dezelfde .exe)
 Persistent
 SendMode "Input"
 SetWorkingDir A_ScriptDir
@@ -45,7 +45,7 @@ A_MaxHotkeysPerInterval := 1000
 global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
-global AppVersie := "6.6.0"
+global AppVersie := "6.7.0"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -62,17 +62,29 @@ global AppVersie := "6.6.0"
 #Include src\Update.ahk
 #Include src\Planning.ahk
 #Include src\Wijzigingen.ahk
+#Include src\Systeem.ahk
 #Include src\lib\WebView2
 #Include WebView2.ahk
 
+; Dezelfde .exe met /waakhond <pid> <venster> is de waakhond (zie src\Systeem.ahk)
+if A_Args.Length >= 3 && A_Args[1] = "/waakhond" {
+    Waakhond.Bewaak(Integer(A_Args[2]), Integer(A_Args[3]))
+    ExitApp
+}
+EnkeleInstantie()
+
 OnError Vangnet
+OnExit Afsluiten
 Inst.Lees()
 Opslag.Init()
 MaakTray()
 Venster.Maak()
 Log("App gestart (v" AppVersie ", AutoHotkey " A_AhkVersion ")")
+Sessie.Volg()
+Waakhond.Start()
 Bewaking()
 SetTimer Bewaking, 3000
+SetTimer () => Geheugen.LogPharmacom(), 3600000
 SetTimer () => Update.Controleer(true), -1500
 SetTimer () => Update.ControleerLokaal(), -2500
 SetTimer () => Wijzigingen.BijStart(), -3500
@@ -98,6 +110,7 @@ Bewaking() {
         if St != "ok" {
             Ph.VergeetBuffer()
         } else if !WasVerbonden {
+            Geheugen.LogPharmacom()
             Ronde.Vernieuw(false, true)
             Gepauzeerd := ""
         } else {
@@ -158,6 +171,8 @@ Vangnet(e, Modus) {
                 Opslag.Rapporteer(p, "", "Gestopt: onverwachte fout (" e.Message ")", Ronde.Apotheek)
         }
         Ronde.Bezig := false, Ronde.Stoppen := false, Ronde.Huidig := ""
+        try Wakker.Zet("ronde", false)
+        try Waakhond.Patient(0)
         Ronde.StopReden := "onverwachte fout"
         try Ph.TerugNaarBuffer()
         try {
@@ -181,6 +196,20 @@ Vangnet(e, Modus) {
         MsgBox Tekst, AppTitel, "Iconx"
     BezigMetFout := false
     return 1    ; geen standaard foutvenster; alleen deze taak stopt
+}
+
+; Bij afsluiten: blokkade eraf, slaapstand weer toestaan, onthouden
+; Java-objecten vrijgeven en de waakhond stoppen (die houdt anders de .exe
+; vast, wat een update in de weg zit).
+Afsluiten(*) {
+    try Invoer.Blokkeer(false)
+    try Wakker.Zet("ronde", false), Wakker.Zet("planning", false)
+    try Ph.VergeetBuffer()
+    try {
+        if Waakhond.Pid
+            ProcessClose Waakhond.Pid
+    }
+    try Log("App afgesloten")
 }
 
 ; Systeemvak (icoon rechtsonder bij de klok)

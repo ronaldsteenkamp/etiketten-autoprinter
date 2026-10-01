@@ -58,6 +58,32 @@ dagen, tijd en elke week / even weken / oneven weken (ISO-weeknummer).
   terug), met een melding en bij het icoon bij de klok.
 - Zet **Starten met Windows** aan (Instellingen) als je de planning gebruikt:
   de app maakt dan een snelkoppeling in de map Opstarten van Windows.
+- **Uitstel:** kan een geplande ronde niet starten omdat de computer vergrendeld
+  is, Pharmacom niet open is, niet op de aanschrijfbuffer staat, er een melding of
+  inlogvenster openstaat of niemand is ingelogd, dan wacht hij (status
+  *uitgesteld*) en start hij zodra het kan, tot 2 uur na de ingestelde tijd.
+  Daarna: *mislukt* met de reden, en een melding. Na ontgrendelen kijkt de app
+  meteen. Ook na het aftellen wordt dit nog een keer gecontroleerd.
+- **Geen slaapstand:** vanaf 30 minuten vóór een geplande tijd tot het einde van
+  het startvenster (en zolang een ronde uitgesteld is), en tijdens elke ronde,
+  vraagt de app Windows om niet in slaapstand te gaan. Een computer die al slaapt
+  kan de app niet wekken.
+- Testen zonder Pharmacom: in de ini `[Test]` `Belemmering=<reden>` doet alsof
+  het niet kan (daarna weer weghalen).
+
+## Waakhond
+
+Bij het starten start de app een tweede, onzichtbaar proces: dezelfde .exe met
+`/waakhond` (in Taakbeheer zie je de app dus twee keer). De app geeft elke
+seconde een levensteken. Blijft dat 20 seconden uit terwijl toetsenbord en muis
+geblokkeerd zijn (de app hangt), dan sluit de waakhond de app af, zodat de
+blokkade weg is. Hij logt dat (`WAAKHOND`), meldt met welk Pat.nr de app bezig
+was en vraagt of de app opnieuw moet starten. De waakhond stopt vanzelf als de
+app sluit. Omdat de waakhond dezelfde .exe is, regelt de app zelf dat er maar één
+exemplaar draait (in plaats van `#SingleInstance Force`).
+
+Elk uur (en bij het verbinden) komt het geheugengebruik van Pharmacom in het log,
+om te zien of Pharmacom in de loop van de dag zwaarder wordt.
 
 ## Sneltoetsen
 
@@ -137,6 +163,7 @@ De sneltoets leest de app zelf uit Pharmacom.
 | `src\Venster.ahk` | Het venster (WebView2), knoppen, dialogen, instellingen, diagnose |
 | `src\Opslag.ahk`, `src\Instellingen.ahk`, `src\Invoer.ahk`, `src\Update.ahk`, `src\Hulp.ahk` | Log/register/rapporten, ini, toetsenbord blokkeren, updates, hulpfuncties |
 | `src\Planning.ahk`, `src\Wijzigingen.ahk` | Geplande rondes; "Wat is er nieuw" |
+| `src\Systeem.ahk` | Vergrendeling, geen slaapstand, waakhond, geheugen van Pharmacom |
 | `tests\Eenheid.ahk`, `tests\Planning.ahk` | Unit-tests (hulpfuncties; planning: dagen, weken, tijdvenster) |
 | `src\lib\` | WebView2-bibliotheek van thqby (MIT-licentie) met de 32-bit WebView2Loader.dll |
 | `Etiketten_autoprinter.exe` | De app (32-bit, moet 32-bit blijven: Pharmacom draait op 32-bit Java) |

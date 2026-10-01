@@ -5,7 +5,10 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.6.0", ["Veiliger: gaat er onverwacht iets mis, dan stopt de app de ronde netjes, maakt toetsenbord en muis vrij en meldt wat er gebeurde."
+        ["6.7.0", ["Planning: staat de computer op slot of is Pharmacom bezet, dan wacht de geplande ronde (tot 2 uur) en start hij zodra het kan."
+            , "Rond een geplande tijd en tijdens het printen gaat de computer niet in slaapstand."
+            , "Waakhond: loopt de app vast tijdens het printen, dan wordt hij na 20 seconden afgesloten, zodat toetsenbord en muis weer vrij zijn."]]
+        , ["6.6.0", ["Veiliger: gaat er onverwacht iets mis, dan stopt de app de ronde netjes, maakt toetsenbord en muis vrij en meldt wat er gebeurde."
             , "Instellingen: 'Starten met Windows', zodat de planning altijd draait."
             , "Planning: per planning zie je of de laatste ronde gelukt, mislukt, geannuleerd of niet uitgevoerd is; gemiste rondes worden gemeld."]]
         , ["6.5.3", ["Planning: kies je een andere instelling, dan wordt de afdeling leeggemaakt als die er niet bij hoort."]]

@@ -16,6 +16,10 @@
 class Planning {
     static Bezig := false
     static MaxMinuten := 15     ; minuten na de ingestelde tijd dat hij nog start
+    static MaxUitstel := 120    ; idem als hij uitgesteld is (pc vergrendeld, Pharmacom bezet)
+    static WakkerVooraf := 30   ; minuten vóór de ingestelde tijd geen slaapstand
+    ; Uitgestelde planningen van vandaag: id -> {moment, reden}
+    static Uitgesteld := Map()
 
     static Sectie => "Planning" (Inst.Apotheek != "" ? " " Inst.Apotheek : "")
 
@@ -138,6 +142,9 @@ class Planning {
         try IniDelete Inst.Bestand, this.Sectie, Id
         try IniDelete Inst.Bestand, "Planning gedraaid", A_ComputerName "-" Inst.Apotheek "-" Id
         try IniDelete Inst.Bestand, "Planning status", A_ComputerName "-" Inst.Apotheek "-" Id
+        for k in this.Uitgesteld.Clone()
+            if k = Id
+                this.Uitgesteld.Delete(k)
     }
 
     ; Nummers worden nooit hergebruikt (anders zou een nieuwe planning het
@@ -165,8 +172,9 @@ class Planning {
 
     ; Moet deze planning nu (of op tijdstip Nu, voor tests) starten?
     ; Laatst = wanneer hij voor het laatst gedraaid heeft (yyyyMMddHHmm).
-    static NuAan(it, Nu := "", Laatst := "?") {
+    static NuAan(it, Nu := "", Laatst := "?", Max := "") {
         Nu := Nu = "" ? A_Now : Nu
+        Max := Max = "" ? this.MaxMinuten : Max
         if !it.aan || it.computer != A_ComputerName || !InStr(it.dagen, this.Weekdag(Nu)) || !this.WeekKlopt(it.weken, Nu)
             return false
         if !RegExMatch(it.tijd, "^(\d{1,2}):(\d{2})$", &T)
@@ -175,7 +183,7 @@ class Planning {
         ; In seconden: DateDiff in minuten rondt af naar nul (dan zou hij tot
         ; 59 s te vroeg starten)
         Verschil := DateDiff(Nu, Start, "Seconds")
-        if Verschil < 0 || Verschil >= this.MaxMinuten * 60
+        if Verschil < 0 || Verschil >= Max * 60
             return false
         Laatst := Laatst = "?" ? this.LaatstGedraaid(it) : Laatst
         return SubStr(Laatst, 1, 8) != SubStr(Nu, 1, 8)
@@ -231,16 +239,94 @@ class Planning {
         return {soort: d[1], tijd: d[2], tekst: d.Length >= 3 ? d[3] : ""}
     }
 
-    ; Elke 20 s: gemiste momenten melden, en starten wat nu aan de beurt is
-    static Tik() {
+    ; Elke 20 s: gemiste momenten melden, en starten wat nu aan de beurt is.
+    ; Kan het nu niet (pc vergrendeld, Pharmacom bezet), dan wordt de ronde
+    ; uitgesteld en start hij zodra het wel kan, tot 2 uur na de ingestelde tijd.
+    static Tik(Nu := "") {
         if Inst.Apotheek = ""
             return
-        this.ControleerGemist()
+        Nu := Nu = "" ? A_Now : Nu
+        Lijst := this.Lees()
+        this.ControleerGemist(Nu)
+        this.UitstelVerlopen(Lijst, Nu)
+        Wakker.Zet("planning", this.BijnaAanDeBeurt(Lijst, Nu))
         if this.Bezig || Ronde.Bezig
             return
-        for it in this.Lees()
-            if this.NuAan(it)
+        Reden := "?"
+        for it in Lijst {
+            if !this.NuAan(it, Nu, "?", this.Uitgesteld.Has(it.id) ? this.MaxUitstel : this.MaxMinuten)
+                continue
+            if Reden = "?"
+                Reden := this.Belemmering()
+            if Reden = ""
                 return this.Voer(it)
+            this.StelUit(it, Reden, Nu)
+        }
+    }
+
+    ; Waarom een geplande ronde nu niet kan starten, of ""
+    static Belemmering() {
+        if (Test := Inst.Lees1("Test", "Belemmering", "")) != ""   ; alleen om te testen
+            return Test
+        if Sessie.Vergrendeld()
+            return "de computer is vergrendeld"
+        St := Venster.Verbind()
+        if St != "ok"
+            return St = "geen" ? "Pharmacom is niet open" : "geen verbinding met Pharmacom"
+        return Ph.Gereed()
+    }
+
+    static StelUit(it, Reden, Nu := "") {
+        Nu := Nu = "" ? A_Now : Nu
+        Oud := this.Uitgesteld.Has(it.id) ? this.Uitgesteld[it.id] : ""
+        if Oud && Oud.reden = Reden
+            return
+        if Oud
+            Moment := Oud.moment
+        else if RegExMatch(it.tijd, "^(\d{1,2}):(\d{2})$", &T)
+            Moment := SubStr(Nu, 1, 8) Format("{:02}{:02}00", Integer(T[1]), Integer(T[2]))
+        else
+            return
+        this.Uitgesteld[it.id] := {moment: Moment, reden: Reden}
+        Log("Planning '" it.naam "' uitgesteld: " Reden)
+        this.ZetStatus(it, "uitgesteld", Reden, Moment)
+    }
+
+    ; Uitgestelde rondes die na 2 uur nog niet konden starten: mislukt
+    static UitstelVerlopen(Lijst, Nu) {
+        for Id, u in this.Uitgesteld.Clone() {
+            if DateDiff(Nu, u.moment, "Minutes") < this.MaxUitstel && SubStr(Nu, 1, 8) = SubStr(u.moment, 1, 8)
+                continue
+            this.Uitgesteld.Delete(Id)
+            for it in Lijst {
+                if it.id != Id || SubStr(this.LaatstGedraaid(it), 1, 8) = SubStr(u.moment, 1, 8)
+                    continue
+                Tekst := "niet gestart binnen " this.MaxUitstel // 60 " uur: " u.reden
+                Log("Planning '" it.naam "' " Tekst)
+                this.ZetStatus(it, "mislukt", Tekst, u.moment)
+                TrayTip "Geplande ronde '" it.naam "' is niet uitgevoerd: " u.reden, AppTitel, 2
+                Melding := "De geplande ronde '" it.naam "' van " FormatTime(u.moment, "HH:mm") " is niet uitgevoerd: " u.reden ".`n`nDe app heeft " this.MaxUitstel // 60 " uur gewacht. Print deze groep zo nodig met de hand, of gebruik in de planning het driehoekje (nu uitvoeren)."
+                SetTimer ObjBindMethod(Venster, "Melding", "Planning niet uitgevoerd", Melding, "waarschuwing"), -300
+            }
+        }
+    }
+
+    ; Moet de computer wakker blijven? Vanaf 30 minuten vóór een geplande tijd
+    ; tot het einde van het startvenster, en zolang er een ronde uitgesteld is.
+    static BijnaAanDeBeurt(Lijst, Nu) {
+        if this.Uitgesteld.Count
+            return true
+        Van := DateAdd(Nu, -this.MaxMinuten, "Minutes")
+        Tot := DateAdd(Nu, this.WakkerVooraf, "Minutes")
+        for it in Lijst {
+            if !it.aan || it.computer != A_ComputerName
+                continue
+            Laatst := this.LaatstGedraaid(it)
+            for m in this.Momenten(it, Van, Tot)
+                if SubStr(Laatst, 1, 8) != SubStr(m, 1, 8)
+                    return true
+        }
+        return false
     }
 
     ; Momenten die buiten het startvenster zijn geraakt zonder dat de planning
@@ -260,6 +346,8 @@ class Planning {
         Regels := ""
         for it in this.Lees() {
             for m in this.Gemist(it, Vorige, Tot, this.LaatstGedraaid(it)) {
+                if this.Uitgesteld.Has(it.id) && this.Uitgesteld[it.id].moment = m
+                    continue    ; wacht nog (zie UitstelVerlopen)
                 this.ZetStatus(it, "gemist", "", m)
                 Regels .= Teken.Punt " " it.naam ": " FormatTime(m, "ddd d-M HH:mm") "`n"
                 Log("Planning gemist: '" it.naam "' van " FormatTime(m, "d-M HH:mm"))
@@ -276,27 +364,37 @@ class Planning {
     static Voer(it, Handmatig := false, Proef := false) {
         this.Bezig := true
         try {
-            if !Proef
-                this.ZetGedraaid(it)
             Log("Geplande ronde '" it.naam "' (" it.instelling " / " it.afdeling ")" (Proef ? " als proefronde" : Handmatig ? " handmatig gestart" : ""))
             Status := (Soort, Tekst := "") => Proef ? 0 : this.ZetStatus(it, Soort, Tekst)
-            if Venster.Verbind() != "ok" {
-                Log("  Pharmacom niet bereikbaar, ronde overgeslagen")
-                Status("mislukt", "Pharmacom was niet open")
-                TrayTip "Geplande ronde '" it.naam "' overgeslagen: Pharmacom is niet open.", AppTitel, 2
-                return
-            }
-            if !Handmatig {
+            if Handmatig {
+                if (Reden := this.Belemmering()) != "" {
+                    Log("  niet gestart: " Reden)
+                    Venster.Melding("Geplande ronde", "De ronde '" it.naam "' kan nu niet starten: " Reden ".", "waarschuwing")
+                    return
+                }
+            } else {
                 Keuze := Venster.Dialoog({soort: "planning", titel: "Geplande ronde: " it.naam
                     , tekst: "Over 30 seconden zoekt de app in Pharmacom de groep " it.afdeling " (" it.instelling ") en print de etiketten.`n`nToetsenbord en muis worden daarna even overgenomen. Wil je dat nu niet, klik dan op Annuleren."
                     , knoppen: [{t: "Annuleren", v: "0"}, {t: "Nu starten", v: "1", hoofd: 1}]}, 30000, "1")
                 if Keuze != "1" {
+                    this.ZetGedraaid(it)
+                    this.Uitgesteld.Delete(it.id)
                     Log("  geannuleerd door gebruiker")
                     Status("geannuleerd")
                     Venster.Status("idle", "Geplande ronde '" it.naam "' geannuleerd.")
                     return
                 }
+                ; Tijdens het aftellen vergrendeld, of Pharmacom intussen bezet?
+                if (Reden := this.Belemmering()) != "" {
+                    this.StelUit(it, Reden)
+                    Venster.Status("idle", "Geplande ronde '" it.naam "' uitgesteld: " Reden)
+                    return
+                }
             }
+            if !Proef
+                this.ZetGedraaid(it)
+            if this.Uitgesteld.Has(it.id)
+                this.Uitgesteld.Delete(it.id)
             Venster.Status("bezig", "Geplande ronde '" it.naam "': groep " it.afdeling " zoeken in Pharmacom" Teken.Ellips)
             Res := Ph.ZetGroep(it.instelling, it.afdeling)
             if Res != "" {
@@ -343,6 +441,11 @@ class Planning {
             case "mislukt": return {soort: "mislukt", tekst: "mislukt " Wanneer (s.tekst != "" ? ": " s.tekst : "")}
             case "geannuleerd": return {soort: "geannuleerd", tekst: "geannuleerd " Wanneer}
             case "gemist": return {soort: "gemist", tekst: "niet uitgevoerd " Wanneer}
+            case "uitgesteld":
+                ; Na een herstart van de app wacht hij niet meer
+                if !this.Uitgesteld.Has(it.id)
+                    return {soort: "gemist", tekst: "niet uitgevoerd " Wanneer (s.tekst != "" ? " (" s.tekst ")" : "")}
+                return {soort: "uitgesteld", tekst: "uitgesteld " Wanneer (s.tekst != "" ? ": " s.tekst : "")}
         }
         return ""
     }

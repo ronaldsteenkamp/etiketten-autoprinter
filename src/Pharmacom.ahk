@@ -98,6 +98,28 @@ class Ph {
         return false
     }
 
+    ; Kan de app nu in Pharmacom aan de slag (voor een geplande ronde)? Geeft
+    ; "" of de reden waarom niet. Een melding of inlogvenster in Pharmacom
+    ; schakelt het hoofdvenster uit (WS_DISABLED); de titels van open vensters
+    ; komen in de reden.
+    static Gereed() {
+        try {
+            if WinGetStyle(this.Hwnd) & 0x08000000 {
+                Titels := ""
+                for h in WinGetList("ahk_pid " this.Pid)
+                    if h != this.Hwnd && (WinGetStyle(h) & 0x10000000) && (t := Trim(WinGetTitle(h))) != ""
+                        Titels .= (Titels != "" ? ", " : "") "'" t "'"
+                return "in Pharmacom staat een melding of venster open" (Titels != "" ? " (" Titels ")" : "")
+            }
+            if !this.OpBufferScherm()
+                return "Pharmacom staat niet op de aanschrijfbuffer"
+            if this.LeesApotheek() = ""
+                return "er is niemand ingelogd in Pharmacom (geen apotheek te zien)"
+        } catch as e
+            return "Pharmacom kon niet gecontroleerd worden (" e.Message ")"
+        return ""
+    }
+
     ; Korte "vingerafdruk" van de aanschrijfbuffer, of "" als die niet
     ; zichtbaar is. Snel: aantal regels + eerste en laatste Pat.nr.
     ; Volledig: Pat.nr en ontslagdatum van alle regels.

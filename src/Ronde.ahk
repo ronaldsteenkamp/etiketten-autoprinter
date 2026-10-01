@@ -246,6 +246,7 @@ class Ronde {
             Instel .= " " w[1] "=" Inst.Wt[w[1]]
         Log(Instel)
         Opslag.StartRapport(Proef)
+        Wakker.Zet("ronde", true)
         Invoer.Blokkeer(true, Inst.Optie("blokkeer"))
         Venster.GeenActivatie(true)
 
@@ -254,6 +255,7 @@ class Ronde {
             p := this.Patienten[r]
             p.geprintNu := false
             this.Huidig := p, this.Gekozen := false
+            Waakhond.Patient(p.patnr)
             Venster.Rij(r, "bezig", "Bezig" Teken.Ellips)
             Venster.Status("bezig", (Proef ? "Proef " Teken.Mid " " : "") "Pati" Teken.EUml "nt " i " van " n ": " p.naam "  " Teken.Mid "  Esc = stoppen")
             Log("Pat.nr " p.patnr ":")
@@ -315,6 +317,8 @@ class Ronde {
         }
         Venster.GeenActivatie(false)
         Invoer.Blokkeer(false)
+        Wakker.Zet("ronde", false)
+        Waakhond.Patient(0)
         this.Bezig := false
         Venster.Ui("bezig", 0)
         SetTimer RondeTijd, 0

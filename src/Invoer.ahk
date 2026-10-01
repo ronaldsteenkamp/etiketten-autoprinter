@@ -31,6 +31,7 @@ class Invoer {
                 HotIf
             }
             this.Actief := true
+            Waakhond.Geblokkeerd(true)
             Log(Volledig ? "Toetsenbord en muis geblokkeerd (Esc of Stop = stoppen)" : "Esc = stoppen")
             return
         }
@@ -44,6 +45,7 @@ class Invoer {
             try Hotkey "*" k, "Off"
         HotIf
         this.Actief := false
+        Waakhond.Geblokkeerd(false)
         Log("Toetsenbord en muis weer vrij")
     }
 
