@@ -5,7 +5,10 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.5.1", ["Planning: regels slepen om de volgorde te veranderen."
+        ["6.5.2", ["Planning: elke groep kan maar één keer gepland worden; al geplande afdelingen staan grijs in de lijst."
+            , "Planning: de naam is altijd de naam van de groep."
+            , "Planning: nieuw veld Opmerking."]]
+        , ["6.5.1", ["Planning: regels slepen om de volgorde te veranderen."
             , "De knop 'Overnemen uit Pharmacom' is vervallen; kies de groep uit de lijst."]]
         , ["6.5.0", ["Planning: volgorde zelf aanpassen met de pijltjes, of sorteren op naam (A–Z)."
             , "Planning: Instelling en Afdeling kiezen uit een lijst (of typen). Met 'Alle groepen ophalen' haalt de app de lijst uit Pharmacom."]]

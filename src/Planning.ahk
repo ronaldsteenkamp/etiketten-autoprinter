@@ -28,6 +28,7 @@ class Planning {
         catch
             return Items
         Volgorde := ""
+        Bekend := Groepen.Lees()
         loop parse Inhoud, "`n", "`r" {
             if RegExMatch(A_LoopField, "^_volgorde=(.*)$", &M) {
                 Volgorde := M[1]
@@ -38,8 +39,11 @@ class Planning {
             d := StrSplit(M[2], "|")
             if d.Length < 8
                 continue
-            Items.Push({id: M[1], aan: d[1] = "1" ? 1 : 0, naam: d[2], instelling: d[3], afdeling: d[4]
-                , dagen: d[5], tijd: d[6], weken: d[7], computer: d[8]})
+            it := {id: M[1], aan: d[1] = "1" ? 1 : 0, naam: d[2], instelling: d[3], afdeling: d[4]
+                , dagen: d[5], tijd: d[6], weken: d[7], computer: d[8], opmerking: d.Length >= 9 ? d[9] : ""}
+            ; De naam is altijd de naam van de groep (omschrijving van de afdeling)
+            it.naam := this.GroepNaam(it.instelling, it.afdeling, Bekend)
+            Items.Push(it)
         }
         ; Sorteren op de opgeslagen volgorde
         Plek := Map()
@@ -105,8 +109,27 @@ class Planning {
     }
 
     static Schrijf(it) {
-        Schoon := (s) => StrReplace(StrReplace(Trim(s), "|", "/"), "=", "-")
-        Inst.Schrijf((it.aan ? 1 : 0) "|" Schoon(it.naam) "|" Schoon(it.instelling) "|" Schoon(it.afdeling) "|" it.dagen "|" it.tijd "|" it.weken "|" it.computer, this.Sectie, it.id)
+        Schoon := (s) => StrReplace(StrReplace(StrReplace(StrReplace(Trim(s), "|", "/"), "`r", ""), "`n", " "), "=", "-")
+        Inst.Schrijf((it.aan ? 1 : 0) "|" Schoon(it.naam) "|" Schoon(it.instelling) "|" Schoon(it.afdeling) "|" it.dagen "|" it.tijd "|" it.weken "|" it.computer
+            . "|" Schoon(it.HasProp("opmerking") ? it.opmerking : ""), this.Sectie, it.id)
+    }
+
+    ; Naam van een groep: omschrijving van de afdeling (bijv. "T2 Maandag
+    ; Bezorgen"), anders de code
+    static GroepNaam(Instelling, Afdeling, Bekend := "") {
+        Bekend := Bekend ? Bekend : Groepen.Lees()
+        if Bekend.afdelingen.Has(Instelling) && Bekend.afdelingen[Instelling].Has(Afdeling) && Bekend.afdelingen[Instelling][Afdeling] != ""
+            return Bekend.afdelingen[Instelling][Afdeling]
+        return Afdeling
+    }
+
+    ; Staat deze groep al in de planning (behalve regel Behalve)? Geeft die
+    ; regel, of "".
+    static Dubbel(Instelling, Afdeling, Behalve := "") {
+        for it in this.Lees()
+            if it.id != Behalve && it.instelling = Instelling && it.afdeling = Afdeling
+                return it
+        return ""
     }
 
     static Verwijder(Id) {
@@ -210,7 +233,7 @@ class Planning {
         Items := []
         for it in this.Lees()
             Items.Push({id: it.id, aan: it.aan, naam: it.naam, instelling: it.instelling, afdeling: it.afdeling
-                , dagen: it.dagen, tijd: it.tijd, weken: it.weken, computer: it.computer
+                , dagen: it.dagen, tijd: it.tijd, weken: it.weken, computer: it.computer, opmerking: it.opmerking
                 , hier: it.computer = A_ComputerName ? 1 : 0, laatst: this.LaatstTekst(it)})
         Wk := this.WeekNr()
         Venster.Ui("planning", {items: Items, apotheek: Inst.Apotheek, computer: A_ComputerName
@@ -244,7 +267,12 @@ class Planning {
             case "opslaan":
                 if Inst.Apotheek = ""
                     return Venster.Melding("Planning", "De ingelogde apotheek is nog niet bekend. Open Pharmacom op de aanschrijfbuffer en probeer het opnieuw.", "waarschuwing")
-                it := {id: Id != "" ? Id : this.NieuwId(), aan: 1, naam: P["naam"], instelling: P["instelling"], afdeling: P["afdeling"]
+                Instelling := StrUpper(Trim(P["instelling"])), Afdeling := StrUpper(Trim(P["afdeling"]))
+                ; Elke groep maar één keer in de planning
+                if d := this.Dubbel(Instelling, Afdeling, Id)
+                    return Venster.Ui("planfout", "Deze groep staat al in de planning ('" d.naam "'). Pas die planning aan, bijvoorbeeld met extra dagen.")
+                it := {id: Id != "" ? Id : this.NieuwId(), aan: 1, instelling: Instelling, afdeling: Afdeling
+                    , naam: this.GroepNaam(Instelling, Afdeling), opmerking: P.Has("opmerking") ? P["opmerking"] : ""
                     , dagen: RegExReplace(P["dagen"], "[^1-7]"), tijd: P["tijd"], weken: P["weken"], computer: A_ComputerName}
                 if Id != "" && (oud := Zoek(Id))
                     it.aan := oud.aan

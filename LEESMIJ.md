@@ -33,7 +33,9 @@ er komt een rapport `Proefronde <datum>.csv` in de map Rapporten.
 ## Planning
 
 Onder **Planning** (of Ctrl+G) stel je in welke groepen (afdelingen) automatisch
-geprint worden: naam, Instelling + Afdeling (typen of kiezen uit de lijst),
+geprint worden: Instelling + Afdeling (typen of kiezen uit de lijst; de naam is
+de naam van de groep en elke groep kan maar één keer gepland worden), een
+optionele opmerking,
 dagen, tijd en elke week / even weken / oneven weken (ISO-weeknummer).
 
 - **Alle groepen ophalen** leest alle instellingen en afdelingen uit Pharmacom
