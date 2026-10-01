@@ -9,3 +9,4 @@ Etiketten_autoprinter.ini
 *.exe
 
 tests/uitvoer.txt
+tests/uitvoer_planning.txt

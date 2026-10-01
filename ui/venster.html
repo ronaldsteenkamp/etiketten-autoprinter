@@ -607,7 +607,8 @@ function toonPlanning(d) {
              (it.hier == "1" ? 'Op deze computer' : 'Op computer ' + esc(it.computer) + ' &middot; <span class="klein" style="margin:0" onclick="stuur(\'plan/hier?id=' + it.id + '\')">hier uitvoeren</span>') +
              (it.laatst ? ' &middot; laatst ' + esc(it.laatst) : '') + '</div></div>' +
              '<div class="pknoppen">' +
-             '<span class="pk" title="Nu uitvoeren" onclick="stuur(\'plan/nu?id=' + it.id + '\')">' + I("play") + '</span>' +
+             '<span class="pk" title="Nu als proefronde uitvoeren (niets printen)" onclick="stuur(\'plan/proef?id=' + it.id + '\')">' + I("flask-conical") + '</span>' +
+             '<span class="pk" title="Nu uitvoeren (printen)" onclick="stuur(\'plan/nu?id=' + it.id + '\')">' + I("play") + '</span>' +
              '<span class="pk" title="Wijzigen" onclick="toonPlanForm(' + i + ')">' + I("pencil") + '</span>' +
              '<span class="pk rood" title="Verwijderen" onclick="stuur(\'plan/verwijder?id=' + it.id + '\')">' + I("trash-2") + '</span>' +
              '<span class="schakel" title="Aan/uit" onclick="stuur(\'plan/wissel?id=' + it.id + '\')"></span></div></div>';

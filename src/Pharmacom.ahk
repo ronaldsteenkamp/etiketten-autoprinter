@@ -117,14 +117,171 @@ class Ph {
     ; --- Groep (zoekcriteria van de aanschrijfbuffer) -----------------------
     ; Leest Instelling en Afdeling uit de zoekcriteria: {instelling, afdeling},
     ; of een tekst met de reden waarom het niet lukte.
+    ; De velden zijn een paneel met de naam van het label ("Instelling:",
+    ; "Afdeling:") met daarin een bewerkbaar tekstvak (de code) en een tekstvak
+    ; met de omschrijving.
     static LeesGroep() {
-        return "nog niet beschikbaar"
+        if !this.Verbonden && this.Verbind() != "ok"
+            return "Pharmacom is niet bereikbaar"
+        if !this.OpBufferScherm()
+            return "Pharmacom staat niet op de aanschrijfbuffer"
+        i := this.Veld("Instelling:"), a := this.Veld("Afdeling:")
+        if !i || !a
+            return "de velden Instelling en Afdeling zijn niet gevonden"
+        if a.code = ""
+            return "er is in Pharmacom geen afdeling gekozen"
+        return {instelling: i.code, afdeling: a.code}
+    }
+
+    ; {code, omschrijving, x, y, w, h} van een zoekveld, of ""
+    static Veld(Label) {
+        Bezoek(Vm, Ac, Info, Diepte) {
+            if Info.role = "panel" && Trim(Info.name) = Label {
+                Res := {code: "", omschrijving: "", x: 0, y: 0, w: 0, h: 0}, Gevonden := 0
+                Verzamel(Vm, Ac, 0)
+                return Gevonden ? Res : "stop"
+            }
+            if RegExMatch(Info.role, "^(table|menu bar|menu|popup menu|list|tree)$")
+                return "stop"
+            return ""
+        }
+        ; Tekstvakken binnen het paneel (een paar niveaus diep): het eerste
+        ; bewerkbare is de code, een niet-bewerkbaar is de omschrijving.
+        Verzamel(Vm, Ac, Diepte) {
+            loop Min(Jab.Info(Vm, Ac).children, 20) {
+                Kind := Jab.Kind(Vm, Ac, A_Index - 1)
+                if !Kind
+                    continue
+                Ki := Jab.Info(Vm, Kind)
+                if Ki && Ki.role = "text" {
+                    if Jab.Heeft(Ki, "editable") && !Gevonden {
+                        Res.code := Trim(Jab.Naam(Vm, Kind)), Res.x := Ki.x, Res.y := Ki.y, Res.w := Ki.w, Res.h := Ki.h
+                        Gevonden := 1
+                    } else if !Jab.Heeft(Ki, "editable")
+                        Res.omschrijving := Trim(Jab.Naam(Vm, Kind))
+                } else if Ki && Diepte < 3
+                    Verzamel(Vm, Kind, Diepte + 1)
+                Jab.Release(Vm, Kind)
+            }
+        }
+        Res := "", Gevonden := 0
+        return Jab.Doorzoek(this.Pid, Bezoek)
+    }
+
+    ; {x, y, w, h, aan} van een knop met deze naam, of ""
+    static Knop(Naam) {
+        Bezoek(Vm, Ac, Info, Diepte) {
+            if Info.role = "push button" && Trim(Info.name) = Naam
+                return {x: Info.x, y: Info.y, w: Info.w, h: Info.h, aan: Jab.Heeft(Info, "enabled")}
+            if RegExMatch(Info.role, "^(table|menu bar|menu|popup menu|list|tree)$")
+                return "stop"
+            return ""
+        }
+        return Jab.Doorzoek(this.Pid, Bezoek)
+    }
+
+    ; Klikt in het midden van een element (schermcoördinaten), alleen als
+    ; Pharmacom het actieve venster is.
+    static KlikOp(e) {
+        if !WinActive("ahk_id " this.Hwnd)
+            return false
+        CoordMode "Mouse", "Screen"
+        MouseGetPos &Mx, &My
+        Click e.x + e.w // 2, e.y + e.h // 2
+        MouseMove Mx, My, 0
+        return true
+    }
+
+    ; Typt een code in een zoekveld en controleert dat Pharmacom hem
+    ; accepteert (de code staat erin en er is een omschrijving). "" = gelukt.
+    static ZetVeld(Label, Waarde) {
+        v := this.Veld(Label)
+        if !v
+            return "het veld " Label " is niet gevonden"
+        if v.code = Waarde && v.omschrijving != ""
+            return ""
+        if !this.KlikOp(v)
+            return "Pharmacom was niet het actieve venster"
+        Sleep 150
+        Send "^a"
+        SendText Waarde
+        Send "{Tab}"
+        Log("  " Label " " Waarde " ingevuld")
+        Eind := A_TickCount + 4000
+        loop {
+            Sleep 150
+            ; Een (zoek)venster van Pharmacom = de code werd niet herkend
+            a := WinExist("A")
+            if a && a != this.Hwnd {
+                try Pid := WinGetPID(a)
+                catch
+                    Pid := 0
+                if Pid = this.Pid {
+                    Send "{Escape}"
+                    return "Pharmacom kent " Label " " Waarde " niet"
+                }
+            }
+            v := this.Veld(Label)
+            if v && v.code = Waarde && v.omschrijving != ""
+                return ""
+            if A_TickCount > Eind
+                return "Pharmacom accepteerde " Label " " Waarde " niet"
+        }
     }
 
     ; Vult Instelling en Afdeling in, klikt op Zoeken en wacht tot de lijst
     ; geladen is. Geeft "" als het gelukt is, anders de reden.
     static ZetGroep(Instelling, Afdeling) {
-        return "het automatisch kiezen van een groep is nog niet beschikbaar"
+        if this.Verbind() != "ok"
+            return "Pharmacom is niet bereikbaar"
+        if WinGetMinMax(this.Hwnd) = -1
+            WinRestore "ahk_id " this.Hwnd
+        WinActivate "ahk_id " this.Hwnd
+        if !WinWaitActive("ahk_id " this.Hwnd, , 3)
+            return "Pharmacom kon niet naar voren gehaald worden (staat er een venster open?)"
+        if !this.OpBufferScherm()
+            return "Pharmacom staat niet op de aanschrijfbuffer"
+        Sleep 200
+        if Instelling != "" && (R := this.ZetVeld("Instelling:", Instelling)) != ""
+            return R
+        if (R := this.ZetVeld("Afdeling:", Afdeling)) != ""
+            return R
+        Zoek := this.Knop("Zoeken")
+        if !Zoek || !Zoek.aan
+            return "de knop Zoeken is niet gevonden"
+        if !this.KlikOp(Zoek)
+            return "Pharmacom was niet het actieve venster"
+        Log("  Zoeken geklikt")
+        ; Wachten: eerst wordt "Stoppen met zoeken" actief, daarna weer niet,
+        ; en de lijst moet stabiel zijn.
+        Eind := A_TickCount + 60000
+        Sleep 500
+        Vorige := "", Gelijk := 0
+        loop {
+            Stop := this.Knop("Stoppen met zoeken")
+            if !(Stop && Stop.aan) {
+                H := this.Handtekening(true)
+                Gelijk := H != "" && H = Vorige ? Gelijk + 1 : 0
+                Vorige := H
+                if Gelijk >= 2
+                    break
+            }
+            if A_TickCount > Eind
+                return "het zoeken in Pharmacom duurde te lang"
+            Sleep 400
+        }
+        ; Controle: staat de gekozen afdeling in de lijst?
+        t := Jab.ZoekTabel(this.Pid, Map("afd", "i)^Afd$"))
+        if t && t.Rijen() > 0 {
+            Andere := 0
+            loop t.Rijen()
+                if t.Cel(A_Index - 1, "afd") != Afdeling
+                    Andere++
+            if Andere
+                return "de lijst bevat ook " Andere " pati" Teken.EUml "nt(en) van een andere afdeling"
+        }
+        Log("  groep " Instelling " / " Afdeling " geladen (" StrSplit(Vorige, ":")[1] " regels)")
+        return ""
     }
 
     ; Ingelogde apotheek (bijv. "AN"), of ""

@@ -22,6 +22,52 @@ aanschrijfbuffer").
 Eenmalig: klik op **Koppeling inschakelen** en start Pharmacom opnieuw
 (dit zet de Java Access Bridge aan, waarmee de app Pharmacom kan uitlezen).
 
+## Proefronde
+
+Met **Proef** (of Ctrl+Shift+Enter) doorloopt de app de aangevinkte patiënten
+precies zoals bij printen (dossier openen, controleren, regel zoeken en
+selecteren), maar drukt Escape in plaats van te printen. Er wordt niets geprint
+en niets als geprint geregistreerd. Per patiënt zie je "Zou printen: <etiket>";
+er komt een rapport `Proefronde <datum>.csv` in de map Rapporten.
+
+## Planning
+
+Onder **Planning** (of Ctrl+G) stel je in welke groepen (afdelingen) automatisch
+geprint worden: naam, Instelling + Afdeling (met **Overnemen uit Pharmacom**),
+dagen, tijd en elke week / even weken / oneven weken (ISO-weeknummer).
+
+- Een planning start binnen 15 minuten na de ingestelde tijd, één keer per dag,
+  zolang de app draait en Pharmacom open is.
+- Eerst 30 seconden aftellen met **Annuleren**; daarna vult de app Instelling en
+  Afdeling in Pharmacom in, klikt op Zoeken, controleert dat de lijst die afdeling
+  bevat en print. Vandaag al geprinte patiënten worden nooit opnieuw geprint.
+- Alleen de computer waarop de planning is gemaakt voert hem uit (zo print nooit
+  meer dan één computer dezelfde groep); met "hier uitvoeren" verplaats je hem.
+- Per regel: kolfje = nu als proefronde (niets printen), driehoekje = nu uitvoeren.
+- De planning staat per apotheek in de ini (`[Planning AN]`).
+
+## Sneltoetsen
+
+| Toets | Actie |
+|---|---|
+| F5 | Aanschrijfbuffer opnieuw uitlezen |
+| Ctrl+Enter | Start printen |
+| Ctrl+Shift+Enter | Proefronde |
+| Esc | Stoppen tijdens het printen, of dialoog sluiten |
+| Ctrl+G / Ctrl+I | Planning / Instellingen |
+| F1 | Overzicht van de sneltoetsen |
+
+## Instellingen per apotheek
+
+"Alleen ASB: Deelbaar", "Dossier controleren", "Dossier alleen op Pat.nr" en het
+item in het afdrukmenu gelden per ingelogde apotheek (ini-sectie `[Opties AN]`;
+in Instellingen gemarkeerd met de apotheekcode). Staat daar niets, dan geldt de
+algemene waarde. Wachttijden, geluid, venster bovenop, bevestigen en toetsenbord
+blokkeren horen bij de computer.
+
+Na een update toont de app één keer **Wat is er nieuw** (lijst in
+`src\Wijzigingen.ahk`; bij een nieuwe versie daar een regel toevoegen).
+
 ## Wat de app per patiënt doet
 
 1. Zoekt de patiënt op Pat.nr in de aanschrijfbuffer en selecteert hem direct via de
@@ -69,6 +115,8 @@ De sneltoets leest de app zelf uit Pharmacom.
 | `src\Ronde.ahk` | De patiëntenlijst en de printronde |
 | `src\Venster.ahk` | Het venster (WebView2), knoppen, dialogen, instellingen, diagnose |
 | `src\Opslag.ahk`, `src\Instellingen.ahk`, `src\Invoer.ahk`, `src\Update.ahk`, `src\Hulp.ahk` | Log/register/rapporten, ini, toetsenbord blokkeren, updates, hulpfuncties |
+| `src\Planning.ahk`, `src\Wijzigingen.ahk` | Geplande rondes; "Wat is er nieuw" |
+| `tests\Eenheid.ahk`, `tests\Planning.ahk` | Unit-tests (hulpfuncties; planning: dagen, weken, tijdvenster) |
 | `src\lib\` | WebView2-bibliotheek van thqby (MIT-licentie) met de 32-bit WebView2Loader.dll |
 | `Etiketten_autoprinter.exe` | De app (32-bit, moet 32-bit blijven: Pharmacom draait op 32-bit Java) |
 | `Etiketten_autoprinter.ico` | Pictogram |

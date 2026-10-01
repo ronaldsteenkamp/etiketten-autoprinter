@@ -58,24 +58,30 @@ class Planning {
 
     ; --- Tijd --------------------------------------------------------------------
     static WeekNr(Tijd := "") => Integer(SubStr(FormatTime(Tijd, "YWeek"), 5))
-    static VandaagDag() => Mod(A_WDay + 5, 7) + 1        ; 1 = maandag ... 7 = zondag
+    ; 1 = maandag ... 7 = zondag
+    static Weekdag(Tijd := "") => Mod(Integer(FormatTime(Tijd, "WDay")) + 5, 7) + 1
 
-    static WeekKlopt(Weken) {
-        Even := Mod(this.WeekNr(), 2) = 0
+    static WeekKlopt(Weken, Tijd := "") {
+        Even := Mod(this.WeekNr(Tijd), 2) = 0
         return Weken = "alle" || (Weken = "even" && Even) || (Weken = "oneven" && !Even)
     }
 
-    ; Moet deze planning nu starten?
-    static NuAan(it) {
-        if !it.aan || it.computer != A_ComputerName || !InStr(it.dagen, this.VandaagDag()) || !this.WeekKlopt(it.weken)
+    ; Moet deze planning nu (of op tijdstip Nu, voor tests) starten?
+    ; Laatst = wanneer hij voor het laatst gedraaid heeft (yyyyMMddHHmm).
+    static NuAan(it, Nu := "", Laatst := "?") {
+        Nu := Nu = "" ? A_Now : Nu
+        if !it.aan || it.computer != A_ComputerName || !InStr(it.dagen, this.Weekdag(Nu)) || !this.WeekKlopt(it.weken, Nu)
             return false
         if !RegExMatch(it.tijd, "^(\d{1,2}):(\d{2})$", &T)
             return false
-        Start := FormatTime(, "yyyyMMdd") Format("{:02}{:02}00", T[1], T[2])
-        Verschil := DateDiff(A_Now, Start, "Minutes")
-        if Verschil < 0 || Verschil >= this.MaxMinuten
+        Start := SubStr(Nu, 1, 8) Format("{:02}{:02}00", T[1], T[2])
+        ; In seconden: DateDiff in minuten rondt af naar nul (dan zou hij tot
+        ; 59 s te vroeg starten)
+        Verschil := DateDiff(Nu, Start, "Seconds")
+        if Verschil < 0 || Verschil >= this.MaxMinuten * 60
             return false
-        return SubStr(this.LaatstGedraaid(it), 1, 8) != FormatTime(, "yyyyMMdd")
+        Laatst := Laatst = "?" ? this.LaatstGedraaid(it) : Laatst
+        return SubStr(Laatst, 1, 8) != SubStr(Nu, 1, 8)
     }
 
     ; Elke 20 s
@@ -88,11 +94,12 @@ class Planning {
     }
 
     ; --- Uitvoeren ------------------------------------------------------------
-    static Voer(it, Handmatig := false) {
+    static Voer(it, Handmatig := false, Proef := false) {
         this.Bezig := true
         try {
-            this.ZetGedraaid(it)
-            Log("Geplande ronde '" it.naam "' (" it.instelling " / " it.afdeling ")" (Handmatig ? " handmatig gestart" : ""))
+            if !Proef
+                this.ZetGedraaid(it)
+            Log("Geplande ronde '" it.naam "' (" it.instelling " / " it.afdeling ")" (Proef ? " als proefronde" : Handmatig ? " handmatig gestart" : ""))
             if Venster.Verbind() != "ok" {
                 Log("  Pharmacom niet bereikbaar, ronde overgeslagen")
                 TrayTip "Geplande ronde '" it.naam "' overgeslagen: Pharmacom is niet open.", AppTitel, 2
@@ -118,7 +125,7 @@ class Planning {
                 return
             }
             Ronde.Vernieuw(false, true)
-            Ronde.StartRun(false, it.naam)
+            Ronde.StartRun(Proef, it.naam)
         } catch as e {
             Log("  fout in geplande ronde: " e.Message " (" e.What ", regel " e.Line ")")
         } finally
@@ -195,6 +202,13 @@ class Planning {
                 if (it := Zoek(Id)) && Venster.Vraag("Nu uitvoeren", "'" it.naam "' nu uitvoeren? De app zoekt groep " it.afdeling " in Pharmacom en print de etiketten.", "Nu uitvoeren", "Annuleren") {
                     Venster.Ui("dialoogdicht")
                     return this.Voer(it, true)
+                }
+            case "proef":
+                ; Groep kiezen en alles doorlopen, maar niet printen (en niet als
+                ; "vandaag gedraaid" tellen)
+                if (it := Zoek(Id)) && Venster.Vraag("Proefronde", "'" it.naam "' nu als proefronde uitvoeren? De app zoekt groep " it.afdeling " in Pharmacom en doorloopt alle pati" Teken.EUml "nten, maar print niets.", "Proefronde starten", "Annuleren") {
+                    Venster.Ui("dialoogdicht")
+                    return this.Voer(it, true, true)
                 }
         }
         this.Toon()

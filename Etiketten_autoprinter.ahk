@@ -88,7 +88,7 @@ SetTimer PlanningTik, 20000
 ; "tabel veranderd" en wel ± 100 meldingen per seconde van een knop.)
 Bewaking() {
     static Bezig := false, Teller := 0, Gepauzeerd := ""
-    if Ronde.Bezig || Bezig
+    if Ronde.Bezig || Bezig || Planning.Bezig
         return
     Bezig := true
     try {

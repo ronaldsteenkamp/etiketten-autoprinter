@@ -83,6 +83,8 @@ class Jab {
             , role: StrGet(Buf.Ptr + 4608, "UTF-16")
             , states: StrGet(Buf.Ptr + 5632, "UTF-16")
             , children: NumGet(Buf, 6148, "Int")
+            , x: NumGet(Buf, 6152, "Int"), y: NumGet(Buf, 6156, "Int")      ; schermcoördinaten
+            , w: NumGet(Buf, 6160, "Int"), h: NumGet(Buf, 6164, "Int")
             , text: NumGet(Buf, 6180, "Int")}
     }
 
