@@ -13,6 +13,12 @@ Pharmacom die geen ontslagdatum hebben.
    geblokkeerd; **Esc** stopt direct.
 5. Gestopt? Klik op **Doorgaan**: wie al geprint is, wordt overgeslagen.
 
+De app kijkt elke 3 seconden kort (± 5 ms) of de aanschrijfbuffer veranderd is
+(aantal regels, eerste en laatste Pat.nr) en elke 30 seconden volledig. Hij
+pauzeert als de app of Pharmacom geminimaliseerd is, of als Pharmacom een ander
+scherm toont dan de aanschrijfbuffer (dan staat bovenaan "open de
+aanschrijfbuffer").
+
 Eenmalig: klik op **Koppeling inschakelen** en start Pharmacom opnieuw
 (dit zet de Java Access Bridge aan, waarmee de app Pharmacom kan uitlezen).
 

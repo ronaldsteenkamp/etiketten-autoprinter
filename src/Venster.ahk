@@ -27,7 +27,7 @@ class Venster {
         g.BackColor := "EEF2F7"
         g.MarginX := g.MarginY := 0
         g.OnEvent("Close", (*) => Venster.Sluit())
-        g.OnEvent("Size", (gui, MinMax, *) => (MinMax != -1 && Venster.Wvc) ? Venster.Wvc.Fill() : 0)
+        g.OnEvent("Size", VensterGrootte)
         this.Gui := g, this.Hwnd := g.Hwnd
         g.Show("Hide w" this.Breedte " h" this.Hoogte)
 
@@ -76,6 +76,11 @@ class Venster {
         this.Hint()
         this.Status("idle")
         this.Tellers()
+    }
+
+    static Geminimaliseerd() {
+        try return WinGetMinMax(this.Hwnd) = -1 || !DllCall("IsWindowVisible", "Ptr", this.Hwnd)
+        return false
     }
 
     static ZetBovenop() => this.Gui.Opt(Inst.Optie("bovenop") ? "+AlwaysOnTop" : "-AlwaysOnTop")
@@ -420,3 +425,12 @@ VensterBericht(Wv, Args) {
 }
 
 VensterVerwerk() => Venster.Verwerk()
+
+; Venster hersteld na minimaliseren: meteen bijwerken (de bewaking pauzeert
+; zolang het venster geminimaliseerd is)
+VensterGrootte(g, MinMax, *) {
+    if MinMax = -1 || !Venster.Wvc
+        return
+    Venster.Wvc.Fill()
+    SetTimer () => Bewaking(), -50   ; eigen timer: de vaste 3 s-timer blijft
+}

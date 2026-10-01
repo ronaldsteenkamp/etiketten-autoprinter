@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0 32-bit
+﻿#Requires AutoHotkey v2.0 32-bit
 #SingleInstance Force
 Persistent
 SendMode "Input"
@@ -45,7 +45,7 @@ A_MaxHotkeysPerInterval := 1000
 global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
-global AppVersie := "6.1.0"
+global AppVersie := "6.2.0"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -76,22 +76,45 @@ SetTimer () => Update.ControleerLokaal(), -2500
 ; Draait elke 3 seconden (als er niet geprint wordt): zoekt Pharmacom,
 ; leest de aanschrijfbuffer in zodra er (opnieuw) verbinding is en werkt de
 ; lijst bij als de aanschrijfbuffer in Pharmacom verandert.
+;
+; Zuinig: elke keer alleen een snelle controle (aantal regels, eerste en
+; laatste Pat.nr) en elke 30 s een volledige. Geen controle als de app of
+; Pharmacom geminimaliseerd is, of als Pharmacom een ander scherm toont.
+; (Meldingen van Pharmacom zelf zijn onderzocht: die geven geen nette
+; "tabel veranderd" en wel ± 100 meldingen per seconde van een knop.)
 Bewaking() {
-    static Bezig := false
+    static Bezig := false, Teller := 0, Gepauzeerd := ""
     if Ronde.Bezig || Bezig
         return
     Bezig := true
     try {
         WasVerbonden := Ph.Verbonden
         St := Venster.Verbind()
-        if St = "ok" && !WasVerbonden
+        if St != "ok" {
+            Ph.VergeetBuffer()
+        } else if !WasVerbonden {
             Ronde.Vernieuw(false, true)
-        else if St = "ok" {
-            H := Ph.Handtekening()
-            if H != "" && H != Ronde.LaatsteHandtekening {
-                Log("Aanschrijfbuffer is veranderd in Pharmacom")
+            Gepauzeerd := ""
+        } else {
+            Pauze := Venster.Geminimaliseerd() ? "app geminimaliseerd"
+                : WinGetMinMax(Ph.Hwnd) = -1 ? "Pharmacom geminimaliseerd"
+                : !Ph.OpBufferScherm() ? "ander scherm in Pharmacom" : ""
+            if Pauze != Gepauzeerd
+                Log(Pauze != "" ? "Bewaking gepauzeerd: " Pauze : "Bewaking hervat")
+            if Pauze = "" && Gepauzeerd != "" {
+                ; Terug: altijd even volledig bijwerken
                 Ronde.Vernieuw(true, true)
+            } else if Pauze = "" {
+                Volledig := Mod(++Teller, 10) = 0
+                H := Ph.Handtekening(Volledig)
+                if H != "" && H != (Volledig ? Ronde.LaatsteHandtekening : Ronde.LaatsteSnel) {
+                    Log("Aanschrijfbuffer is veranderd in Pharmacom")
+                    Ronde.Vernieuw(true, true)
+                }
             }
+            if Pauze = "ander scherm in Pharmacom" && Gepauzeerd != Pauze
+                Venster.Verbinding("warn", "Verbonden " Teken.Mid " open de aanschrijfbuffer")
+            Gepauzeerd := Pauze
         }
     } catch as e
         Log("Fout in bewaking: " e.Message " (" e.What ", regel " e.Line ")")

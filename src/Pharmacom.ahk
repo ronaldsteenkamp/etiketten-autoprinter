@@ -70,14 +70,46 @@ class Ph {
 
     static Buffer() => Jab.ZoekTabel(this.Pid, this.BufferKoppen)
 
-    ; Korte "vingerafdruk" van de aanschrijfbuffer (Pat.nr's + ontslagdatums),
-    ; of "" als die niet zichtbaar is.
-    static Handtekening() {
-        t := this.Buffer()
+    ; --- Bewaking (elke 3 s) -------------------------------------------------
+    ; De gevonden aanschrijfbuffer wordt onthouden, zodat hij niet elke keer
+    ; opnieuw gezocht hoeft te worden (± 130 ms). Is hij niet meer zichtbaar
+    ; (ander scherm, Pharmacom opnieuw gestart), dan wordt opnieuw gezocht.
+    static BufferCache := "", CacheHwnd := 0
+
+    static BufferBewaakt() {
+        t := this.BufferCache
+        if t && this.CacheHwnd = this.Hwnd {
+            Info := Jab.Info(t.vm, t.ac)
+            if Info && Jab.Heeft(Info, "showing")
+                return t
+        }
+        this.BufferCache := this.Buffer()
+        this.CacheHwnd := this.Hwnd
+        return this.BufferCache
+    }
+
+    static VergeetBuffer() => this.BufferCache := ""
+
+    ; Staat Pharmacom op het scherm met de aanschrijfbuffer? Afgelezen aan de
+    ; venstertitel ("Pharmacom - Aanschrijfbuffer"); heeft de titel geen
+    ; schermnaam, dan wordt aangenomen van wel.
+    static OpBufferScherm() {
+        try return TitelIsBuffer(WinGetTitle(this.Hwnd))
+        return false
+    }
+
+    ; Korte "vingerafdruk" van de aanschrijfbuffer, of "" als die niet
+    ; zichtbaar is. Snel: aantal regels + eerste en laatste Pat.nr.
+    ; Volledig: Pat.nr en ontslagdatum van alle regels.
+    static Handtekening(Volledig := false) {
+        t := Volledig ? this.Buffer() : this.BufferBewaakt()
         if !t
             return ""
-        s := t.rows ":"
-        loop t.rows
+        n := t.Rijen()
+        if !Volledig
+            return n ":" (n ? t.Cel(0, "patnr") "/" t.Cel(n - 1, "patnr") : "")
+        s := n ":"
+        loop n
             s .= t.Cel(A_Index - 1, "patnr") "/" t.Cel(A_Index - 1, "ontslag") ";"
         return s
     }

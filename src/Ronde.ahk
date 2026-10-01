@@ -12,7 +12,7 @@ class Ronde {
     static HerprintOk := Map()       ; al geprint, maar toch aangevinkt
     static VandaagGeprint := Map()   ; Pat.nr -> tijd
     static Apotheek := ""
-    static LaatsteHandtekening := ""
+    static LaatsteHandtekening := "", LaatsteSnel := ""
 
     static Bezig := false, Stoppen := false, StopReden := ""
     static Gekozen := false          ; item in het afdrukmenu gekozen (telt als geprint)
@@ -92,6 +92,8 @@ class Ronde {
         }
         t := ""
         this.LaatsteHandtekening := Handtekening
+        n := Lijst.Length
+        this.LaatsteSnel := n ":" (n ? Lijst[1].patnr "/" Lijst[n].patnr : "")
 
         this.Apotheek := Ph.LeesApotheek()
         Venster.Verbinding("ok", "Verbonden" (this.Apotheek != "" ? "  " Teken.Mid "  apotheek " this.Apotheek : ""))

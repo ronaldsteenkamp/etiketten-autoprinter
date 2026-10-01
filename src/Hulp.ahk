@@ -64,6 +64,10 @@ UriDecode(S) {
     return StrGet(Buf, n, "UTF-8")
 }
 
+; Toont het hoofdvenster van Pharmacom de aanschrijfbuffer? ("Pharmacom -
+; Aanschrijfbuffer"). Zonder schermnaam in de titel: aannemen van wel.
+TitelIsBuffer(Titel) => !RegExMatch(Titel, "^Pharmacom\s+-\s+\S") || InStr(Titel, "Aanschrijfbuffer") > 0
+
 ; Codeert tekst voor in een URL (UTF-8, %XX)
 UriEncode(S) {
     Buf := Buffer(StrPut(S, "UTF-8"))
