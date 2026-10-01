@@ -9,6 +9,7 @@ A_MaxHotkeysPerInterval := 1000
 ;@Ahk2Exe-SetName Etiketten autoprinter
 ;@Ahk2Exe-SetDescription Etiketten autoprinter voor Pharmacom
 ;@Ahk2Exe-SetMainIcon Etiketten_autoprinter.ico
+;@Ahk2Exe-SetCopyright Ronald Steenkamp
 
 ; =====================================================================
 ; Etiketten autoprinter voor Pharmacom  (AutoHotkey v2, 32-bit)
@@ -42,7 +43,9 @@ A_MaxHotkeysPerInterval := 1000
 ; =====================================================================
 
 global AppTitel := "Etiketten autoprinter"
-global AppVersie := "6.0.0"
+global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
+global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
+global AppVersie := "6.1.0"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel

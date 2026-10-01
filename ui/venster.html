@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="nl">
+<!-- Etiketten autoprinter - bedacht en gebouwd door Ronald Steenkamp -->
 <head>
 <meta charset="utf-8">
 <title>Etiketten autoprinter</title>
@@ -18,7 +19,9 @@ body {
     font-size: 13px; color: #0f172a; background: #eef2f7;
     -ms-user-select: none; user-select: none; cursor: default;
 }
-.ico { font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets"; font-style: normal; font-weight: normal; line-height: 1; }
+.ico { display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.ico svg { width: 1.15em; height: 1.15em; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.vink .ico svg { width: 12px; height: 12px; stroke-width: 3; }
 .num { font-feature-settings: "tnum"; }
 .dun { scrollbar-face-color: #cbd5e1; scrollbar-track-color: #ffffff; scrollbar-arrow-color: #94a3b8;
     scrollbar-shadow-color: #cbd5e1; scrollbar-highlight-color: #cbd5e1; scrollbar-3dlight-color: #ffffff; scrollbar-darkshadow-color: #ffffff; }
@@ -170,6 +173,9 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
 .d-waarschuwing .drond { background: #fff7ed; color: #ea580c; }
 .d-fout .drond { background: #fef2f2; color: #dc2626; }
 .d-code .drond { background: #eef2ff; color: #4f46e5; }
+.d-feedback .drond { background: #eef2ff; color: #4f46e5; }
+.d-over .drond { background: linear-gradient(135deg, #eef2ff, #fdf4ff); color: #7c3aed; }
+.dknop .ico { margin-right: 7px; vertical-align: -2px; }
 .d-code .dtekst { font-family: Consolas, monospace; font-size: 11.5px; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px; padding: 12px; }
 
 /* Instellingen-dialoog */
@@ -202,23 +208,24 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
 <body>
 
 <div id="kop" data-sleep="1">
-    <img src="icoon.png" alt="" data-sleep="1">
+    <img src="icoon.png" alt="" id="logo" data-sleep="1">
     <div data-sleep="1">
         <div class="titel" data-sleep="1">Etiketten autoprinter</div>
         <div class="onder" data-sleep="1">Pharmacom &middot; aanschrijfbuffer</div>
     </div>
     <div class="vul" data-sleep="1"></div>
     <span class="versie" id="versie" data-sleep="1">v5</span>
+    <div class="vknop" id="b-feedback" title="Vraag of idee? Stuur een bericht" onclick="stuur('link/feedback')"><span class="ico" data-i="message-circle"></span></div>
     <div class="scheid" data-sleep="1"></div>
-    <div class="vknop klein" title="Minimaliseren" onclick="stuur('venster/min')"><span class="ico">&#xE921;</span></div>
-    <div class="vknop klein sluit" title="Sluiten" onclick="stuur('venster/sluit')"><span class="ico">&#xE8BB;</span></div>
+    <div class="vknop klein" title="Minimaliseren" onclick="stuur('venster/min')"><span class="ico" data-i="minus"></span></div>
+    <div class="vknop klein sluit" title="Sluiten" onclick="stuur('venster/sluit')"><span class="ico" data-i="x"></span></div>
 </div>
 
 <div id="inhoud">
     <div id="status" class="kaart fase-idle">
         <div class="balk"></div>
         <div class="rij1">
-            <div class="rond ico" id="s-ico">&#xE749;</div>
+            <div class="rond ico" id="s-ico" data-i="printer"></div>
             <div class="tekst">
                 <div class="kop" id="s-kop">Klaar voor start</div>
                 <div class="sub" id="s-sub">Verbinden met Pharmacom&hellip;</div>
@@ -232,10 +239,10 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
     </div>
 
     <div id="tegels">
-        <div class="tegel kaart" id="t-totaal" title="Aantal pati&euml;nten in de aanschrijfbuffer"><div class="chip c-indigo ico">&#xE8A5;</div><div class="getal num" id="n-totaal">0</div><div class="label">In buffer</div></div>
-        <div class="tegel kaart" id="t-print" title="Aangevinkte pati&euml;nten die geprint worden"><div class="chip c-blauw ico">&#xE749;</div><div class="getal num" id="n-print">0</div><div class="label">Te printen</div></div>
-        <div class="tegel kaart" id="t-ontslag" title="Pati&euml;nten met een ontslagdatum: die worden nooit geprint"><div class="chip c-grijs ico">&#xE8BB;</div><div class="getal num" id="n-ontslag">0</div><div class="label">Ontslag</div></div>
-        <div class="tegel kaart" id="t-geprint" title="Pati&euml;nten in de buffer die vandaag al geprint zijn"><div class="chip c-groen ico">&#xE73E;</div><div class="getal num" id="n-geprint">0</div><div class="label">Geprint</div></div>
+        <div class="tegel kaart" id="t-totaal" title="Aantal pati&euml;nten in de aanschrijfbuffer"><div class="chip c-indigo ico" data-i="users"></div><div class="getal num" id="n-totaal">0</div><div class="label">In buffer</div></div>
+        <div class="tegel kaart" id="t-print" title="Aangevinkte pati&euml;nten die geprint worden"><div class="chip c-blauw ico" data-i="printer"></div><div class="getal num" id="n-print">0</div><div class="label">Te printen</div></div>
+        <div class="tegel kaart" id="t-ontslag" title="Pati&euml;nten met een ontslagdatum: die worden nooit geprint"><div class="chip c-grijs ico" data-i="door-open"></div><div class="getal num" id="n-ontslag">0</div><div class="label">Ontslag</div></div>
+        <div class="tegel kaart" id="t-geprint" title="Pati&euml;nten in de buffer die vandaag al geprint zijn"><div class="chip c-groen ico" data-i="check-check"></div><div class="getal num" id="n-geprint">0</div><div class="label">Geprint</div></div>
     </div>
 
     <div id="lijstkaart" class="kaart">
@@ -245,28 +252,66 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
             <div class="k-nr">Pat.nr</div>
             <div class="k-status">Status</div>
         </div>
-        <div id="lijst" class="dun"><div id="leeg"><span class="ico">&#xE8A5;</span>Nog geen pati&euml;nten ingelezen</div></div>
+        <div id="lijst" class="dun"><div id="leeg"><span class="ico" data-i="inbox"></span>Nog geen pati&euml;nten ingelezen</div></div>
     </div>
 
     <div id="knoppen">
-        <div class="knop tweede" id="b-vernieuwen" title="De aanschrijfbuffer opnieuw uitlezen" onclick="knop('vernieuwen')"><span class="ico">&#xE72C;</span>Vernieuwen</div>
-        <div class="knop primair" id="b-start" onclick="knop('start')"><span class="ico">&#xE768;</span><span class="t">Start printen</span></div>
-        <div class="knop oranje weg" id="b-koppel" onclick="knop('koppel')"><span class="ico">&#xE71B;</span>Koppeling inschakelen</div>
-        <div class="knop stop uit" id="b-stop" onclick="knop('stop')"><span class="ico">&#xE71A;</span>Stop</div>
+        <div class="knop tweede" id="b-vernieuwen" title="De aanschrijfbuffer opnieuw uitlezen" onclick="knop('vernieuwen')"><span class="ico" data-i="refresh-cw"></span>Vernieuwen</div>
+        <div class="knop primair" id="b-start" onclick="knop('start')"><span class="ico" data-i="play"></span><span class="t">Start printen</span></div>
+        <div class="knop oranje weg" id="b-koppel" onclick="knop('koppel')"><span class="ico" data-i="plug"></span>Koppeling inschakelen</div>
+        <div class="knop stop uit" id="b-stop" onclick="knop('stop')"><span class="ico" data-i="square"></span>Stop</div>
     </div>
     <div id="hint"></div>
 </div>
 
 <div id="voet">
-    <span class="link" title="Opties, wachttijden en updates" onclick="stuur('link/instellingen')"><span class="ico">&#xE713;</span>Instellingen</span>
-    <span class="link" title="Overzicht per printronde (opent in Excel)" onclick="stuur('link/rapporten')"><span class="ico">&#xE8B7;</span>Rapporten</span>
-    <span class="link" title="Logbestand van vandaag" onclick="stuur('link/log')"><span class="ico">&#xE9F9;</span>Logbestand</span>
-    <span class="link" title="Wat ziet de app in Pharmacom?" onclick="stuur('link/diagnose')"><span class="ico">&#xE9D9;</span>Diagnose</span>
+    <span class="link" title="Opties, wachttijden en updates" onclick="stuur('link/instellingen')"><span class="ico" data-i="settings"></span>Instellingen</span>
+    <span class="link" title="Overzicht per printronde (opent in Excel)" onclick="stuur('link/rapporten')"><span class="ico" data-i="folder-open"></span>Rapporten</span>
+    <span class="link" title="Logbestand van vandaag" onclick="stuur('link/log')"><span class="ico" data-i="file-text"></span>Logbestand</span>
+    <span class="link" title="Wat ziet de app in Pharmacom?" onclick="stuur('link/diagnose')"><span class="ico" data-i="activity"></span>Diagnose</span>
 </div>
 
 <div id="scherm"><div id="dialoog"></div></div>
 
 <script>
+// Iconen: Lucide (https://lucide.dev), ISC-licentie, Copyright (c) Lucide Icons and Contributors
+var Iconen = {
+    "activity": '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+    "check-check": '<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>',
+    "check": '<path d="M20 6 9 17l-5-5"/>',
+    "circle-check": '<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>',
+    "circle-help": '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+    "circle-x": '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+    "door-open": '<path d="M10 21H2"/><path d="M10 3H7a2 2 0 00-2 2v16"/><path d="M14 12h.01"/><path d="M19 21V5a2 2 0 00-1.675-1.974l-6.163-1.013A1 1 0 0010 3v18a1 1 0 001.124.992z"/><path d="M22 21h-3"/>',
+    "file-text": '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    "folder-open": '<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+    "heart": '<path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/>',
+    "inbox": '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+    "info": '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+    "mail": '<path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/>',
+    "message-circle": '<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/>',
+    "minus": '<path d="M5 12h14"/>',
+    "pause": '<rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/>',
+    "play": '<path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/>',
+    "plug": '<path d="M12 22v-5"/><path d="M15 8V2"/><path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z"/><path d="M9 8V2"/>',
+    "printer-check": '<path d="M13.5 22H7a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v.5"/><path d="m16 19 2 2 4-4"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/>',
+    "printer": '<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+    "refresh-cw": '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+    "settings": '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>',
+    "sparkles": '<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/>',
+    "square": '<rect width="18" height="18" x="3" y="3" rx="2"/>',
+    "triangle-alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    "users": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+    "x": '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+};
+function I(n) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (Iconen[n] || "") + "</svg>"; }
+// Vult alle elementen met data-i="naam" met het bijbehorende icoon
+function tekenIconen(root) {
+    var els = (root || document).querySelectorAll("[data-i]");
+    for (var i = 0; i < els.length; i++) els[i].innerHTML = I(els[i].getAttribute("data-i"));
+}
+tekenIconen();
+
 // ---------------------------------------------------------------------
 // Communicatie: klikken gaan met postMessage naar de app;
 // de app roept api(opdracht, json) aan om iets te tonen.
@@ -289,19 +334,27 @@ $("kop").onmousedown = function (e) {
     var t = e.target || e.srcElement;
     if (t.getAttribute && t.getAttribute("data-sleep")) stuur("venster/slepen");
 };
+// Drie keer snel op het logo: "Over deze app"
+var LogoKliks = 0, LogoTijd = 0;
+$("logo").onclick = function () {
+    var nu = Date.now();
+    LogoKliks = (nu - LogoTijd < 700) ? LogoKliks + 1 : 1;
+    LogoTijd = nu;
+    if (LogoKliks >= 3) { LogoKliks = 0; stuur("link/over"); }
+};
 document.oncontextmenu = function () { return false; };
 document.onselectstart = function (e) { var t = (e || window.event).srcElement; return !!(t && (t.tagName == "INPUT" || (t.className && t.className.indexOf("dtekst") >= 0))); };
 
 var Chips = { print: "Klaar voor printen", al: "Al geprint", ontslag: "Ontslag", controle: "Controleren",
               bezig: "Bezig", ok: "Geprint", skip: "Overgeslagen", fout: "Gestopt" };
-var StatusIco = { idle: "&#xE749;", bezig: "&#xE749;", klaar: "&#xE73E;", gestopt: "&#xE769;", fout: "&#xE7BA;" };
-var DialoogIco = { vraag: "&#xE9CE;", info: "&#xE73E;", waarschuwing: "&#xE7BA;", fout: "&#xE783;", code: "&#xE9D9;" };
+var StatusIco = { idle: I("printer"), bezig: I("printer"), klaar: I("circle-check"), gestopt: I("pause"), fout: I("triangle-alert") };
+var DialoogIco = { vraag: I("circle-help"), info: I("circle-check"), waarschuwing: I("triangle-alert"), fout: I("circle-x"), code: I("activity"), feedback: I("message-circle"), over: I("sparkles") };
 
 function kan(s) { return s == "print" || s == "al"; }
 function rijHtml(r, i) {
     var dicht = !kan(r.soort) || Bezig;
     var vink = '<div class="vink' + (dicht ? " dicht" : (r.aan == "1" ? " aan" : "")) + '" onclick="stuur(\'toggle/' + i + '\')">' +
-               (r.aan == "1" && !dicht ? '<span class="ico">&#xE73E;</span>' : "") + "</div>";
+               (r.aan == "1" && !dicht ? '<span class="ico">' + I("check") + '</span>' : "") + "</div>";
     var label = (r.soort == "ontslag" && r.ontslag) ? "Ontslag " + esc(r.ontslag) : Chips[r.soort];
     var chip = '<span class="chip2 s-' + r.soort + '">' + (r.soort == "bezig" ? "<i></i>" : "") + label + "</span>";
     return '<div class="rij' + (r.soort == "bezig" ? " actief" : "") + ((dicht || r.aan != "1") && r.soort != "ok" && r.soort != "bezig" ? " uit" : "") + '" id="rij' + i + '" title="' + esc(r.detail) + '">' +
@@ -322,7 +375,7 @@ function tekenAllesVink() {
     for (var i = 0; i < Rijen.length; i++) if (kan(Rijen[i].soort)) { n++; if (Rijen[i].aan == "1") aan++; }
     var el = $("allesvink");
     el.className = "vink" + (aan == 0 ? "" : " aan");
-    el.innerHTML = aan == 0 ? "" : (aan == n ? '<span class="ico">&#xE73E;</span>' : '<span class="ico">&#xE738;</span>');
+    el.innerHTML = aan == 0 ? "" : (aan == n ? '<span class="ico">' + I("check") + '</span>' : '<span class="ico">' + I("minus") + '</span>');
 }
 function toonVoortgang(ja) { zetKlasse($("voortgang"), "toon", ja); zetKlasse($("lijst"), "kort", ja); }
 
@@ -353,7 +406,7 @@ function api(cmd, j) {
         break;
     case "lijst":
         Rijen = d;
-        if (!d.length) { $("lijst").innerHTML = '<div id="leeg"><span class="ico">&#xE8A5;</span>Geen pati&euml;nten in de aanschrijfbuffer</div>'; tekenAllesVink(); break; }
+        if (!d.length) { $("lijst").innerHTML = '<div id="leeg"><span class="ico">' + I("inbox") + '</span>Geen pati&euml;nten in de aanschrijfbuffer</div>'; tekenAllesVink(); break; }
         tekenLijst();
         break;
     case "rij":
@@ -393,8 +446,18 @@ function toonDialoog(d) {
     dl.className = "d-" + (d.soort || "vraag");
     var h = '<div class="dkop"><div class="drond ico">' + (DialoogIco[d.soort] || DialoogIco.vraag) + '</div><div class="dtitel">' + esc(d.titel) + "</div></div>" +
             '<div class="dtekst dun">' + esc(d.tekst) + "</div><div class=\"dknoppen\">";
-    if (d.nee) h += '<div class="dknop" onclick="stuur(\'dialoog/' + d.id + '/0\')">' + esc(d.nee) + "</div>";
-    h += '<div class="dknop hoofd" onclick="stuur(\'dialoog/' + d.id + '/1\')">' + esc(d.ja || "OK") + "</div></div>";
+    if (d.knoppen && d.knoppen.length) {
+        // Meerdere knoppen: [{t: tekst, v: antwoord, hoofd: "1"}, ...]
+        for (var i = 0; i < d.knoppen.length; i++) {
+            var k = d.knoppen[i];
+            h += '<div class="dknop' + (k.hoofd == "1" ? " hoofd" : "") + '" onclick="stuur(\'dialoog/' + d.id + '/' + esc(k.v) + '\')">' +
+                 (k.i ? '<span class="ico">' + I(k.i) + "</span>" : "") + esc(k.t) + "</div>";
+        }
+        h += "</div>";
+    } else {
+        if (d.nee) h += '<div class="dknop" onclick="stuur(\'dialoog/' + d.id + '/0\')">' + esc(d.nee) + "</div>";
+        h += '<div class="dknop hoofd" onclick="stuur(\'dialoog/' + d.id + '/1\')">' + esc(d.ja || "OK") + "</div></div>";
+    }
     dl.innerHTML = h;
     $("scherm").className = "open";
 }
@@ -424,7 +487,7 @@ function toonInstellingen(d) {
     Inst = d;
     var dl = $("dialoog");
     dl.className = "breed d-vraag";
-    var h = '<div class="dkop"><div class="drond ico">&#xE713;</div><div class="dtitel">Instellingen</div></div>';
+    var h = '<div class="dkop"><div class="drond ico">' + I("settings") + '</div><div class="dtitel">Instellingen</div></div>';
     h += '<div id="instinhoud" class="dun">';
     for (var i = 0; i < OptieTekst.length; i++) {
         var o = OptieTekst[i];

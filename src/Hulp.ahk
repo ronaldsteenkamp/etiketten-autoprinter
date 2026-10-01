@@ -64,6 +64,29 @@ UriDecode(S) {
     return StrGet(Buf, n, "UTF-8")
 }
 
+; Codeert tekst voor in een URL (UTF-8, %XX)
+UriEncode(S) {
+    Buf := Buffer(StrPut(S, "UTF-8"))
+    n := StrPut(S, Buf, "UTF-8") - 1
+    Uit := ""
+    loop n {
+        c := NumGet(Buf, A_Index - 1, "UChar")
+        Uit .= (c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A) || c = 0x2D || c = 0x2E || c = 0x5F || c = 0x7E
+            ? Chr(c) : Format("%{:02X}", c)
+    }
+    return Uit
+}
+
+; Base64 van een Buffer (zonder regeleinden)
+Base64(Buf) {
+    static Vlaggen := 0x40000001   ; CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF
+    n := 0
+    DllCall("crypt32\CryptBinaryToStringW", "Ptr", Buf, "UInt", Buf.Size, "UInt", Vlaggen, "Ptr", 0, "UInt*", &n)
+    Uit := Buffer(n * 2)
+    DllCall("crypt32\CryptBinaryToStringW", "Ptr", Buf, "UInt", Buf.Size, "UInt", Vlaggen, "Ptr", Uit, "UInt*", &n)
+    return StrGet(Uit, n, "UTF-16")
+}
+
 ; Verwijdert bestanden (Patroon, bijv. "map\*.txt") die langer dan Dagen
 ; dagen niet gewijzigd zijn. Een ongeldige of te kleine waarde doet niets.
 Opruimen(Patroon, Dagen) {

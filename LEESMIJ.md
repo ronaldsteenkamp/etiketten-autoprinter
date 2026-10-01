@@ -70,7 +70,8 @@ De sneltoets leest de app zelf uit Pharmacom.
 | `Etiketten_autoprinter.ini` | Instellingen (opties, wachttijden, updatemap) |
 | `Gegevens\` | Logbestand (alleen Pat.nr's) en `Geprint\<datum>.txt` (wie vandaag geprint is) |
 | `Rapporten\` | Een CSV-rapport per ronde (opent in Excel) |
-| `Hulpmiddelen\maak_icoon.ps1` | Maakt het pictogram opnieuw |
+| `Hulpmiddelen\icoon.svg`, `icoon-klein.svg` | Ontwerp van het app-icoon (groot en vereenvoudigd voor 16-24 px) |
+| `Hulpmiddelen\maak_icoon.ps1` | Maakt `Etiketten_autoprinter.ico` en `ui\icoon.png` uit de SVG's (rendert met Microsoft Edge) |
 | `Hulpmiddelen\jab_tabellen_tonen.ps1` | Toont welke tabellen/kolommen Pharmacom laat zien (voor onderhoud) |
 | `Archief\` | Oude versies (v4, v5.7.2 en de AutoHotkey v1-broncode van v5.8.0) |
 

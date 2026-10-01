@@ -46,10 +46,13 @@ class Venster {
         try s.AreBrowserAcceleratorKeysEnabled := false
         this.Registraties.Push(this.Wv.WebMessageReceived(VensterBericht))
         this.Registraties.Push(this.Wv.NavigationCompleted((*) => Venster.Klaar := true))
-        ; De map met de pagina als virtuele website (een file:///-adres werkt
-        ; niet met spaties in het pad)
-        this.Wv.SetVirtualHostNameToFolderMapping("etiketten.local", UiMap, 1)
-        this.Wv.Navigate("https://etiketten.local/venster.html")
+        ; De pagina rechtstreeks uit het geheugen laden, met het icoon erin
+        ; (geen bestandstoegang door WebView2: die werd op sommige mappen
+        ; geweigerd, en een file:///-adres werkt niet met spaties in het pad)
+        Html := FileRead(UiMap "\venster.html", "UTF-8")
+        Png := FileRead(UiMap "\icoon.png", "RAW")
+        Html := StrReplace(Html, 'src="icoon.png"', 'src="data:image/png;base64,' Base64(Png) '"')
+        this.Wv.NavigateToString(Html)
         Eind := A_TickCount + 15000
         while !this.Klaar && A_TickCount < Eind
             Sleep 20
@@ -178,21 +181,72 @@ class Venster {
     ; --- Dialoogvensters in de stijl van de app ------------------------------
     ; Soort: vraag / info / waarschuwing / fout / code. Vraag() wacht op het
     ; antwoord en geeft true (Ja) of false (Nee).
-    static Vraag(Titel, Tekst, Ja := "Ja", Nee := "Nee", Soort := "vraag") {
+    static Vraag(Titel, Tekst, Ja := "Ja", Nee := "Nee", Soort := "vraag") => this.Dialoog({soort: Soort, titel: Titel, tekst: Tekst, ja: Ja, nee: Nee}) = "1"
+
+    static Melding(Titel, Tekst, Soort := "info") => this.Vraag(Titel, Tekst, "OK", "", Soort)
+
+    ; Dialoog met eigen knoppen: Knoppen = [{t: tekst, v: antwoord, i: icoon,
+    ; hoofd: 1}, ...]. Geeft het antwoord (v) van de gekozen knop.
+    static Keuze(Titel, Tekst, Knoppen, Soort := "vraag") => this.Dialoog({soort: Soort, titel: Titel, tekst: Tekst, knoppen: Knoppen})
+
+    static Dialoog(Gegevens) {
         Id := ++this.DialoogTeller
         Sleutel := "d" Id
         this.DialoogAntwoord[Sleutel] := ""
-        this.Ui("dialoog", {id: Id, soort: Soort, titel: Titel, tekst: Tekst, ja: Ja, nee: Nee})
+        Gegevens.id := Id
+        this.Ui("dialoog", Gegevens)
         this.Toon(true)
         while this.DialoogAntwoord[Sleutel] = ""
             Sleep 30
         Antwoord := this.DialoogAntwoord[Sleutel]
         this.DialoogAntwoord.Delete(Sleutel)
         this.Ui("dialoogdicht")
-        return Antwoord = "1"
+        return Antwoord
     }
 
-    static Melding(Titel, Tekst, Soort := "info") => this.Vraag(Titel, Tekst, "OK", "", Soort)
+    ; --- Feedback en credits -------------------------------------------------
+    static FeedbackKnoppen(Annuleer := "Annuleren") => [{t: Annuleer, v: "0"}, {t: "Teams", v: "teams", i: "message-circle"}, {t: "Outlook", v: "mail", i: "mail", hoofd: 1}]
+
+    static Feedback() {
+        Keuze := this.Keuze("Vraag of idee?", "Heb je een vraag, loop je ergens tegenaan of heb je een idee om de app beter te maken? Stuur " AppMaker " een bericht via Outlook of Teams.`n`nDe app vult alleen de versie, de computernaam en de apotheek in, geen pati" Teken.EUml "ntgegevens.", this.FeedbackKnoppen(), "feedback")
+        this.StuurFeedback(Keuze)
+    }
+
+    ; Verborgen: drie keer snel op het logo klikken
+    static Over() {
+        Tekst := AppTitel " " AppVersie "`n`n"
+            . "Bedacht en gebouwd door " AppMaker ".`n`n"
+            . "Met dank aan:`n"
+            . Teken.Punt " AutoHotkey`n"
+            . Teken.Punt " Lucide (iconen, ISC-licentie)`n"
+            . Teken.Punt " thqby, WebView2 voor AutoHotkey (MIT-licentie)`n`n"
+            . "Vragen of idee" Teken.EUml "n? Stuur gerust een bericht."
+        Log("Over-venster geopend")
+        this.StuurFeedback(this.Keuze("Over deze app", Tekst, this.FeedbackKnoppen("Sluiten"), "over"))
+    }
+
+    static StuurFeedback(Keuze) {
+        if Keuze != "mail" && Keuze != "teams"
+            return
+        Info := "App: " AppTitel " " AppVersie "`nComputer: " A_ComputerName "`nApotheek: " (Ronde.Apotheek != "" ? Ronde.Apotheek : "onbekend") "`nWindows: " A_OSVersion
+        if Keuze = "mail" {
+            Url := "mailto:" AppContact "?subject=" UriEncode(AppTitel ": vraag of idee") "&body=" UriEncode("Hoi " StrSplit(AppMaker, " ")[1] ",`n`n`n`n---`n" Info)
+            try Run Url
+            catch
+                return this.Melding("Outlook niet gevonden", "Er kon geen mailprogramma geopend worden. Mail je vraag of idee naar:`n`n" AppContact, "waarschuwing")
+            Log("Feedback: mail geopend")
+        } else {
+            Bericht := UriEncode("Hoi " StrSplit(AppMaker, " ")[1] ", een vraag/idee over de " AppTitel " (" AppVersie "): ")
+            ; Eerst de Teams-app zelf, anders via de browser (die opent Teams)
+            try Run "msteams:/l/chat/0/0?users=" AppContact "&message=" Bericht
+            catch {
+                try Run "https://teams.microsoft.com/l/chat/0/0?users=" AppContact "&message=" Bericht
+                catch
+                    return this.Melding("Teams niet gevonden", "Teams kon niet geopend worden. Stuur je bericht in Teams aan:`n`n" AppContact, "waarschuwing")
+            }
+            Log("Feedback: Teams-chat geopend")
+        }
+    }
 
     ; Geluid en knipperen als een ronde klaar of gestopt is
     static Geluid(Soort) {
@@ -234,6 +288,8 @@ class Venster {
                 case "link/rapporten": try Run Opslag.RapportMap
                 case "link/log": try Run Opslag.LogBestand
                 case "link/diagnose": this.Diagnose()
+                case "link/feedback": this.Feedback()
+                case "link/over": this.Over()
                 case "venster/slepen": this.Sleep_()
                 case "venster/min": this.Gui.Minimize()
                 case "venster/sluit": this.Sluit()
