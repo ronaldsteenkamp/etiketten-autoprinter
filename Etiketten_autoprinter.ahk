@@ -45,7 +45,7 @@ A_MaxHotkeysPerInterval := 1000
 global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
-global AppVersie := "6.4.0"
+global AppVersie := "6.4.1"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -113,6 +113,10 @@ Bewaking() {
                 H := Ph.Handtekening(Volledig)
                 if H != "" && H != (Volledig ? Ronde.LaatsteHandtekening : Ronde.LaatsteSnel) {
                     Log("Aanschrijfbuffer is veranderd in Pharmacom")
+                    Ronde.Vernieuw(true, true)
+                } else if Volledig && Ronde.RegisterGewijzigd() {
+                    ; Bijv. een andere computer heeft intussen geprint
+                    Log("Register van vandaag is veranderd")
                     Ronde.Vernieuw(true, true)
                 }
             }

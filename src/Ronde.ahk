@@ -119,6 +119,18 @@ class Ronde {
         return true
     }
 
+    ; Is het register van vandaag veranderd (bijv. een andere computer heeft
+    ; geprint) sinds de lijst is ingelezen?
+    static RegisterGewijzigd() {
+        R := Opslag.LeesRegister()
+        if R.Count != this.VandaagGeprint.Count
+            return true
+        for Patnr in R
+            if !this.VandaagGeprint.Has(Patnr)
+                return true
+        return false
+    }
+
     static WisselVinkje(i) {
         if this.Bezig || i < 1 || i > this.Patienten.Length
             return

@@ -50,7 +50,7 @@ dagen, tijd en elke week / even weken / oneven weken (ISO-weeknummer).
 
 | Toets | Actie |
 |---|---|
-| F5 | Aanschrijfbuffer opnieuw uitlezen |
+| F5 (of ↻ boven de lijst) | Opnieuw uitlezen en vinkjes terugzetten |
 | Ctrl+Enter | Start printen |
 | Ctrl+Shift+Enter | Proefronde |
 | Esc | Stoppen tijdens het printen, of dialoog sluiten |

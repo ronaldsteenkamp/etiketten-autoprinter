@@ -245,7 +245,7 @@ class Venster {
 
     static Sneltoetsen() {
         this.Melding("Sneltoetsen"
-            , "F5`tAanschrijfbuffer opnieuw uitlezen`n"
+            , "F5`tOpnieuw uitlezen en vinkjes terugzetten`n"
             . "Ctrl+Enter`tStart printen`n"
             . "Ctrl+Shift+Enter`tProefronde (niets printen)`n"
             . "Esc`tStoppen, of dialoog sluiten`n"

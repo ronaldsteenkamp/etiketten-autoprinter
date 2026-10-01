@@ -195,7 +195,10 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
 .optie.aan .schakel:after { left: 18px; }
 
 /* --- Proefronde, planning, apotheek --- */
-.knop.tweede.smal { width: 88px; margin-left: 8px; }
+.lk-knop { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; color: #64748b; cursor: pointer; margin-right: 8px; vertical-align: middle; font-size: 12px; }
+.lk-knop:hover { background: #eef7e6; color: #407c05; }
+.lk-knop.uit { opacity: .35; cursor: default; background: none; }
+.lk-knop.weg { display: none; }
 .s-proef { background: #e9eef6; color: #002664; }
 .d-planning .drond, .d-nieuw .drond, .d-sneltoets .drond { background: #eef7e6; color: #407c05; }
 .d-sneltoets .dtekst { tab-size: 20ch; }
@@ -281,14 +284,13 @@ select.veld { padding: 0 6px; }
             <div class="k-vink"><div class="vink" id="allesvink" title="Alles aan/uit" onclick="stuur('alles')"></div></div>
             <div class="k-naam">Pati&euml;nt</div>
             <div class="k-nr">Pat.nr</div>
-            <div class="k-status">Status</div>
+            <div class="k-status"><span class="lk-knop" id="b-vernieuwen" title="Opnieuw uitlezen en vinkjes terugzetten (F5)" onclick="knop('vernieuwen')"><span class="ico" data-i="refresh-cw"></span></span>Status</div>
         </div>
         <div id="lijst" class="dun"><div id="leeg"><span class="ico" data-i="inbox"></span>Nog geen pati&euml;nten ingelezen</div></div>
     </div>
 
     <div id="knoppen">
-        <div class="knop tweede" id="b-vernieuwen" title="De aanschrijfbuffer opnieuw uitlezen (F5)" onclick="knop('vernieuwen')"><span class="ico" data-i="refresh-cw"></span>Vernieuwen</div>
-        <div class="knop tweede smal" id="b-proef" title="Proefronde: alles doorlopen zonder te printen (Ctrl+Shift+Enter)" onclick="knop('proef')"><span class="ico" data-i="flask-conical"></span>Proef</div>
+        <div class="knop tweede" id="b-proef" title="Proefronde: alles doorlopen zonder te printen (Ctrl+Shift+Enter)" onclick="knop('proef')"><span class="ico" data-i="flask-conical"></span>Proef</div>
         <div class="knop primair" id="b-start" title="Start printen (Ctrl+Enter)" onclick="knop('start')"><span class="ico" data-i="play"></span><span class="t">Start printen</span></div>
         <div class="knop oranje weg" id="b-koppel" onclick="knop('koppel')"><span class="ico" data-i="plug"></span>Koppeling inschakelen</div>
         <div class="knop stop uit" id="b-stop" onclick="knop('stop')"><span class="ico" data-i="square"></span>Stop</div>
@@ -393,7 +395,7 @@ var Chips = { print: "Klaar voor printen", al: "Al geprint", ontslag: "Ontslag",
 var StatusIco = { idle: I("printer"), bezig: I("printer"), klaar: I("circle-check"), gestopt: I("pause"), fout: I("triangle-alert") };
 var DialoogIco = { vraag: I("circle-help"), info: I("circle-check"), waarschuwing: I("triangle-alert"), fout: I("circle-x"), code: I("activity"), feedback: I("message-circle"), over: I("sparkles"), planning: I("calendar-clock"), nieuw: I("party-popper"), sneltoets: I("keyboard") };
 
-function kan(s) { return s == "print" || s == "al"; }
+function kan(s) { return s == "print" || s == "al" || s == "proef"; }
 function rijHtml(r, i) {
     var dicht = !kan(r.soort) || Bezig;
     var vink = '<div class="vink' + (dicht ? " dicht" : (r.aan == "1" ? " aan" : "")) + '" onclick="stuur(\'toggle/' + i + '\')">' +

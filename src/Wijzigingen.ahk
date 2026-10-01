@@ -5,7 +5,10 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.4.0", ["Proefronde: alles doorlopen zonder te printen (knop Proef of Ctrl+Shift+Enter)."
+        ["6.4.1", ["De knop Vernieuwen is een klein knopje (↻) boven de lijst geworden; F5 werkt nog steeds."
+            , "Na een proefronde kun je meteen weer vinkjes zetten; de uitkomst blijft zichtbaar."
+            , "Heeft een andere computer net geprint, dan ziet de lijst dat vanzelf binnen 30 seconden."]]
+        , ["6.4.0", ["Proefronde: alles doorlopen zonder te printen (knop Proef of Ctrl+Shift+Enter)."
             , "Planning: groepen (afdelingen) automatisch laten printen op vaste dagen en tijden, met even/oneven weken."
             , "Sneltoetsen: F5 vernieuwen, Ctrl+Enter start, F1 overzicht."
             , "Instellingen per apotheek: wat er geprint wordt, geldt nu per ingelogde apotheek."
