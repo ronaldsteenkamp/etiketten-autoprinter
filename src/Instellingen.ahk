@@ -75,13 +75,67 @@ class Inst {
 
     static Getal(v, Standaard) => IsInteger(v) ? Integer(v) : Standaard
 
-    static Optie(Naam) => this.Opties.Has(Naam) ? this.Opties[Naam] : 1
+    ; --- Per apotheek ----------------------------------------------------------
+    ; Deze opties (en het afdrukmenu-item) gelden per ingelogde apotheek, in de
+    ; ini-sectie [Opties <code>], bijv. [Opties AN]. Staat daar niets, dan
+    ; geldt de algemene waarde uit [Opties]. De overige opties horen bij de
+    ; computer (geluid, venster bovenop, toetsenbord blokkeren, bevestigen).
+    static PerApotheek := ["deelbaar", "controle", "patnr"]
+    static Apotheek := ""
+    static ApOpties := Map()
+    static ApPrintMenu := ""
+
+    static ZetApotheek(Ap) {
+        if Ap = this.Apotheek
+            return
+        this.Apotheek := Ap
+        this.ApOpties := Map(), this.ApPrintMenu := ""
+        if Ap = ""
+            return
+        for Naam in this.PerApotheek {
+            v := this.Lees1("Opties " Ap, this.OptieSleutels[Naam], "")
+            if IsInteger(v)
+                this.ApOpties[Naam] := Integer(v) ? 1 : 0
+        }
+        this.ApPrintMenu := Trim(this.Lees1("Opties " Ap, "PrintMenu", ""))
+    }
+
+    static IsPerApotheek(Naam) {
+        for n in this.PerApotheek
+            if n = Naam
+                return true
+        return false
+    }
+
+    ; Item in het afdrukmenu voor de huidige apotheek
+    static PrintItem => this.ApPrintMenu != "" ? this.ApPrintMenu : this.PrintMenu
+
+    static ZetPrintItem(Tekst) {
+        Tekst := Trim(Tekst)
+        if Tekst = ""
+            return
+        if this.Apotheek != "" {
+            this.ApPrintMenu := Tekst
+            this.Schrijf(Tekst, "Opties " this.Apotheek, "PrintMenu")
+        } else {
+            this.PrintMenu := Tekst
+            this.Schrijf(Tekst, "Opties", "PrintMenu")
+        }
+    }
+
+    static Optie(Naam) => this.ApOpties.Has(Naam) ? this.ApOpties[Naam] : this.Opties.Has(Naam) ? this.Opties[Naam] : 1
 
     static ZetOptie(Naam, Aan) {
         if !this.OptieSleutels.Has(Naam)
             return
-        this.Opties[Naam] := Aan ? 1 : 0
-        this.Schrijf(this.Opties[Naam], "Opties", this.OptieSleutels[Naam])
+        Aan := Aan ? 1 : 0
+        if this.Apotheek != "" && this.IsPerApotheek(Naam) {
+            this.ApOpties[Naam] := Aan
+            this.Schrijf(Aan, "Opties " this.Apotheek, this.OptieSleutels[Naam])
+        } else {
+            this.Opties[Naam] := Aan
+            this.Schrijf(Aan, "Opties", this.OptieSleutels[Naam])
+        }
     }
 
     ; Geeft de opgeslagen waarde terug (na de ondergrens), of "" als ongeldig

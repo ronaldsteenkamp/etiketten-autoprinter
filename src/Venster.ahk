@@ -67,7 +67,7 @@ class Venster {
         this.Wvc.Fill()
         this.ZetBovenop()
 
-        for Naam, k in Map("start", {aan: 1, zichtbaar: 1}, "stop", {aan: 0, zichtbaar: 1}, "vernieuwen", {aan: 0, zichtbaar: 1}, "koppel", {aan: 1, zichtbaar: 0})
+        for Naam, k in Map("start", {aan: 1, zichtbaar: 1}, "proef", {aan: 1, zichtbaar: 1}, "stop", {aan: 0, zichtbaar: 1}, "vernieuwen", {aan: 0, zichtbaar: 1}, "koppel", {aan: 1, zichtbaar: 0})
             this.Knoppen[Naam] := k
         this.Ui("versie", AppVersie)
         for Naam in this.Knoppen
@@ -157,6 +157,7 @@ class Venster {
         Tx := Map("ok", "Verbonden met Pharmacom", "jab", "Koppeling staat uit", "64bit", "Verkeerde versie (64-bit)", "geen", "Pharmacom niet gevonden")[St]
         this.Verbinding(Map("ok", "ok", "jab", "warn", "64bit", "err", "geen", "off")[St], Tx)
         this.ToonKnop("start", St != "jab")
+        this.ToonKnop("proef", St != "jab")
         this.ToonKnop("koppel", St = "jab")
         this.ZetKnop("vernieuwen", St = "ok" && !Ronde.Bezig)
         if St = "ok"
@@ -194,15 +195,22 @@ class Venster {
     ; hoofd: 1}, ...]. Geeft het antwoord (v) van de gekozen knop.
     static Keuze(Titel, Tekst, Knoppen, Soort := "vraag") => this.Dialoog({soort: Soort, titel: Titel, tekst: Tekst, knoppen: Knoppen})
 
-    static Dialoog(Gegevens) {
+    ; Timeout (ms) > 0: na die tijd geldt Standaard als antwoord.
+    static Dialoog(Gegevens, Timeout := 0, Standaard := "1") {
         Id := ++this.DialoogTeller
         Sleutel := "d" Id
         this.DialoogAntwoord[Sleutel] := ""
         Gegevens.id := Id
         this.Ui("dialoog", Gegevens)
         this.Toon(true)
-        while this.DialoogAntwoord[Sleutel] = ""
+        Eind := A_TickCount + Timeout
+        while this.DialoogAntwoord[Sleutel] = "" {
+            if Timeout && A_TickCount > Eind {
+                this.DialoogAntwoord[Sleutel] := Standaard
+                break
+            }
             Sleep 30
+        }
         Antwoord := this.DialoogAntwoord[Sleutel]
         this.DialoogAntwoord.Delete(Sleutel)
         this.Ui("dialoogdicht")
@@ -227,7 +235,24 @@ class Venster {
             . Teken.Punt " thqby, WebView2 voor AutoHotkey (MIT-licentie)`n`n"
             . "Vragen of idee" Teken.EUml "n? Stuur gerust een bericht."
         Log("Over-venster geopend")
-        this.StuurFeedback(this.Keuze("Over deze app", Tekst, this.FeedbackKnoppen("Sluiten"), "over"))
+        Knoppen := this.FeedbackKnoppen("Sluiten")
+        Knoppen.InsertAt(2, {t: "Wat is er nieuw", v: "nieuw", i: "party-popper"})
+        Keuze := this.Keuze("Over deze app", Tekst, Knoppen, "over")
+        if Keuze = "nieuw"
+            return Wijzigingen.Toon()
+        this.StuurFeedback(Keuze)
+    }
+
+    static Sneltoetsen() {
+        this.Melding("Sneltoetsen"
+            , "F5`tAanschrijfbuffer opnieuw uitlezen`n"
+            . "Ctrl+Enter`tStart printen`n"
+            . "Ctrl+Shift+Enter`tProefronde (niets printen)`n"
+            . "Esc`tStoppen, of dialoog sluiten`n"
+            . "Ctrl+G`tPlanning`n"
+            . "Ctrl+I`tInstellingen`n"
+            . "F1`tDit overzicht`n`n"
+            . "Tijdens het printen werkt Esc altijd, ook als Pharmacom op de voorgrond staat.", "sneltoets")
     }
 
     static StuurFeedback(Keuze) {
@@ -287,6 +312,10 @@ class Venster {
             A := this.Wachtrij.RemoveAt(1)
             switch A {
                 case "knop/start": Ronde.StartRun()
+                case "knop/proef": Ronde.StartRun(true)
+                case "link/planning": Planning.Toon()
+                case "link/sneltoetsen": this.Sneltoetsen()
+                case "link/nieuw": Wijzigingen.Toon()
                 case "knop/vernieuwen": Ronde.Vernieuw(false)
                 case "knop/koppel": this.KoppelingInschakelen()
                 case "link/instellingen": this.Instellingen()
@@ -299,7 +328,9 @@ class Venster {
                 case "venster/min": this.Gui.Minimize()
                 case "venster/sluit": this.Sluit()
                 default:
-                    if SubStr(A, 1, 5) = "inst/"
+                    if SubStr(A, 1, 5) = "plan/"
+                        Planning.Actie(A)
+                    else if SubStr(A, 1, 5) = "inst/"
                         this.InstellingActie(A)
             }
         }
@@ -340,7 +371,7 @@ class Venster {
         for w in Inst.Wachttijden
             Items.Push({k: w[1], label: w[3], v: Inst.Wt[w[1]], d: w[2]})
         this.UiOpties()
-        this.Ui("instellingen", {items: Items, map: Inst.UpdateMap})
+        this.Ui("instellingen", {items: Items, map: Inst.UpdateMap, apotheek: Inst.Apotheek, printmenu: Inst.PrintItem})
     }
 
     ; Acties uit de instellingen-dialoog: "inst/<actie>?k=v&..."
@@ -369,6 +400,8 @@ class Venster {
         for w in Inst.Wachttijden
             if Params.Has(w[1])
                 Inst.ZetWachttijd(w[1], Params[w[1]])
+        if Params.Has("printmenu")
+            Inst.ZetPrintItem(Params["printmenu"])
         Inst.UpdateMap := Trim(Params.Has("map") ? Params["map"] : Inst.UpdateMap)
         Inst.Schrijf(Inst.UpdateMap, "Update", "Map")
         Log("Instellingen opgeslagen")
@@ -398,7 +431,7 @@ class Venster {
         if Ph.Verbonden {
             Ap := Ph.LeesApotheek()
             D .= "Ingelogde apotheek: " (Ap != "" ? Ap : "niet gevonden") "`n"
-            D .= "Afdrukmenu-item: " Inst.PrintMenu "`n"
+            D .= "Afdrukmenu-item: " Inst.PrintItem (Inst.Apotheek != "" ? " (apotheek " Inst.Apotheek ")" : "") "`n"
             Alle := []
             Jab.ZoekTabel(Ph.Pid, Map(), Alle)
             D .= "`nZichtbare tabellen: " Alle.Length "`n"

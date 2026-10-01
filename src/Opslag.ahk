@@ -26,6 +26,7 @@ class Opslag {
         ; register alleen Pat.nr's en is na de dag zelf niet meer nodig.
         Opruimen(this.LogMap "\*.txt", 30)
         Opruimen(this.RapportMap "\Rapport *.csv", Inst.RapportDagen)
+        Opruimen(this.RapportMap "\Proefronde *.csv", Inst.RapportDagen)
         Opruimen(this.GeprintMap "\*.txt", Inst.RegisterDagen)
         try FileDelete A_ScriptDir "\Gegevens\Etiketten_autoprinter_log.txt"   ; oud log (v5.3-5.6)
     }
@@ -60,8 +61,8 @@ class Opslag {
     }
 
     ; --- Rapport per ronde (CSV, opent in Excel)
-    static StartRapport() {
-        this.RapportBestand := this.RapportMap "\Rapport " FormatTime(, "yyyy-MM-dd HH.mm.ss") ".csv"
+    static StartRapport(Proef := false) {
+        this.RapportBestand := this.RapportMap "\" (Proef ? "Proefronde " : "Rapport ") FormatTime(, "yyyy-MM-dd HH.mm.ss") ".csv"
         try FileAppend "Tijd;Pat.nr;Pati" Teken.EUml "nt;Geboortedatum;Apotheek;Etiket;Status`r`n", this.RapportBestand, "UTF-8"
     }
 

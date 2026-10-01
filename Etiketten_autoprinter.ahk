@@ -45,7 +45,7 @@ A_MaxHotkeysPerInterval := 1000
 global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
-global AppVersie := "6.3.1"
+global AppVersie := "6.4.0"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -60,6 +60,8 @@ global AppVersie := "6.3.1"
 #Include src\Ronde.ahk
 #Include src\Venster.ahk
 #Include src\Update.ahk
+#Include src\Planning.ahk
+#Include src\Wijzigingen.ahk
 #Include src\lib\WebView2
 #Include WebView2.ahk
 
@@ -72,6 +74,8 @@ Bewaking()
 SetTimer Bewaking, 3000
 SetTimer () => Update.Controleer(true), -1500
 SetTimer () => Update.ControleerLokaal(), -2500
+SetTimer () => Wijzigingen.BijStart(), -3500
+SetTimer PlanningTik, 20000
 
 ; Draait elke 3 seconden (als er niet geprint wordt): zoekt Pharmacom,
 ; leest de aanschrijfbuffer in zodra er (opnieuw) verbinding is en werkt de

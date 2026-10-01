@@ -114,6 +114,19 @@ class Ph {
         return s
     }
 
+    ; --- Groep (zoekcriteria van de aanschrijfbuffer) -----------------------
+    ; Leest Instelling en Afdeling uit de zoekcriteria: {instelling, afdeling},
+    ; of een tekst met de reden waarom het niet lukte.
+    static LeesGroep() {
+        return "nog niet beschikbaar"
+    }
+
+    ; Vult Instelling en Afdeling in, klikt op Zoeken en wacht tot de lijst
+    ; geladen is. Geeft "" als het gelukt is, anders de reden.
+    static ZetGroep(Instelling, Afdeling) {
+        return "het automatisch kiezen van een groep is nog niet beschikbaar"
+    }
+
     ; Ingelogde apotheek (bijv. "AN"), of ""
     static LeesApotheek() {
         Tekst := Jab.ZoekLabel(this.Pid, this.ApotheekPatroon)
@@ -280,7 +293,7 @@ class Ph {
     ; Zet Ronde.Gekozen zodra het item gekozen is (vanaf dan telt het etiket
     ; als geprint).
     static PrintEtiket() {
-        Item := Inst.PrintMenu
+        Item := Inst.PrintItem
         Voor := WinExist("A")
         if !this.Stap("^p", Inst.Wt["SleepNaCtrlP"], "Ctrl+P")
             return false
@@ -370,13 +383,13 @@ class Ph {
             }
             if A_Index = 5
                 break
-            MenuOpen := !!Jab.ZoekMenuItem(this.Pid, Inst.PrintMenu)
+            MenuOpen := !!Jab.ZoekMenuItem(this.Pid, Inst.PrintItem)
             Send "{Escape}"
             Log("  terugzetten: Escape" (MenuOpen ? " (afdrukmenu)" : ""))
             ; Een afdrukmenu sluiten laat het venster open; dan volgt de
             ; volgende Escape zodra het menu weg is.
             Eind := A_TickCount + 2000
-            while WinExist("A") = a && A_TickCount < Eind && !(MenuOpen && !Jab.ZoekMenuItem(this.Pid, Inst.PrintMenu))
+            while WinExist("A") = a && A_TickCount < Eind && !(MenuOpen && !Jab.ZoekMenuItem(this.Pid, Inst.PrintItem))
                 Sleep 50
             Sleep 300
         }

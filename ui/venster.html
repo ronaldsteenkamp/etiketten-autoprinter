@@ -20,7 +20,7 @@ body {
     -ms-user-select: none; user-select: none; cursor: default;
 }
 .ico { display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
-.ico svg { width: 1.15em; height: 1.15em; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ico svg, .pk svg { width: 1.15em; height: 1.15em; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .vink .ico svg { width: 12px; height: 12px; stroke-width: 3; }
 .num { font-feature-settings: "tnum"; }
 .dun { scrollbar-face-color: #cbd5e1; scrollbar-track-color: #ffffff; scrollbar-arrow-color: #94a3b8;
@@ -193,6 +193,37 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
 .schakel:after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(15,23,42,.3); transition: left .2s; }
 .optie.aan .schakel { background: #407c05; }
 .optie.aan .schakel:after { left: 18px; }
+
+/* --- Proefronde, planning, apotheek --- */
+.knop.tweede.smal { width: 88px; margin-left: 8px; }
+.s-proef { background: #e9eef6; color: #002664; }
+.d-planning .drond, .d-nieuw .drond, .d-sneltoets .drond { background: #eef7e6; color: #407c05; }
+.d-sneltoets .dtekst { tab-size: 20ch; }
+.aptag { display: inline-block; font-size: 10.5px; font-weight: 700; color: #002664; background: #e9eef6; border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: 2px; letter-spacing: 0; }
+.planrij { display: flex; align-items: flex-start; padding: 10px 10px 10px 12px; border: 1px solid #eef2f7; border-radius: 10px; margin-bottom: 6px; }
+.planrij .ptekst { flex: 1; padding-right: 8px; min-width: 0; }
+.planrij:not(.aan) .ptekst { opacity: .5; }
+.planrij .otitel { font-size: 13px; font-weight: 600; color: #0f172a; }
+.planrij .ouitleg { font-size: 12px; color: #64748b; line-height: 1.5; margin-top: 2px; }
+.planrij .ouitleg b { color: #334155; }
+.planrij.aan .schakel { background: #407c05; }
+.planrij.aan .schakel:after { left: 18px; }
+.planrij .schakel { cursor: pointer; margin: 4px 0 0 6px; }
+.pknoppen { display: flex; align-items: center; }
+.pk { width: 28px; height: 28px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; font-size: 13px; }
+.pk:hover { background: #eef7e6; color: #407c05; }
+.pk.rood:hover { background: #fef2f2; color: #dc2626; }
+.planleeg { text-align: center; color: #94a3b8; padding: 22px 0 14px 0; font-size: 12.5px; }
+.planleeg .ico { font-size: 26px; display: flex; justify-content: center; margin-bottom: 8px; color: #cbd5e1; }
+.prij { display: flex; align-items: center; margin: 7px 0; }
+.prij .lbl { width: 92px; flex-shrink: 0; color: #334155; font-size: 12.5px; }
+.prij .veld { flex: 1; min-width: 0; }
+.prij .veld.kort { flex: 0 0 96px; }
+.dag { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 30px; border: 1px solid #d5dce6; border-radius: 8px; margin-right: 5px; cursor: pointer; font-size: 12.5px; color: #334155; background: #fff; }
+.dag.aan { background: #407c05; border-color: #407c05; color: #fff; }
+.pfout { color: #b91c1c; font-size: 12px; min-height: 16px; margin-top: 2px; }
+select.veld { padding: 0 6px; }
+.dknop .ico, .klein .ico { margin-right: 6px; vertical-align: -2px; }
 .wtrij { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; min-height: 32px; padding: 2px 0; }
 .wtrij .lbl { -ms-flex: 1; flex: 1; color: #334155; font-size: 12.5px; }
 .wtrij .lbl small { display: block; color: #94a3b8; font-size: 11px; }
@@ -256,8 +287,9 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
     </div>
 
     <div id="knoppen">
-        <div class="knop tweede" id="b-vernieuwen" title="De aanschrijfbuffer opnieuw uitlezen" onclick="knop('vernieuwen')"><span class="ico" data-i="refresh-cw"></span>Vernieuwen</div>
-        <div class="knop primair" id="b-start" onclick="knop('start')"><span class="ico" data-i="play"></span><span class="t">Start printen</span></div>
+        <div class="knop tweede" id="b-vernieuwen" title="De aanschrijfbuffer opnieuw uitlezen (F5)" onclick="knop('vernieuwen')"><span class="ico" data-i="refresh-cw"></span>Vernieuwen</div>
+        <div class="knop tweede smal" id="b-proef" title="Proefronde: alles doorlopen zonder te printen (Ctrl+Shift+Enter)" onclick="knop('proef')"><span class="ico" data-i="flask-conical"></span>Proef</div>
+        <div class="knop primair" id="b-start" title="Start printen (Ctrl+Enter)" onclick="knop('start')"><span class="ico" data-i="play"></span><span class="t">Start printen</span></div>
         <div class="knop oranje weg" id="b-koppel" onclick="knop('koppel')"><span class="ico" data-i="plug"></span>Koppeling inschakelen</div>
         <div class="knop stop uit" id="b-stop" onclick="knop('stop')"><span class="ico" data-i="square"></span>Stop</div>
     </div>
@@ -265,7 +297,8 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
 </div>
 
 <div id="voet">
-    <span class="link" title="Opties, wachttijden en updates" onclick="stuur('link/instellingen')"><span class="ico" data-i="settings"></span>Instellingen</span>
+    <span class="link" title="Opties, wachttijden en updates (Ctrl+I)" onclick="stuur('link/instellingen')"><span class="ico" data-i="settings"></span>Instellingen</span>
+    <span class="link" title="Groepen automatisch laten printen (Ctrl+G)" onclick="stuur('link/planning')"><span class="ico" data-i="calendar-clock"></span>Planning</span>
     <span class="link" title="Overzicht per printronde (opent in Excel)" onclick="stuur('link/rapporten')"><span class="ico" data-i="folder-open"></span>Rapporten</span>
     <span class="link" title="Logbestand van vandaag" onclick="stuur('link/log')"><span class="ico" data-i="file-text"></span>Logbestand</span>
     <span class="link" title="Wat ziet de app in Pharmacom?" onclick="stuur('link/diagnose')"><span class="ico" data-i="activity"></span>Diagnose</span>
@@ -276,6 +309,16 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
 <script>
 // Iconen: Lucide (https://lucide.dev), ISC-licentie, Copyright (c) Lucide Icons and Contributors
 var Iconen = {
+    "flask-conical": '<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/>',
+    "calendar-clock": '<path d="M16 14v2.2l1.6 1"/><path d="M16 2v3"/><path d="M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338"/><path d="M3 9h5.859"/><path d="M8 2v3"/><circle cx="16" cy="16" r="6"/>',
+    "keyboard": '<path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/>',
+    "plus": '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    "trash-2": '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+    "pencil": '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+    "download": '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+    "clock": '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    "bell": '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+    "party-popper": '<path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/>',
     "activity": '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
     "check-check": '<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>',
     "check": '<path d="M20 6 9 17l-5-5"/>',
@@ -321,7 +364,7 @@ function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function zetKlasse(el, k, aan) { if (el) { if (aan) el.classList.add(k); else el.classList.remove(k); } }
 
-var Knoppen = { start: true, stop: false, vernieuwen: true, koppel: true };
+var Knoppen = { start: true, proef: true, stop: false, vernieuwen: true, koppel: true };
 var Bezig = false;
 var Rijen = [];
 var Opties = {};
@@ -346,9 +389,9 @@ document.oncontextmenu = function () { return false; };
 document.onselectstart = function (e) { var t = (e || window.event).srcElement; return !!(t && (t.tagName == "INPUT" || (t.className && t.className.indexOf("dtekst") >= 0))); };
 
 var Chips = { print: "Klaar voor printen", al: "Al geprint", ontslag: "Ontslag", controle: "Controleren",
-              bezig: "Bezig", ok: "Geprint", skip: "Overgeslagen", fout: "Gestopt" };
+              bezig: "Bezig", ok: "Geprint", skip: "Overgeslagen", fout: "Gestopt", proef: "Proef OK" };
 var StatusIco = { idle: I("printer"), bezig: I("printer"), klaar: I("circle-check"), gestopt: I("pause"), fout: I("triangle-alert") };
-var DialoogIco = { vraag: I("circle-help"), info: I("circle-check"), waarschuwing: I("triangle-alert"), fout: I("circle-x"), code: I("activity"), feedback: I("message-circle"), over: I("sparkles") };
+var DialoogIco = { vraag: I("circle-help"), info: I("circle-check"), waarschuwing: I("triangle-alert"), fout: I("circle-x"), code: I("activity"), feedback: I("message-circle"), over: I("sparkles"), planning: I("calendar-clock"), nieuw: I("party-popper"), sneltoets: I("keyboard") };
 
 function kan(s) { return s == "print" || s == "al"; }
 function rijHtml(r, i) {
@@ -436,6 +479,11 @@ function api(cmd, j) {
     case "dialoog": toonDialoog(d); break;
     case "dialoogdicht": $("scherm").className = ""; break;
     case "instellingen": toonInstellingen(d); break;
+    case "planning": toonPlanning(d); break;
+    case "planveld":
+        if ($("p-inst")) { $("p-inst").value = d.instelling; $("p-afd").value = d.afdeling; $("p-fout").innerHTML = ""; if (!$("p-naam").value) $("p-naam").value = d.afdeling; }
+        break;
+    case "planfout": if ($("p-fout")) $("p-fout").innerHTML = esc(d); break;
     case "instmap": var v = $("i-map"); if (v) v.value = d; break;
     }
     return "";
@@ -450,12 +498,12 @@ function toonDialoog(d) {
         // Meerdere knoppen: [{t: tekst, v: antwoord, hoofd: "1"}, ...]
         for (var i = 0; i < d.knoppen.length; i++) {
             var k = d.knoppen[i];
-            h += '<div class="dknop' + (k.hoofd == "1" ? " hoofd" : "") + '" onclick="stuur(\'dialoog/' + d.id + '/' + esc(k.v) + '\')">' +
+            h += '<div class="dknop' + (k.hoofd == "1" ? " hoofd" : "") + '"' + (k.v == "0" ? ' data-esc="1"' : '') + ' onclick="stuur(\'dialoog/' + d.id + '/' + esc(k.v) + '\')">' +
                  (k.i ? '<span class="ico">' + I(k.i) + "</span>" : "") + esc(k.t) + "</div>";
         }
         h += "</div>";
     } else {
-        if (d.nee) h += '<div class="dknop" onclick="stuur(\'dialoog/' + d.id + '/0\')">' + esc(d.nee) + "</div>";
+        if (d.nee) h += '<div class="dknop" data-esc="1" onclick="stuur(\'dialoog/' + d.id + '/0\')">' + esc(d.nee) + "</div>";
         h += '<div class="dknop hoofd" onclick="stuur(\'dialoog/' + d.id + '/1\')">' + esc(d.ja || "OK") + "</div></div>";
     }
     dl.innerHTML = h;
@@ -465,12 +513,12 @@ function toonDialoog(d) {
 // --- Instellingen: opties met uitleg, wachttijden en updates ---
 var OptieTekst = [
     { sectie: "Wat wordt er geprint" },
-    { k: "deelbaar", titel: "Alleen regels met ‘ASB: Deelbaar’",
+    { k: "deelbaar", ap: 1, titel: "Alleen regels met ‘ASB: Deelbaar’",
       uitleg: "<b>Aan:</b> de app print de bovenste regel in de medicatiehistorie van jouw apotheek waarbij bij Herhaal info <b>ASB: Deelbaar</b> staat. Heeft een patiënt zo’n regel niet, dan wordt hij overgeslagen (en staat hij in het overzicht na afloop).<br><b>Uit:</b> gewoon de bovenste regel van jouw apotheek, wat er ook bij Herhaal info staat." },
     { sectie: "Veiligheid" },
-    { k: "controle", titel: "Dossier controleren",
+    { k: "controle", ap: 1, titel: "Dossier controleren",
       uitleg: "<b>Aan:</b> voordat er geprint wordt, kijkt de app of het geopende dossier echt van de juiste patiënt is (Pat.nr, of achternaam + geboortedatum). Klopt dat niet, dan stopt de app.<br>Alleen uitzetten als deze controle steeds onterecht stopt." },
-    { k: "patnr", titel: "Dossier alleen op Pat.nr controleren",
+    { k: "patnr", ap: 1, titel: "Dossier alleen op Pat.nr controleren",
       uitleg: "<b>Aan:</b> het dossier telt alleen als juist als het <b>Pat.nr</b> erin staat. Het strengst: twee patiënten met dezelfde achternaam en geboortedatum kunnen niet verwisseld worden.<br><b>Uit:</b> achternaam + geboortedatum mag ook (als het Pat.nr niet in het dossier te zien is)." },
     { k: "blokkeer", titel: "Toetsenbord en muis blokkeren tijdens het printen",
       uitleg: "<b>Aan:</b> zolang de app print, doen toetsenbord en muis niets. Zo kun je niet per ongeluk in Pharmacom klikken terwijl de app bezig is. Met <b>Esc</b> stop je altijd direct.<br><b>Uit:</b> je kunt de computer blijven gebruiken, maar klik je in een ander venster, dan stopt de app de ronde." },
@@ -493,8 +541,10 @@ function toonInstellingen(d) {
         var o = OptieTekst[i];
         if (o.sectie) { h += '<div class="sectie"' + (i == 0 ? ' style="margin-top:6px"' : "") + ">" + o.sectie + "</div>"; continue; }
         h += '<div class="optie' + (Opties[o.k] == "1" ? " aan" : "") + '" id="o-' + o.k + '" onclick="optie(\'' + o.k + '\')">' +
-             '<div class="otekst"><div class="otitel">' + o.titel + '</div><div class="ouitleg">' + o.uitleg + "</div></div>" +
+             '<div class="otekst"><div class="otitel">' + o.titel + (o.ap && d.apotheek ? '<span class="aptag" title="Geldt alleen voor apotheek ' + esc(d.apotheek) + '">' + esc(d.apotheek) + '</span>' : '') + '</div><div class="ouitleg">' + o.uitleg + "</div></div>" +
              '<span class="schakel"></span></div>';
+        if (o.k == "deelbaar")
+            h += '<div class="prij" style="margin:4px 0 2px 0"><span class="lbl" style="width:auto;flex:1">Item in het afdrukmenu (Ctrl+P)' + (d.apotheek ? '<span class="aptag">' + esc(d.apotheek) + '</span>' : '') + '</span><input class="veld" id="i-printmenu" style="flex:0 0 170px" value="' + esc(d.printmenu) + '"></div>';
     }
     h += '<div class="sectie">Wachttijden</div>';
     h += '<div class="uitleg">Korte pauzes tussen de stappen, in milliseconden (1000 = 1 seconde). De app wacht zelf al tot een scherm in Pharmacom verschenen is; verhoog een waarde alleen als Pharmacom een stap niet bijbeent. Met <i>Standaard</i> zet je alles terug.</div>';
@@ -514,7 +564,7 @@ function toonInstellingen(d) {
     h += '<div style="margin:8px 0 4px 0"><span class="klein" onclick="stuur(\'inst/installeer\')">Op deze computer installeren</span></div>';
     h += "</div>";
     h += '<div class="dknoppen"><div class="dknop" style="float:left;margin-left:0" onclick="instStandaard()">Standaard</div>' +
-         '<div class="dknop" onclick="stuur(\'inst/annuleer\')">Annuleren</div><div class="dknop hoofd" onclick="instActie(\'opslaan\')">Opslaan</div></div>';
+         '<div class="dknop" data-esc="1" onclick="stuur(\'inst/annuleer\')">Annuleren</div><div class="dknop hoofd" onclick="instActie(\'opslaan\')">Opslaan</div></div>';
     dl.innerHTML = h;
     $("scherm").className = "open";
 }
@@ -523,8 +573,113 @@ function instActie(a) {
     var p = [];
     for (var i = 0; i < Inst.items.length; i++) p.push(Inst.items[i].k + "=" + encodeURIComponent($("w-" + Inst.items[i].k).value));
     p.push("map=" + encodeURIComponent($("i-map").value));
+    p.push("printmenu=" + encodeURIComponent($("i-printmenu").value));
     stuur("inst/" + a + "?" + p.join("&"));
 }
+
+// --- Planning: groepen automatisch printen ---
+var Plan = null;
+var DagNamen = ["ma", "di", "wo", "do", "vr", "za", "zo"];
+function dagenTekst(s) {
+    var t = [];
+    for (var i = 1; i <= 7; i++) if (String(s).indexOf(String(i)) >= 0) t.push(DagNamen[i - 1]);
+    return t.length == 7 ? "elke dag" : t.length == 5 && String(s).indexOf("6") < 0 && String(s).indexOf("7") < 0 ? "ma t/m vr" : t.join(" ");
+}
+function wekenTekst(w) { return w == "even" ? "even weken" : w == "oneven" ? "oneven weken" : "elke week"; }
+function planKop(titel) {
+    return '<div class="dkop"><div class="drond ico">' + I("calendar-clock") + '</div><div class="dtitel">' + titel +
+           (Plan && Plan.apotheek ? '<span class="aptag" title="Planning van apotheek ' + esc(Plan.apotheek) + '">' + esc(Plan.apotheek) + '</span>' : '') + '</div></div>';
+}
+function toonPlanning(d) {
+    Plan = d;
+    var dl = $("dialoog");
+    dl.className = "breed d-planning";
+    var h = planKop("Planning") + '<div id="instinhoud" class="dun">';
+    h += '<div class="uitleg" style="margin-bottom:10px">Groepen die de app vanzelf print op een vast moment, zolang Pharmacom open is. Vlak voor de start telt de app 30 seconden af; dan kun je nog annuleren. Deze week is week ' + esc(d.week) + ' (' + (d.even == "1" ? "even" : "oneven") + ').</div>';
+    if (!d.items.length)
+        h += '<div class="planleeg"><span class="ico">' + I("calendar-clock") + '</span>Nog niets gepland. Klik op <b>Nieuwe planning</b>.</div>';
+    for (var i = 0; i < d.items.length; i++) {
+        var it = d.items[i];
+        h += '<div class="planrij' + (it.aan == "1" ? " aan" : "") + '">' +
+             '<div class="ptekst"><div class="otitel">' + esc(it.naam) + '</div>' +
+             '<div class="ouitleg">Afdeling <b>' + esc(it.afdeling) + '</b>' + (it.instelling ? ' (' + esc(it.instelling) + ')' : '') +
+             ' &middot; ' + dagenTekst(it.dagen) + ' om <b>' + esc(it.tijd) + '</b> &middot; ' + wekenTekst(it.weken) + '<br>' +
+             (it.hier == "1" ? 'Op deze computer' : 'Op computer ' + esc(it.computer) + ' &middot; <span class="klein" style="margin:0" onclick="stuur(\'plan/hier?id=' + it.id + '\')">hier uitvoeren</span>') +
+             (it.laatst ? ' &middot; laatst ' + esc(it.laatst) : '') + '</div></div>' +
+             '<div class="pknoppen">' +
+             '<span class="pk" title="Nu uitvoeren" onclick="stuur(\'plan/nu?id=' + it.id + '\')">' + I("play") + '</span>' +
+             '<span class="pk" title="Wijzigen" onclick="toonPlanForm(' + i + ')">' + I("pencil") + '</span>' +
+             '<span class="pk rood" title="Verwijderen" onclick="stuur(\'plan/verwijder?id=' + it.id + '\')">' + I("trash-2") + '</span>' +
+             '<span class="schakel" title="Aan/uit" onclick="stuur(\'plan/wissel?id=' + it.id + '\')"></span></div></div>';
+    }
+    h += '</div><div class="dknoppen"><div class="dknop" style="float:left;margin-left:0" onclick="toonPlanForm(-1)"><span class="ico">' + I("plus") + '</span>Nieuwe planning</div>' +
+         '<div class="dknop hoofd" data-esc="1" onclick="stuur(\'plan/sluit\')">Sluiten</div></div>';
+    dl.innerHTML = h;
+    $("scherm").className = "open";
+}
+function toonPlanForm(i) {
+    var it = i >= 0 ? Plan.items[i] : { id: "", naam: "", instelling: "", afdeling: "", dagen: "1", tijd: "08:00", weken: "alle" };
+    var dl = $("dialoog");
+    dl.className = "breed d-planning";
+    var h = planKop(i >= 0 ? "Planning wijzigen" : "Nieuwe planning") + '<div id="instinhoud" class="dun">';
+    h += '<div class="prij"><span class="lbl">Naam</span><input class="veld" id="p-naam" maxlength="40" placeholder="bijv. Baxter T1GUA" value="' + esc(it.naam) + '"></div>';
+    h += '<div class="sectie">Groep</div>';
+    h += '<div class="uitleg">Kies in Pharmacom de Instelling en Afdeling en klik op <b>Overnemen uit Pharmacom</b>, of vul de codes zelf in.</div>';
+    h += '<div class="prij"><span class="lbl">Instelling</span><input class="veld kort" id="p-inst" value="' + esc(it.instelling) + '" placeholder="T1">' +
+         '<span class="lbl" style="width:auto;margin:0 8px 0 14px">Afdeling</span><input class="veld kort" id="p-afd" value="' + esc(it.afdeling) + '" placeholder="T1GUA"></div>';
+    h += '<div style="margin:2px 0 0 92px"><span class="klein" onclick="stuur(\'plan/overnemen\')"><span class="ico">' + I("download") + '</span>Overnemen uit Pharmacom</span></div>';
+    h += '<div class="pfout" id="p-fout"></div>';
+    h += '<div class="sectie">Wanneer</div>';
+    h += '<div class="prij"><span class="lbl">Dagen</span><span>';
+    for (var d = 1; d <= 7; d++)
+        h += '<span class="dag' + (String(it.dagen).indexOf(String(d)) >= 0 ? " aan" : "") + '" data-d="' + d + '" onclick="zetKlasse(this, \'aan\', !this.classList.contains(\'aan\'))">' + DagNamen[d - 1] + '</span>';
+    h += '</span></div>';
+    h += '<div class="prij"><span class="lbl">Tijd</span><input class="veld kort" type="time" id="p-tijd" value="' + esc(it.tijd) + '"></div>';
+    h += '<div class="prij"><span class="lbl">Weken</span><select class="veld" id="p-weken" style="flex:0 0 200px">' +
+         '<option value="alle"' + (it.weken == "alle" ? " selected" : "") + '>Elke week</option>' +
+         '<option value="even"' + (it.weken == "even" ? " selected" : "") + '>Alleen even weken</option>' +
+         '<option value="oneven"' + (it.weken == "oneven" ? " selected" : "") + '>Alleen oneven weken</option></select>' +
+         '<span class="uitleg" style="margin-left:10px">nu week ' + esc(Plan.week) + ' (' + (Plan.even == "1" ? "even" : "oneven") + ')</span></div>';
+    h += '<div class="uitleg" style="margin-top:10px">Deze computer (' + esc(Plan.computer) + ') voert de planning uit. Zo print nooit meer dan één computer dezelfde groep.</div>';
+    h += '</div><div class="dknoppen"><div class="dknop" data-esc="1" onclick="toonPlanning(Plan)">Annuleren</div>' +
+         '<div class="dknop hoofd" onclick="planOpslaan(\'' + it.id + '\')">Opslaan</div></div>';
+    dl.innerHTML = h;
+    $("scherm").className = "open";
+    $("p-naam").focus();
+}
+function planOpslaan(id) {
+    var naam = $("p-naam").value.replace(/^\s+|\s+$/g, ""), afd = $("p-afd").value.replace(/\s/g, ""), inst = $("p-inst").value.replace(/\s/g, "");
+    var dagen = "", els = document.querySelectorAll("#dialoog .dag.aan");
+    for (var i = 0; i < els.length; i++) dagen += els[i].getAttribute("data-d");
+    var tijd = $("p-tijd").value, fout = "";
+    if (!afd) fout = "Vul een afdeling in (of neem hem over uit Pharmacom).";
+    else if (!dagen) fout = "Kies minstens één dag.";
+    else if (!/^\d{1,2}:\d{2}$/.test(tijd)) fout = "Vul een tijd in.";
+    if (fout) { $("p-fout").innerHTML = esc(fout); return; }
+    if (!naam) naam = afd;
+    stuur("plan/opslaan?id=" + encodeURIComponent(id) + "&naam=" + encodeURIComponent(naam) + "&instelling=" + encodeURIComponent(inst) +
+          "&afdeling=" + encodeURIComponent(afd) + "&dagen=" + dagen + "&tijd=" + encodeURIComponent(tijd) + "&weken=" + $("p-weken").value);
+}
+
+// --- Sneltoetsen (F1 = overzicht) ---
+document.addEventListener("keydown", function (e) {
+    var open = $("scherm").className == "open";
+    if (e.key == "F1") { e.preventDefault(); stuur("link/sneltoetsen"); return; }
+    if (e.key == "Escape") {
+        e.preventDefault();
+        if (open) {
+            var b = document.querySelector("#dialoog [data-esc]") || document.querySelector("#dialoog .dknop.hoofd");
+            if (b) b.click();
+        } else stuur("knop/stop");
+        return;
+    }
+    if (open) return;   // in een dialoog alleen F1 en Esc
+    if (e.key == "F5") { e.preventDefault(); knop("vernieuwen"); }
+    else if (e.key == "Enter" && e.ctrlKey && e.shiftKey) { e.preventDefault(); knop("proef"); }
+    else if (e.key == "Enter" && e.ctrlKey) { e.preventDefault(); knop("start"); }
+    else if (e.ctrlKey && (e.key == "g" || e.key == "G")) { e.preventDefault(); stuur("link/planning"); }
+    else if (e.ctrlKey && (e.key == "i" || e.key == "I")) { e.preventDefault(); stuur("link/instellingen"); }
+});
 </script>
 </body>
 </html>

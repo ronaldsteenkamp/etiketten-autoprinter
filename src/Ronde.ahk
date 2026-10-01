@@ -96,6 +96,12 @@ class Ronde {
         this.LaatsteSnel := n ":" (n ? Lijst[1].patnr "/" Lijst[n].patnr : "")
 
         this.Apotheek := Ph.LeesApotheek()
+        if this.Apotheek != Inst.Apotheek {
+            ; Instellingen van deze apotheek gebruiken
+            Inst.ZetApotheek(this.Apotheek)
+            Venster.UiOpties()
+            Venster.Hint()
+        }
         Venster.Verbinding("ok", "Verbonden" (this.Apotheek != "" ? "  " Teken.Mid "  apotheek " this.Apotheek : ""))
 
         this.Patienten := Lijst
@@ -152,19 +158,27 @@ class Ronde {
     }
 
     ; --- De ronde ------------------------------------------------------------
-    static StartRun() {
+    ; Proef = alles doorlopen (dossier, controle, regel zoeken en selecteren)
+    ; maar NIET printen. Auto = naam van een geplande ronde (geen vragen; al
+    ; geprinte pati"enten worden dan nooit opnieuw geprint).
+    ; Geeft true als de ronde volledig is afgerond.
+    static Proef := false, Auto := ""
+
+    static StartRun(Proef := false, Auto := "") {
         if this.Bezig
-            return
+            return false
         if Venster.Verbind() != "ok" {
             Venster.Toon()
-            return
+            return false
         }
         if !this.Vernieuw(true) || this.Apotheek = ""
-            return
+            return false
 
         Doelen := [], nAl := 0
         for i, p in this.Patienten {
             if p.aan && this.Printbaar(p.soort) {
+                if Auto != "" && p.soort = "al"
+                    continue
                 Doelen.Push(i)
                 if p.soort = "al"
                     nAl++
@@ -172,33 +186,41 @@ class Ronde {
         }
         n := Doelen.Length
         if !n {
-            Venster.Status("fout", "Er is geen pati" Teken.EUml "nt aangevinkt om te printen.")
-            return
+            Venster.Status(Auto != "" ? "klaar" : "fout", Auto != "" ? "Geplande ronde '" Auto "': niets te printen." : "Er is geen pati" Teken.EUml "nt aangevinkt om te printen.")
+            if Auto != ""
+                Log("Geplande ronde '" Auto "': niets te printen")
+            return Auto != ""
         }
         ; Vandaag al geprint en toch aangevinkt: altijd even vragen
-        if nAl && !Venster.Vraag("Opnieuw printen?", nAl " aangevinkte pati" Teken.EUml "nt(en) zijn vandaag al geprint.`n`nWil je die echt opnieuw printen?", "Opnieuw printen", "Annuleren", "waarschuwing")
-            return
-        if Inst.Optie("bevestigen") {
+        if !Proef && nAl && !Venster.Vraag("Opnieuw printen?", nAl " aangevinkte pati" Teken.EUml "nt(en) zijn vandaag al geprint.`n`nWil je die echt opnieuw printen?", "Opnieuw printen", "Annuleren", "waarschuwing")
+            return false
+        if Proef && Auto = "" {
+            if !Venster.Vraag("Proefronde", "De app doorloopt " n " pati" Teken.EUml "nt" (n = 1 ? "" : "en") " precies zoals bij printen (dossier openen, controleren, regel zoeken en selecteren), maar drukt niet op printen. Er wordt niets geprint en niets als geprint geregistreerd.`n`nNa afloop zie je per pati" Teken.EUml "nt welk etiket geprint zou worden.", "Proefronde starten", "Annuleren", "vraag")
+                return false
+        } else if Auto = "" && Inst.Optie("bevestigen") {
             nOntslag := this.TelSoort("ontslag")
             if !Venster.Vraag("Etiketten printen", n " pati" Teken.EUml "nt" (n = 1 ? "" : "en") " " Teken.Mid " apotheek " this.Apotheek
                 . (Inst.Optie("deelbaar") ? " " Teken.Mid " alleen ASB: Deelbaar" : "")
                 . (nOntslag ? "`n`n" nOntslag " pati" Teken.EUml "nt(en) met een ontslagdatum worden overgeslagen." : "")
                 . (Inst.Optie("blokkeer") ? "`n`nToetsenbord en muis worden geblokkeerd tijdens het printen. Druk op Esc om te stoppen." : "`n`nDruk op Esc om te stoppen."), "Start printen", "Annuleren")
-                return
+                return false
         }
 
         WinActivate "ahk_id " Ph.Hwnd
         if !WinWaitActive("ahk_pid " Ph.Pid, , 3) {
             Venster.Status("fout", "Pharmacom kon niet naar voren gehaald worden.")
-            return
+            return false
         }
         Sleep 200
 
+        this.Proef := Proef, this.Auto := Auto
+        Wat := Proef ? "Proefronde" : Auto != "" ? "Geplande ronde '" Auto "'" : "Ronde"
         this.Bezig := true, this.Stoppen := false, this.StopReden := ""
         this.Aantal := n, this.Verwerkt := 0, this.Geprint := 0, this.Overgeslagen := 0
         OverslaanLijst := ""
         this.Start := A_TickCount
         Venster.ZetKnop("start", false)
+        Venster.ZetKnop("proef", false)
         Venster.ZetKnop("vernieuwen", false)
         Venster.ZetKnop("stop", true)
         Venster.Ui("bezig", 1)
@@ -206,11 +228,11 @@ class Ronde {
         SetTimer RondeTijd, 500
         RondeTijd()
 
-        Instel := "Start: " n " pati" Teken.EUml "nten. Wachttijden (ms):"
+        Instel := Wat " start: " n " pati" Teken.EUml "nten. Wachttijden (ms):"
         for w in Inst.Wachttijden
             Instel .= " " w[1] "=" Inst.Wt[w[1]]
         Log(Instel)
-        Opslag.StartRapport()
+        Opslag.StartRapport(Proef)
         Invoer.Blokkeer(true, Inst.Optie("blokkeer"))
 
         Afgebroken := false
@@ -218,7 +240,7 @@ class Ronde {
             p := this.Patienten[r]
             p.geprintNu := false
             Venster.Rij(r, "bezig", "Bezig" Teken.Ellips)
-            Venster.Status("bezig", "Pati" Teken.EUml "nt " i " van " n ": " p.naam "  " Teken.Mid "  Esc = stoppen")
+            Venster.Status("bezig", (Proef ? "Proef " Teken.Mid " " : "") "Pati" Teken.EUml "nt " i " van " n ": " p.naam "  " Teken.Mid "  Esc = stoppen")
             Log("Pat.nr " p.patnr ":")
             Res := this.PrintPatient(p)
 
@@ -238,7 +260,12 @@ class Ronde {
                 Afgebroken := true
                 break
             }
-            if Res.HasProp("ok") {
+            if Res.HasProp("proef") {
+                this.Geprint++
+                Venster.Rij(r, "proef", "Zou printen" (Res.tekst != "" ? ":  " Res.tekst : ""))
+                Opslag.Rapporteer(p, Res.tekst, "Proef: zou printen", this.Apotheek)
+                Log("Pat.nr " p.patnr " proef: zou printen")
+            } else if Res.HasProp("ok") {
                 this.Geprint++
                 p.soort := "ok"
                 Venster.Rij(r, "ok", "Geprint" (Res.tekst != "" ? "  " Teken.Mid "  " Res.tekst : ""))
@@ -246,8 +273,10 @@ class Ronde {
                 Log("Pat.nr " p.patnr " geprint")
             } else {
                 this.Overgeslagen++
-                p.soort := "skip"
-                this.Uitgevinkt[p.patnr] := true   ; bij Doorgaan niet opnieuw proberen
+                if !Proef {
+                    p.soort := "skip"
+                    this.Uitgevinkt[p.patnr] := true   ; bij Doorgaan niet opnieuw proberen
+                }
                 Venster.Rij(r, "skip", "Overgeslagen: " Res.tekst)
                 Opslag.Rapporteer(p, "", "Overgeslagen: " Res.tekst, this.Apotheek)
                 OverslaanLijst .= "- " p.naam " (" p.patnr "): " Res.tekst "`n"
@@ -273,33 +302,39 @@ class Ronde {
         SetTimer RondeTijd, 0
         Duur := FmtTijd((A_TickCount - this.Start) // 1000)
         Venster.ZetKnop("start", true)
+        Venster.ZetKnop("proef", true)
         Venster.ZetKnop("vernieuwen", Ph.Verbonden)
         Venster.ZetKnop("stop", false)
         Venster.Tellers()
+        this.Proef := false, this.Auto := ""
 
-        Samenvatting := this.Geprint " geprint, " this.Overgeslagen " overgeslagen"
+        Samenvatting := this.Geprint (Proef ? " zou" (this.Geprint = 1 ? "" : "den") " geprint worden" : " geprint") ", " this.Overgeslagen " overgeslagen"
         if StrLen(OverslaanLijst) > 1500
             OverslaanLijst := SubStr(OverslaanLijst, 1, 1500) Teken.Ellips "`n"
+        ; Bij een geplande ronde geen meldingen die op een klik wachten
+        Melden := (Titel, Tekst, Soort := "info") => Auto != "" ? TrayTip(Tekst, AppTitel " - " Titel, Soort = "info" ? 1 : 2) : Venster.Melding(Titel, Tekst, Soort)
 
         if Afgebroken {
             Venster.Voortgang("oranje")
             Venster.Ui("tijd", "Gestopt na " Duur)
-            Venster.KnopTekst("start", "Doorgaan")
-            Venster.Status("gestopt", "Gestopt bij pati" Teken.EUml "nt " (this.Verwerkt + 1) " van " this.Aantal ": " this.StopReden ". (" Samenvatting ") Klik op Doorgaan om verder te gaan; wie al geprint is, wordt overgeslagen.")
-            Log("Gestopt: " this.StopReden " (" Samenvatting ")")
+            if !Proef
+                Venster.KnopTekst("start", "Doorgaan")
+            Venster.Status("gestopt", Wat " gestopt bij pati" Teken.EUml "nt " (this.Verwerkt + 1) " van " this.Aantal ": " this.StopReden ". (" Samenvatting ")" (Proef ? "" : " Klik op Doorgaan om verder te gaan; wie al geprint is, wordt overgeslagen."))
+            Log(Wat " gestopt: " this.StopReden " (" Samenvatting ")")
             Venster.Geluid("gestopt")
-            Venster.Melding("Gestopt", this.StopReden ".`n`n" Samenvatting "." (OverslaanLijst != "" ? "`n`nOvergeslagen, handmatig controleren:`n" OverslaanLijst : "") "`n`nMet Doorgaan ga je verder; wie al geprint is, staat uitgevinkt.", "waarschuwing")
-            return
+            Melden("Gestopt", this.StopReden ".`n`n" Samenvatting "." (OverslaanLijst != "" ? "`n`nOvergeslagen, handmatig controleren:`n" OverslaanLijst : "") (Proef ? "" : "`n`nMet Doorgaan ga je verder; wie al geprint is, staat uitgevinkt."), "waarschuwing")
+            return false
         }
         Venster.Voortgang("groen")
         Venster.Ui("tijd", "Klaar in " Duur)
-        Venster.Status("klaar", Samenvatting ". Het rapport staat in de map Rapporten.")
-        Log("Klaar: " Samenvatting " in " Duur)
+        Venster.Status("klaar", (Proef ? "Proefronde klaar: " : Auto != "" ? "Geplande ronde '" Auto "' klaar: " : "") Samenvatting "." (Proef ? " Er is niets geprint." : " Het rapport staat in de map Rapporten."))
+        Log(Wat " klaar: " Samenvatting " in " Duur)
         Venster.Geluid("klaar")
         if OverslaanLijst != ""
-            Venster.Melding("Klaar!", Samenvatting ".`n`nOvergeslagen, handmatig controleren:`n" OverslaanLijst)
+            Melden(Proef ? "Proefronde klaar" : "Klaar!", Samenvatting ".`n`nOvergeslagen, handmatig controleren:`n" OverslaanLijst)
         else
-            TrayTip "Klaar! " Samenvatting ".", AppTitel, 1
+            TrayTip (Proef ? "Proefronde klaar: " : "Klaar! ") Samenvatting ".", AppTitel, 1
+        return true
     }
 
     ; Print het etiket voor een pati"ent. Geeft terug:
@@ -428,6 +463,15 @@ class Ronde {
         if !ok
             return this.Fout("de regel met " Omschrijving " kon niet geselecteerd worden")
         Log("  regel met " Omschrijving " geselecteerd (regel " (AnRij + 1) ")")
+
+        ; --- Proefronde: hier stoppen, niet printen ---
+        if this.Proef {
+            if !Ph.Stap("{Escape}", Inst.Wt["SleepNaEscape"], "Escape (proef, niet geprint)")
+                return this.Fout("")
+            if !Ph.WachtTerug(Dossier)
+                return this.Fout("Pharmacom keerde niet terug naar de aanschrijfbuffer")
+            return {proef: true, tekst: Etiket}
+        }
 
         ; --- 4. Printen ---
         Venster.Sub("Etiket printen" Teken.Ellips)
