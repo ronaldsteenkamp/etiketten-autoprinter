@@ -7,3 +7,5 @@ Etiketten_autoprinter.ini
 
 # Gecompileerde versies
 *.exe
+
+tests/uitvoer.txt

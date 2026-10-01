@@ -1,0 +1,106 @@
+; =====================================================================
+; Algemene hulpfuncties (zonder toestand)
+; =====================================================================
+
+; Tekens via Chr, zodat ze ook in de .exe altijd goed zijn
+class Teken {
+    static EUml := Chr(235), Mid := Chr(0xB7), PlusMin := Chr(0xB1)
+    static Ellips := Chr(0x2026), Pijl := Chr(0x2192), Punt := Chr(8226), IUml := Chr(239)
+}
+
+; JSON van een waarde. Alle waarden worden tekst (zoals de pagina verwacht);
+; Array -> [..], Map/object -> {..}.
+Json(v) {
+    if IsObject(v) {
+        s := ""
+        if v is Array {
+            for x in v
+                s .= (A_Index > 1 ? "," : "") Json(x ?? "")
+            return "[" s "]"
+        }
+        for k, x in (v is Map ? v : v.OwnProps())
+            s .= (s = "" ? "" : ",") Json(String(k)) ":" Json(x)
+        return "{" s "}"
+    }
+    v := StrReplace(String(v), "\", "\\")
+    v := StrReplace(v, '"', '\"')
+    v := StrReplace(v, "`r", "\r")
+    v := StrReplace(v, "`n", "\n")
+    v := StrReplace(v, "`t", "\t")
+    v := StrReplace(v, Chr(0x2028), " ")
+    v := StrReplace(v, Chr(0x2029), " ")
+    return '"' v '"'
+}
+
+; Datum in de vorm 25-08-1963, 25/08/1963, 25.08.1963, 5-8-63 of 1963-08-25
+IsDatum(v) => RegExMatch(v, "^(\d{1,2}[-/.]\d{1,2}[-/.](\d{2}|\d{4})|\d{4}-\d{2}-\d{2})$") > 0
+
+FmtTijd(Sec) => (Sec // 60) ":" Format("{:02}", Mod(Sec, 60))
+
+; "5.7.1" -> 5007001 (om versies te vergelijken); ontbrekende delen = 0
+VersieNummer(V) {
+    N := 0
+    D := StrSplit(V, ".")
+    loop 3
+        N := N * 1000 + (D.Has(A_Index) && IsInteger(D[A_Index]) ? Integer(D[A_Index]) : 0)
+    return N
+}
+
+; Decodeert %XX-codering (UTF-8) uit de pagina
+UriDecode(S) {
+    S := StrReplace(S, "+", " ")
+    Buf := Buffer(StrPut(S, "UTF-8") + 8, 0)
+    n := 0, i := 1
+    while i <= StrLen(S) {
+        c := SubStr(S, i, 1)
+        if c = "%" && RegExMatch(SubStr(S, i + 1, 2), "^[0-9A-Fa-f]{2}$") {
+            NumPut("UChar", Integer("0x" SubStr(S, i + 1, 2)), Buf, n++)
+            i += 3
+        } else {
+            n += StrPut(c, Buf.Ptr + n, "UTF-8") - 1
+            i += 1
+        }
+    }
+    return StrGet(Buf, n, "UTF-8")
+}
+
+; Verwijdert bestanden (Patroon, bijv. "map\*.txt") die langer dan Dagen
+; dagen niet gewijzigd zijn. Een ongeldige of te kleine waarde doet niets.
+Opruimen(Patroon, Dagen) {
+    if !IsInteger(Dagen) || Dagen < 1
+        return
+    loop files Patroon {
+        if DateDiff(A_Now, A_LoopFileTimeModified, "Days") > Dagen
+            try FileDelete A_LoopFileFullPath
+    }
+}
+
+; SHA-256 van een bestand (kleine letters), of "" bij een fout.
+Sha256(Bestand) {
+    static PROV_RSA_AES := 24, CALG_SHA_256 := 0x800C, CRYPT_VERIFYCONTEXT := 0xF0000000
+    try f := FileOpen(Bestand, "r")
+    catch
+        return ""
+    if !f
+        return ""
+    hProv := 0, hHash := 0, Uit := ""
+    if DllCall("advapi32\CryptAcquireContext", "Ptr*", &hProv, "Ptr", 0, "Ptr", 0, "UInt", PROV_RSA_AES, "UInt", CRYPT_VERIFYCONTEXT) {
+        if DllCall("advapi32\CryptCreateHash", "Ptr", hProv, "UInt", CALG_SHA_256, "Ptr", 0, "UInt", 0, "Ptr*", &hHash) {
+            Buf := Buffer(65536)
+            Ok := true
+            while Ok && !f.AtEOF {
+                n := f.RawRead(Buf, Buf.Size)
+                Ok := DllCall("advapi32\CryptHashData", "Ptr", hHash, "Ptr", Buf, "UInt", n, "UInt", 0)
+            }
+            Lengte := 32
+            H := Buffer(32, 0)
+            if Ok && DllCall("advapi32\CryptGetHashParam", "Ptr", hHash, "UInt", 2, "Ptr", H, "UInt*", &Lengte, "UInt", 0)
+                loop 32
+                    Uit .= Format("{:02x}", NumGet(H, A_Index - 1, "UChar"))
+            DllCall("advapi32\CryptDestroyHash", "Ptr", hHash)
+        }
+        DllCall("advapi32\CryptReleaseContext", "Ptr", hProv, "UInt", 0)
+    }
+    f.Close()
+    return Uit
+}

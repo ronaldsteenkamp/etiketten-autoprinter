@@ -18,13 +18,15 @@ Eenmalig: klik op **Koppeling inschakelen** en start Pharmacom opnieuw
 
 ## Wat de app per patiënt doet
 
-1. Zoekt de patiënt op Pat.nr in de aanschrijfbuffer en selecteert hem (gecontroleerd).
+1. Zoekt de patiënt op Pat.nr in de aanschrijfbuffer en selecteert hem direct via de
+   koppeling (zoals een klik; lukt dat niet, dan met pijltjestoetsen) en controleert
+   de selectie.
 2. Ctrl+B (dossier) → F4 (medicatiehistorie) → pijl omhoog.
-3. Controleert dat het dossier van de juiste patiënt is (Pat.nr, of achternaam +
-   geboortedatum in het dossiervenster).
+3. Controleert dat het dossier van de juiste patiënt is (Pat.nr in het dossiervenster).
 4. Selecteert de **bovenste** regel met Ap = de ingelogde apotheek (rechtsonder in
    Pharmacom, bijv. `AN - RS - 183`) en, als die optie aan staat, Herhaal info
-   `ASB: Deelbaar`.
+   `ASB: Deelbaar`. Ook die regel wordt direct via de koppeling geselecteerd en in
+   beide helften van de medicatiehistorie gecontroleerd.
 5. Ctrl+P → wacht tot het afdrukmenu in het dossier zichtbaar is → kiest
    **Barcode etiket** (Alt+B) → wacht tot het menu dicht is → Escape, en wacht tot
    de aanschrijfbuffer terug is.
@@ -55,16 +57,22 @@ De sneltoets leest de app zelf uit Pharmacom.
 
 | Map / bestand | Inhoud |
 |---|---|
-| `Etiketten_autoprinter.ahk` | Broncode (AutoHotkey v1) |
+| `Etiketten_autoprinter.ahk` | Hoofdbestand (AutoHotkey v2): start de app en voegt de modules samen |
+| `src\Jab.ahk` | Java Access Bridge: Pharmacom uitlezen, tabellen, menu's, regels selecteren |
+| `src\Pharmacom.ahk` | De stappen in Pharmacom (verbinden, selecteren, dossier controleren, printen, terugzetten) |
+| `src\Ronde.ahk` | De patiëntenlijst en de printronde |
+| `src\Venster.ahk` | Het venster (WebView2), knoppen, dialogen, instellingen, diagnose |
+| `src\Opslag.ahk`, `src\Instellingen.ahk`, `src\Invoer.ahk`, `src\Update.ahk`, `src\Hulp.ahk` | Log/register/rapporten, ini, toetsenbord blokkeren, updates, hulpfuncties |
+| `src\lib\` | WebView2-bibliotheek van thqby (MIT-licentie) met de 32-bit WebView2Loader.dll |
 | `Etiketten_autoprinter.exe` | De app (32-bit, moet 32-bit blijven: Pharmacom draait op 32-bit Java) |
 | `Etiketten_autoprinter.ico` | Pictogram |
-| `ui\venster.html`, `ui\icoon.png` | De interface (HTML/CSS in de ingebouwde browser van Windows); wordt in de .exe meegenomen, dus na een wijziging opnieuw compileren |
+| `ui\venster.html`, `ui\icoon.png` | De interface (HTML/CSS in WebView2, de Edge-browser van Windows); wordt in de .exe meegenomen, dus na een wijziging opnieuw compileren |
 | `Etiketten_autoprinter.ini` | Instellingen (opties, wachttijden, updatemap) |
 | `Gegevens\` | Logbestand (alleen Pat.nr's) en `Geprint\<datum>.txt` (wie vandaag geprint is) |
 | `Rapporten\` | Een CSV-rapport per ronde (opent in Excel) |
 | `Hulpmiddelen\maak_icoon.ps1` | Maakt het pictogram opnieuw |
 | `Hulpmiddelen\jab_tabellen_tonen.ps1` | Toont welke tabellen/kolommen Pharmacom laat zien (voor onderhoud) |
-| `Archief\` | Oude versie (v4) |
+| `Archief\` | Oude versies (v4, v5.7.2 en de AutoHotkey v1-broncode van v5.8.0) |
 
 ## Bewaartermijnen
 
@@ -78,10 +86,14 @@ Bij het starten ruimt de app oude bestanden op (op basis van de wijzigingsdatum)
 
 ## Compileren
 
+Nodig: AutoHotkey **v2** (32-bit) en Ahk2Exe 1.1.37 of nieuwer.
+
 ```
-Ahk2Exe.exe /in "Etiketten_autoprinter.ahk" /out "Etiketten_autoprinter.exe"
+Ahk2Exe.exe /in "Etiketten_autoprinter.ahk" /out "Etiketten_autoprinter.exe" /base "<map van AutoHotkey v2>\AutoHotkey32.exe"
 ```
-Gebruik een 32-bit base (Unicode 32-bit) en Ahk2Exe 1.1.34 of nieuwer.
+Gebruik altijd de **32-bit** base (`AutoHotkey32.exe`): Pharmacom draait op 32-bit Java.
+De pagina, het pictogram en de WebView2Loader.dll worden in de .exe meegenomen.
+De app heeft de WebView2 Runtime nodig; die zit standaard in Windows 10/11.
 
 Het versienummer staat alleen in `AppVersie := "..."`; Ahk2Exe neemt het via de
 `;@Ahk2Exe-Let`-regel daaronder over in de .exe. Controleer na het compileren de
