@@ -233,6 +233,11 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
 .pinfo { color: #407c05; font-size: 12px; margin-top: 4px; }
 .pnaam { font-size: 13px; font-weight: 600; color: #0f172a; }
 .popm { font-size: 12px; color: #475569; font-style: italic; margin-top: 3px; }
+.pst { font-weight: 600; }
+.pst.ok { color: #15803d; }
+.pst.mislukt { color: #b91c1c; }
+.pst.gemist { color: #c2410c; }
+.pst.geannuleerd { color: #64748b; }
 .pinfo:empty { display: none; }
 .pvolg { display: flex; flex-direction: column; margin: -2px 8px 0 -6px; }
 .pvolg span { width: 20px; height: 17px; display: flex; align-items: center; justify-content: center; color: #94a3b8; cursor: pointer; border-radius: 4px; }
@@ -546,7 +551,9 @@ var OptieTekst = [
     { k: "geluid", titel: "Geluid als een ronde klaar is of stopt",
       uitleg: "<b>Aan:</b> je hoort een geluidje als alle etiketten geprint zijn, of een waarschuwingsgeluid als de app gestopt is. Het venster komt dan ook weer naar voren en knippert in de taakbalk.<br><b>Uit:</b> alleen het venster en de melding, zonder geluid." },
     { k: "bovenop", titel: "Venster altijd bovenop",
-      uitleg: "<b>Aan:</b> dit venster blijft altijd zichtbaar boven Pharmacom.<br><b>Uit:</b> het venster kan achter Pharmacom verdwijnen; terughalen via de taakbalk of het icoon bij de klok." }
+      uitleg: "<b>Aan:</b> dit venster blijft altijd zichtbaar boven Pharmacom.<br><b>Uit:</b> het venster kan achter Pharmacom verdwijnen; terughalen via de taakbalk of het icoon bij de klok." },
+    { k: "autostart", titel: "Starten met Windows",
+      uitleg: "<b>Aan:</b> de app start vanzelf als je je aanmeldt bij Windows. Nodig als je de <b>planning</b> gebruikt: die werkt alleen als de app draait.<br><b>Uit:</b> je start de app zelf." }
 ];
 var Inst = null;
 function toonInstellingen(d) {
@@ -626,7 +633,7 @@ function toonPlanning(d) {
              '<div class="ouitleg">Afdeling <b>' + esc(it.afdeling) + '</b>' + (it.instelling ? ' (' + esc(it.instelling) + ')' : '') +
              ' &middot; ' + dagenTekst(it.dagen) + ' om <b>' + esc(it.tijd) + '</b> &middot; ' + wekenTekst(it.weken) + '<br>' +
              (it.hier == "1" ? 'Op deze computer' : 'Op computer ' + esc(it.computer) + ' &middot; <span class="klein" style="margin:0" onclick="stuur(\'plan/hier?id=' + it.id + '\')">hier uitvoeren</span>') +
-             (it.laatst ? ' &middot; laatst ' + esc(it.laatst) : '') + '</div>' +
+             (it.status ? ' &middot; <span class="pst ' + esc(it.status.soort) + '">' + esc(it.status.tekst) + '</span>' : (it.laatst ? ' &middot; laatst ' + esc(it.laatst) : '')) + '</div>' +
              (it.opmerking ? '<div class="popm">' + esc(it.opmerking) + '</div>' : '') + '</div>' +
              '<div class="pknoppen">' +
              '<span class="pk" title="Nu als proefronde uitvoeren (niets printen)" onclick="stuur(\'plan/proef?id=' + it.id + '\')">' + I("flask-conical") + '</span>' +

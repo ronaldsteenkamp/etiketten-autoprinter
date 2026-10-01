@@ -7,6 +7,28 @@
 ; af; beperk de schrijfrechten op de updatemap tegen kwaadwillenden).
 ; =====================================================================
 
+; Starten met Windows: snelkoppeling in de map Opstarten van de gebruiker
+class Opstart {
+    static Snelkoppeling => A_Startup "\Etiketten autoprinter.lnk"
+
+    static Aan() => FileExist(this.Snelkoppeling) != ""
+
+    static Zet(Aan) {
+        if Aan {
+            if !A_IsCompiled
+                return Venster.Melding("Starten met Windows", "Dit kan alleen vanuit de gecompileerde .exe.", "waarschuwing")
+            try {
+                FileCreateShortcut A_ScriptFullPath, this.Snelkoppeling, A_ScriptDir, , "Etiketten printen vanuit de aanschrijfbuffer van Pharmacom"
+                Log("Starten met Windows: aan (" A_ScriptFullPath ")")
+            } catch as e
+                Venster.Melding("Starten met Windows", "De snelkoppeling kon niet gemaakt worden: " e.Message, "fout")
+        } else {
+            try FileDelete this.Snelkoppeling
+            Log("Starten met Windows: uit")
+        }
+    }
+}
+
 class Update {
     static ExeNaam := "Etiketten_autoprinter.exe"
 

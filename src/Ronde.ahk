@@ -16,6 +16,7 @@ class Ronde {
 
     static Bezig := false, Stoppen := false, StopReden := ""
     static Gekozen := false          ; item in het afdrukmenu gekozen (telt als geprint)
+    static Huidig := ""              ; patiënt die nu aan de beurt is (voor het vangnet)
     static Aantal := 0, Verwerkt := 0, Geprint := 0, Overgeslagen := 0, Start := 0
 
     ; Legt de reden van een stop vast (de eerste telt). Geeft {stop: true}
@@ -252,6 +253,7 @@ class Ronde {
         for i, r in Doelen {
             p := this.Patienten[r]
             p.geprintNu := false
+            this.Huidig := p, this.Gekozen := false
             Venster.Rij(r, "bezig", "Bezig" Teken.Ellips)
             Venster.Status("bezig", (Proef ? "Proef " Teken.Mid " " : "") "Pati" Teken.EUml "nt " i " van " n ": " p.naam "  " Teken.Mid "  Esc = stoppen")
             Log("Pat.nr " p.patnr ":")
@@ -300,6 +302,7 @@ class Ronde {
             Venster.Tellers()
         }
 
+        this.Huidig := ""
         ; --- Afronden ---
         ; Na een stop of fout: Pharmacom netjes terugzetten op de
         ; aanschrijfbuffer (dossier dicht), zodat Doorgaan meteen werkt. Niet
@@ -384,6 +387,10 @@ class Ronde {
         if !Dossier
             return this.Fout("het pati" Teken.EUml "ntdossier verscheen niet")
         Log("  dossier geopend")
+        ; Alleen voor tests van het vangnet: [Test] Fout=dossier in de ini laat
+        ; een proefronde hier een fout gooien (nooit bij echt printen)
+        if this.Proef && Inst.Lees1("Test", "Fout", "") = "dossier"
+            throw Error("testfout voor het vangnet (alleen in een proefronde)")
         Ph.Wacht(Inst.Wt["SleepNaCtrlB"])
 
         Venster.Sub("Medicatiehistorie openen" Teken.Ellips)

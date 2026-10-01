@@ -45,7 +45,7 @@ A_MaxHotkeysPerInterval := 1000
 global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
-global AppVersie := "6.5.3"
+global AppVersie := "6.6.0"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -65,6 +65,7 @@ global AppVersie := "6.5.3"
 #Include src\lib\WebView2
 #Include WebView2.ahk
 
+OnError Vangnet
 Inst.Lees()
 Opslag.Init()
 MaakTray()
@@ -127,6 +128,59 @@ Bewaking() {
     } catch as e
         Log("Fout in bewaking: " e.Message " (" e.What ", regel " e.Line ")")
     Bezig := false
+}
+
+; Vangnet voor onverwachte fouten. Zonder dit verschijnt het foutvenster van
+; AutoHotkey terwijl toetsenbord en muis misschien nog geblokkeerd zijn. Nu:
+; blokkade eraf, ronde netjes stoppen (een al gekozen etiket wordt als
+; geprint geregistreerd), Pharmacom terug naar de aanschrijfbuffer, fout in
+; het log en een duidelijke melding. De app blijft draaien.
+Vangnet(e, Modus) {
+    static BezigMetFout := false
+    if BezigMetFout
+        return 1
+    BezigMetFout := true
+    try Log("ONVERWACHTE FOUT: " e.Message " | " e.What " | regel " e.Line " | " e.Extra " | " e.File)
+    WasBezig := Ronde.Bezig
+    try Invoer.Blokkeer(false)
+    try Venster.GeenActivatie(false)
+    if WasBezig {
+        try SetTimer RondeTijd, 0
+        p := Ronde.Huidig
+        try {
+            if IsObject(p) && Ronde.Gekozen && !p.geprintNu {
+                ; Het item in het afdrukmenu was al gekozen: telt als geprint
+                Ronde.VandaagGeprint[p.patnr] := Opslag.Registreer(p.patnr)
+                p.geprintNu := true
+                Log("  Pat.nr " p.patnr ": etiket was al gekozen, als geprint geregistreerd")
+            }
+            if IsObject(p)
+                Opslag.Rapporteer(p, "", "Gestopt: onverwachte fout (" e.Message ")", Ronde.Apotheek)
+        }
+        Ronde.Bezig := false, Ronde.Stoppen := false, Ronde.Huidig := ""
+        Ronde.StopReden := "onverwachte fout"
+        try Ph.TerugNaarBuffer()
+        try {
+            Venster.Ui("bezig", 0)
+            Venster.ZetKnop("start", true)
+            Venster.ZetKnop("proef", true)
+            Venster.ZetKnop("vernieuwen", Ph.Verbonden)
+            Venster.ZetKnop("stop", false)
+            Venster.Voortgang("oranje")
+            Venster.KnopTekst("start", "Doorgaan")
+        }
+    }
+    Planning.Bezig := false
+    Tekst := "Er ging iets onverwachts mis" (WasBezig ? " tijdens het printen. De ronde is gestopt en toetsenbord en muis zijn weer vrij. Met Doorgaan ga je verder; wie al geprint is, wordt overgeslagen." : ".")
+        . "`n`nFout: " e.Message "`n(" e.What ", regel " e.Line ")"
+        . "`n`nDe app werkt gewoon verder. Gebeurt dit vaker, stuur dan het logbestand naar " AppMaker " (knop rechtsboven)."
+    try Venster.Status("fout", "Onverwachte fout: " e.Message)
+    try Venster.Geluid("gestopt")
+    try SetTimer () => Venster.Melding("Onverwachte fout", Tekst, "fout"), -100
+    catch
+        MsgBox Tekst, AppTitel, "Iconx"
+    BezigMetFout := false
+    return 1    ; geen standaard foutvenster; alleen deze taak stopt
 }
 
 ; Systeemvak (icoon rechtsonder bij de klok)

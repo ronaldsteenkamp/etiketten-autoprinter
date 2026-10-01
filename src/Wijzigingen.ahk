@@ -5,7 +5,10 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.5.3", ["Planning: kies je een andere instelling, dan wordt de afdeling leeggemaakt als die er niet bij hoort."]]
+        ["6.6.0", ["Veiliger: gaat er onverwacht iets mis, dan stopt de app de ronde netjes, maakt toetsenbord en muis vrij en meldt wat er gebeurde."
+            , "Instellingen: 'Starten met Windows', zodat de planning altijd draait."
+            , "Planning: per planning zie je of de laatste ronde gelukt, mislukt, geannuleerd of niet uitgevoerd is; gemiste rondes worden gemeld."]]
+        , ["6.5.3", ["Planning: kies je een andere instelling, dan wordt de afdeling leeggemaakt als die er niet bij hoort."]]
         , ["6.5.2", ["Planning: elke groep kan maar één keer gepland worden; al geplande afdelingen staan grijs in de lijst."
             , "Planning: de naam is altijd de naam van de groep."
             , "Planning: nieuw veld Opmerking."]]

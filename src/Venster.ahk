@@ -115,6 +115,7 @@ class Venster {
         o := {}
         for Naam in Inst.OptieSleutels
             o.%Naam% := Inst.Optie(Naam)
+        o.autostart := Opstart.Aan() ? 1 : 0
         this.Ui("opties", o)
     }
 
@@ -355,7 +356,10 @@ class Venster {
     }
 
     static ZetOptie(Naam, Aan) {
-        Inst.ZetOptie(Naam, Aan)
+        if Naam = "autostart"
+            Opstart.Zet(Aan)
+        else
+            Inst.ZetOptie(Naam, Aan)
         this.ZetBovenop()
         this.UiOpties()
         this.Hint()

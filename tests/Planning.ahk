@@ -49,4 +49,17 @@ T("Niet twee keer op een dag", !Planning.NuAan(It(), "20261001080500", "20261001
 T("Wel als gisteren gedraaid", Planning.NuAan(It(), "20261001080500", "202609300800"))
 T("Tijd 7:30 zonder voorloopnul", Planning.NuAan(It({tijd: "7:30"}), "20261001073200", ""))
 
+; --- Gemiste momenten ---
+Ma := It({dagen: "1", weken: "alle"})          ; elke maandag 08:00
+M := Planning.Momenten(Ma, "20261001000000", "20261013000000")
+T("Momenten: 2 maandagen", M.Length = 2 && M[1] = "20261005080000" && M[2] = "20261012080000")
+M := Planning.Momenten(It({dagen: "1", weken: "even"}), "20261001000000", "20261013000000")
+T("Momenten: alleen even week (12-10)", M.Length = 1 && M[1] = "20261012080000")
+T("Momenten: Van precies op het moment telt niet", Planning.Momenten(Ma, "20261005080000", "20261005090000").Length = 0)
+T("Momenten: Tot precies op het moment telt wel", Planning.Momenten(Ma, "20261005070000", "20261005080000").Length = 1)
+T("Gemist: beide maandagen", Planning.Gemist(Ma, "20261004120000", "20261012081500", "").Length = 2)
+T("Gemist: 5-10 wel gedraaid", Planning.Gemist(Ma, "20261004120000", "20261012081500", "202610050801").Length = 1)
+T("Gemist: niet als uitgezet", Planning.Gemist(It({dagen: "1", aan: 0}), "20261004120000", "20261012081500", "").Length = 0)
+T("Gemist: niet voor andere computer", Planning.Gemist(It({dagen: "1", computer: "ANDERE-PC"}), "20261004120000", "20261012081500", "").Length = 0)
+
 MsgBox Fouten ? Fouten " test(s) mislukt, zie " Uit : "Alle planningstests geslaagd.", "Planning", Fouten ? "Icon!" : "Iconi"

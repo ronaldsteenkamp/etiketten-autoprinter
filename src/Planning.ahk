@@ -137,6 +137,7 @@ class Planning {
             Inst.Schrijf(Integer(Id), this.Sectie, "_laatsteid")
         try IniDelete Inst.Bestand, this.Sectie, Id
         try IniDelete Inst.Bestand, "Planning gedraaid", A_ComputerName "-" Inst.Apotheek "-" Id
+        try IniDelete Inst.Bestand, "Planning status", A_ComputerName "-" Inst.Apotheek "-" Id
     }
 
     ; Nummers worden nooit hergebruikt (anders zou een nieuwe planning het
@@ -180,13 +181,95 @@ class Planning {
         return SubStr(Laatst, 1, 8) != SubStr(Nu, 1, 8)
     }
 
-    ; Elke 20 s
+    ; Geplande momenten (yyyyMMddHHmm00) van planning it na Van tot en met Tot
+    ; (dagen en even/oneven weken meegerekend; maximaal 31 dagen).
+    static Momenten(it, Van, Tot) {
+        Res := []
+        if !RegExMatch(it.tijd, "^(\d{1,2}):(\d{2})$", &T)
+            return Res
+        Dag := SubStr(Van, 1, 8) "000000"
+        loop 32 {
+            Moment := SubStr(Dag, 1, 8) Format("{:02}{:02}00", T[1], T[2])
+            if StrCompare(Moment, Van) > 0 && StrCompare(Moment, Tot) <= 0
+                && InStr(it.dagen, this.Weekdag(Moment)) && this.WeekKlopt(it.weken, Moment)
+                Res.Push(Moment)
+            Dag := DateAdd(Dag, 1, "Days")
+            if StrCompare(SubStr(Dag, 1, 8), SubStr(Tot, 1, 8)) > 0
+                break
+        }
+        return Res
+    }
+
+    ; Gemiste momenten van planning it tussen de vorige controle (Vorige) en
+    ; Tot: het moment is voorbij (incl. de 15 minuten waarin hij nog start) en
+    ; de planning heeft die dag niet gedraaid (Laatst, yyyyMMddHHmm).
+    static Gemist(it, Vorige, Tot, Laatst) {
+        Res := []
+        if !it.aan || it.computer != A_ComputerName
+            return Res
+        for m in this.Momenten(it, Vorige, Tot)
+            if StrCompare(SubStr(Laatst, 1, 8), SubStr(m, 1, 8)) < 0
+                Res.Push(m)
+        return Res
+    }
+
+    ; --- Status per planning (laatste uitkomst) --------------------------------
+    ; [Planning status] <computer>-<apotheek>-<id> = soort|yyyyMMddHHmm|tekst
+    ; soort: ok / mislukt / geannuleerd / gemist
+    static StatusSleutel(it) => A_ComputerName "-" Inst.Apotheek "-" it.id
+
+    static ZetStatus(it, Soort, Tekst := "", Tijd := "") {
+        Tijd := Tijd = "" ? A_Now : Tijd
+        Tekst := StrReplace(StrReplace(StrReplace(Tekst, "|", "/"), "`n", " "), "`r", "")
+        Inst.Schrijf(Soort "|" SubStr(Tijd, 1, 12) "|" Tekst, "Planning status", this.StatusSleutel(it))
+    }
+
+    static LeesStatus(it) {
+        d := StrSplit(Inst.Lees1("Planning status", this.StatusSleutel(it), ""), "|", , 3)
+        if d.Length < 2
+            return ""
+        return {soort: d[1], tijd: d[2], tekst: d.Length >= 3 ? d[3] : ""}
+    }
+
+    ; Elke 20 s: gemiste momenten melden, en starten wat nu aan de beurt is
     static Tik() {
-        if this.Bezig || Ronde.Bezig || Inst.Apotheek = ""
+        if Inst.Apotheek = ""
+            return
+        this.ControleerGemist()
+        if this.Bezig || Ronde.Bezig
             return
         for it in this.Lees()
             if this.NuAan(it)
                 return this.Voer(it)
+    }
+
+    ; Momenten die buiten het startvenster zijn geraakt zonder dat de planning
+    ; draaide (pc uit, app dicht, slaapstand, of een lange ronde). Elk moment
+    ; wordt één keer bekeken: tot en met Tot (= nu - 15 min) wordt onthouden.
+    static ControleerGemist(Nu := "") {
+        Nu := Nu = "" ? A_Now : Nu
+        Tot := DateAdd(Nu, -this.MaxMinuten, "Minutes")
+        Sleutel := A_ComputerName "-" Inst.Apotheek "-gecontroleerd"
+        Vorige := Inst.Lees1("Planning gedraaid", Sleutel, "")
+        Week := DateAdd(Nu, -7, "Days")
+        if Vorige = "" || StrCompare(Vorige, Week) < 0
+            Vorige := Vorige = "" ? Tot : Week
+        if StrCompare(Vorige, Tot) >= 0
+            return
+        Inst.Schrijf(Tot, "Planning gedraaid", Sleutel)
+        Regels := ""
+        for it in this.Lees() {
+            for m in this.Gemist(it, Vorige, Tot, this.LaatstGedraaid(it)) {
+                this.ZetStatus(it, "gemist", "", m)
+                Regels .= Teken.Punt " " it.naam ": " FormatTime(m, "ddd d-M HH:mm") "`n"
+                Log("Planning gemist: '" it.naam "' van " FormatTime(m, "d-M HH:mm"))
+            }
+        }
+        if Regels = ""
+            return
+        TrayTip "Er zijn geplande rondes niet uitgevoerd. Zie de planning.", AppTitel, 2
+        Tekst := "Deze geplande rondes zijn niet uitgevoerd (de app draaide niet, de computer stond uit of sliep, of er liep al een ronde):`n`n" Regels "`nPrint deze groepen zo nodig met de hand, of gebruik in de planning het driehoekje (nu uitvoeren)."
+        SetTimer () => Venster.Melding("Planning niet uitgevoerd", Tekst, "waarschuwing"), -300
     }
 
     ; --- Uitvoeren ------------------------------------------------------------
@@ -196,8 +279,10 @@ class Planning {
             if !Proef
                 this.ZetGedraaid(it)
             Log("Geplande ronde '" it.naam "' (" it.instelling " / " it.afdeling ")" (Proef ? " als proefronde" : Handmatig ? " handmatig gestart" : ""))
+            Status := (Soort, Tekst := "") => Proef ? 0 : this.ZetStatus(it, Soort, Tekst)
             if Venster.Verbind() != "ok" {
                 Log("  Pharmacom niet bereikbaar, ronde overgeslagen")
+                Status("mislukt", "Pharmacom was niet open")
                 TrayTip "Geplande ronde '" it.naam "' overgeslagen: Pharmacom is niet open.", AppTitel, 2
                 return
             }
@@ -207,6 +292,7 @@ class Planning {
                     , knoppen: [{t: "Annuleren", v: "0"}, {t: "Nu starten", v: "1", hoofd: 1}]}, 30000, "1")
                 if Keuze != "1" {
                     Log("  geannuleerd door gebruiker")
+                    Status("geannuleerd")
                     Venster.Status("idle", "Geplande ronde '" it.naam "' geannuleerd.")
                     return
                 }
@@ -215,15 +301,21 @@ class Planning {
             Res := Ph.ZetGroep(it.instelling, it.afdeling)
             if Res != "" {
                 Log("  groep zoeken mislukt: " Res)
+                Status("mislukt", Res)
                 Venster.Status("fout", "Geplande ronde '" it.naam "' niet gestart: " Res)
                 TrayTip "Geplande ronde '" it.naam "' niet gestart: " Res, AppTitel, 2
                 Venster.Geluid("gestopt")
                 return
             }
             Ronde.Vernieuw(false, true)
-            Ronde.StartRun(Proef, it.naam)
+            if Ronde.StartRun(Proef, it.naam)
+                Status("ok", Ronde.Geprint " geprint, " Ronde.Overgeslagen " overgeslagen")
+            else
+                Status("mislukt", Ronde.StopReden != "" ? Ronde.StopReden : "de ronde is niet afgerond")
         } catch as e {
             Log("  fout in geplande ronde: " e.Message " (" e.What ", regel " e.Line ")")
+            if !Proef
+                this.ZetStatus(it, "mislukt", "onverwachte fout: " e.Message)
         } finally
             this.Bezig := false
     }
@@ -234,10 +326,25 @@ class Planning {
         for it in this.Lees()
             Items.Push({id: it.id, aan: it.aan, naam: it.naam, instelling: it.instelling, afdeling: it.afdeling
                 , dagen: it.dagen, tijd: it.tijd, weken: it.weken, computer: it.computer, opmerking: it.opmerking
-                , hier: it.computer = A_ComputerName ? 1 : 0, laatst: this.LaatstTekst(it)})
+                , hier: it.computer = A_ComputerName ? 1 : 0, laatst: this.LaatstTekst(it), status: this.StatusVoorPagina(it)})
         Wk := this.WeekNr()
         Venster.Ui("planning", {items: Items, apotheek: Inst.Apotheek, computer: A_ComputerName
             , week: Wk, even: Mod(Wk, 2) = 0 ? 1 : 0, groepen: Groepen.VoorPagina()})
+    }
+
+    ; {soort, tekst} voor de lijst, of "" als er nog niets bekend is
+    static StatusVoorPagina(it) {
+        s := this.LeesStatus(it)
+        if !s || StrLen(s.tijd) < 12
+            return ""
+        Wanneer := FormatTime(s.tijd "00", "ddd d-M HH:mm")
+        switch s.soort {
+            case "ok": return {soort: "ok", tekst: "gelukt " Wanneer (s.tekst != "" ? " (" s.tekst ")" : "")}
+            case "mislukt": return {soort: "mislukt", tekst: "mislukt " Wanneer (s.tekst != "" ? ": " s.tekst : "")}
+            case "geannuleerd": return {soort: "geannuleerd", tekst: "geannuleerd " Wanneer}
+            case "gemist": return {soort: "gemist", tekst: "niet uitgevoerd " Wanneer}
+        }
+        return ""
     }
 
     static LaatstTekst(it) {

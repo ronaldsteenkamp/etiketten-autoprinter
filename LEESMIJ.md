@@ -52,6 +52,12 @@ dagen, tijd en elke week / even weken / oneven weken (ISO-weeknummer).
   meer dan één computer dezelfde groep); met "hier uitvoeren" verplaats je hem.
 - Per regel: kolfje = nu als proefronde (niets printen), driehoekje = nu uitvoeren.
 - De planning staat per apotheek in de ini (`[Planning AN]`).
+- Elke regel toont hoe de laatste keer afliep: *gelukt*, *mislukt*, *geannuleerd*
+  of *niet uitgevoerd* (`[Planning status]`). Was de app uit of Pharmacom dicht
+  op een gepland moment, dan meldt de app dat bij de volgende start (tot 7 dagen
+  terug), met een melding en bij het icoon bij de klok.
+- Zet **Starten met Windows** aan (Instellingen) als je de planning gebruikt:
+  de app maakt dan een snelkoppeling in de map Opstarten van Windows.
 
 ## Sneltoetsen
 
@@ -97,8 +103,16 @@ te kiezen; die patiënt telt dan als *niet* geprint.
 
 Stopt de app door een fout, dan zet hij Pharmacom zelf terug op de
 aanschrijfbuffer (Escape voor het afdrukmenu en het dossier), zodat **Doorgaan**
-meteen werkt. Stop je zelf (Esc/Stop), of is Pharmacom niet het actieve venster,
-dan laat hij alles staan.
+meteen werkt. Dat doet hij ook als je zelf stopt (Esc/Stop); alleen als
+Pharmacom niet meer het actieve venster is, laat hij alles staan.
+
+**Vangnet:** gaat er iets onverwachts mis in de app zelf (een programmafout),
+dan haalt de app eerst de blokkade van toetsenbord en muis eraf, stopt de ronde,
+zet Pharmacom terug op de aanschrijfbuffer, schrijft de fout in het log
+(`ONVERWACHTE FOUT`) en toont een melding. Was het etiket al gekozen, dan telt
+die patiënt als geprint. De app blijft draaien; met **Doorgaan** ga je verder.
+Testen kan alleen in een proefronde: zet in de ini `[Test]` `Fout=dossier`
+(daarna weer weghalen).
 
 Of er echt een etiket uit de printer kwam, kan de app niet controleren: de
 etikettenprinters (STAR/Zebra) worden via de Pharmacom-server aangestuurd, niet
