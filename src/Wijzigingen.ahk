@@ -5,7 +5,8 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.5.2", ["Planning: elke groep kan maar één keer gepland worden; al geplande afdelingen staan grijs in de lijst."
+        ["6.5.3", ["Planning: kies je een andere instelling, dan wordt de afdeling leeggemaakt als die er niet bij hoort."]]
+        , ["6.5.2", ["Planning: elke groep kan maar één keer gepland worden; al geplande afdelingen staan grijs in de lijst."
             , "Planning: de naam is altijd de naam van de groep."
             , "Planning: nieuw veld Opmerking."]]
         , ["6.5.1", ["Planning: regels slepen om de volgorde te veranderen."

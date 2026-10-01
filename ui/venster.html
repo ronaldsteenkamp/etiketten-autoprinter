@@ -689,9 +689,9 @@ function toonPlanForm(i) {
     h += '<div class="prij"><span class="lbl">Opmerking</span><input class="veld" id="p-opm" maxlength="80" placeholder="optioneel, bijv. alleen bij voldoende voorraad" value="' + esc(it.opmerking || "") + '"></div>';
     h += '<div class="sectie">Groep</div>';
     h += '<div class="uitleg">Typ de code of kies hem uit de lijst.</div>';
-    h += '<div class="prij"><span class="lbl">Instelling</span><input class="veld kort" id="p-inst" value="' + esc(it.instelling) + '" placeholder="T1" oninput="instGetypt()">' +
+    h += '<div class="prij"><span class="lbl">Instelling</span><input class="veld kort" id="p-inst" value="' + esc(it.instelling) + '" placeholder="code" oninput="instGetypt()">' +
          '<select class="veld" id="p-inst-kies" style="margin-left:8px" onchange="instGekozen()"></select></div>';
-    h += '<div class="prij"><span class="lbl">Afdeling</span><input class="veld kort" id="p-afd" value="' + esc(it.afdeling) + '" placeholder="T1GUA" oninput="afdGetypt()">' +
+    h += '<div class="prij"><span class="lbl">Afdeling</span><input class="veld kort" id="p-afd" value="' + esc(it.afdeling) + '" placeholder="code" oninput="afdGetypt()">' +
          '<select class="veld" id="p-afd-kies" style="margin-left:8px" onchange="afdGekozen()"></select></div>';
     h += '<div style="margin:2px 0 0 92px"><span class="klein" title="Leest alle instellingen en afdelingen uit Pharmacom (duurt even; je eigen groep wordt daarna teruggezet)" onclick="stuur(\'plan/ophalen\')"><span class="ico">' + I("refresh-cw") + '</span>Alle groepen ophalen</span></div>';
     h += '<div class="pinfo" id="p-info"></div><div class="pfout" id="p-fout"></div>';
@@ -757,9 +757,15 @@ function vulAfdKeuze() {
     $("p-afd-kies").innerHTML = opties(lijst, $("p-afd").value, lijst.length ? "— kies een afdeling —" : ($("p-inst").value ? "— geen afdelingen bekend —" : "— kies eerst een instelling —"), $("p-inst").value);
     naamBijwerken();
 }
-function instGetypt() { $("p-inst").value = $("p-inst").value.toUpperCase(); vulInstKeuze(); }
+// Andere instelling: een afdeling die daar niet bij hoort, wordt leeggemaakt
+function afdBijInstelling() {
+    var lijst = groepen().afd[$("p-inst").value] || [], afd = $("p-afd").value;
+    for (var i = 0; i < lijst.length; i++) if (lijst[i].c == afd) return;
+    $("p-afd").value = "";
+}
+function instGetypt() { $("p-inst").value = $("p-inst").value.toUpperCase(); afdBijInstelling(); vulInstKeuze(); }
 function afdGetypt() { $("p-afd").value = $("p-afd").value.toUpperCase(); vulAfdKeuze(); }
-function instGekozen() { var v = $("p-inst-kies").value; if (v) { $("p-inst").value = v; vulAfdKeuze(); } }
+function instGekozen() { var v = $("p-inst-kies").value; if (v) { $("p-inst").value = v; afdBijInstelling(); vulAfdKeuze(); } }
 function afdGekozen() {
     var v = $("p-afd-kies").value;
     if (v) $("p-afd").value = v;
