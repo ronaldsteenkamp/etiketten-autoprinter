@@ -1,0 +1,77 @@
+# Etiketten autoprinter voor Pharmacom
+
+Print automatisch etiketten voor alle patiënten in de aanschrijfbuffer van
+Pharmacom die geen ontslagdatum hebben.
+
+## Gebruik
+
+1. Open Pharmacom op het scherm **Aanschrijfbuffer**.
+2. Start `Etiketten_autoprinter.exe`. De lijst vult zich vanzelf en wordt bijgewerkt
+   als de aanschrijfbuffer verandert.
+3. Haal eventueel vinkjes weg bij patiënten die je niet wilt printen.
+4. Klik op **Start printen**. Tijdens het printen zijn toetsenbord en muis
+   geblokkeerd; **Esc** stopt direct.
+5. Gestopt? Klik op **Doorgaan**: wie al geprint is, wordt overgeslagen.
+
+Eenmalig: klik op **Koppeling inschakelen** en start Pharmacom opnieuw
+(dit zet de Java Access Bridge aan, waarmee de app Pharmacom kan uitlezen).
+
+## Wat de app per patiënt doet
+
+1. Zoekt de patiënt op Pat.nr in de aanschrijfbuffer en selecteert hem (gecontroleerd).
+2. Ctrl+B (dossier) → F4 (medicatiehistorie) → pijl omhoog.
+3. Controleert dat het dossier van de juiste patiënt is (Pat.nr, of achternaam +
+   geboortedatum in het dossiervenster).
+4. Selecteert de **bovenste** regel met Ap = de ingelogde apotheek (rechtsonder in
+   Pharmacom, bijv. `AN - RS - 183`) en, als die optie aan staat, Herhaal info
+   `ASB: Deelbaar`.
+5. Ctrl+P → wacht op het printvenster → Alt+B → Escape, en wacht tot de
+   aanschrijfbuffer terug is.
+
+Klopt iets niet (selectie, scherm, dossier, actief venster), dan stopt de app.
+Hij gokt nooit. Verschijnt het printvenster niet binnen `MaxWachtPrint` ms
+(minimaal 1000, standaard 3000), dan stopt de app zonder Alt+B te sturen; die
+patiënt telt dan als *niet* geprint.
+
+## Mappen
+
+| Map / bestand | Inhoud |
+|---|---|
+| `Etiketten_autoprinter.ahk` | Broncode (AutoHotkey v1) |
+| `Etiketten_autoprinter.exe` | De app (32-bit, moet 32-bit blijven: Pharmacom draait op 32-bit Java) |
+| `Etiketten_autoprinter.ico` | Pictogram |
+| `ui\venster.html`, `ui\icoon.png` | De interface (HTML/CSS in de ingebouwde browser van Windows); wordt in de .exe meegenomen, dus na een wijziging opnieuw compileren |
+| `Etiketten_autoprinter.ini` | Instellingen (opties, wachttijden, updatemap) |
+| `Gegevens\` | Logbestand (alleen Pat.nr's) en `Geprint\<datum>.txt` (wie vandaag geprint is) |
+| `Rapporten\` | Een CSV-rapport per ronde (opent in Excel) |
+| `Hulpmiddelen\maak_icoon.ps1` | Maakt het pictogram opnieuw |
+| `Hulpmiddelen\jab_tabellen_tonen.ps1` | Toont welke tabellen/kolommen Pharmacom laat zien (voor onderhoud) |
+| `Archief\` | Oude versie (v4) |
+
+## Bewaartermijnen
+
+Bij het starten ruimt de app oude bestanden op (op basis van de wijzigingsdatum):
+
+| Wat | Termijn | Instelling in de ini (`[Opslag]`) |
+|---|---|---|
+| Logbestanden | 30 dagen | — |
+| Rapporten (bevatten naam en geboortedatum) | 90 dagen | `RapportDagen=90` |
+| Register `Geprint\<datum>.txt` | 7 dagen | `RegisterDagen=7` |
+
+## Compileren
+
+```
+Ahk2Exe.exe /in "Etiketten_autoprinter.ahk" /out "Etiketten_autoprinter.exe"
+```
+Gebruik een 32-bit base (Unicode 32-bit) en Ahk2Exe 1.1.34 of nieuwer.
+
+Het versienummer staat alleen in `AppVersie := "..."`; Ahk2Exe neemt het via de
+`;@Ahk2Exe-Let`-regel daaronder over in de .exe. Controleer na het compileren de
+versie (rechtsklik op de .exe → Eigenschappen → Details): de update-functie
+vergelijkt die versie.
+
+## Updates voor meerdere computers
+
+Stel onder **Instellingen → Updates** een (netwerk)map in. Met *Deze versie in de
+updatemap zetten* publiceer je de huidige versie; andere computers krijgen bij het
+starten de vraag of ze willen bijwerken.

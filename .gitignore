@@ -1,0 +1,9 @@
+# Patiëntgegevens en logs nooit in versiebeheer
+Gegevens/
+Rapporten/
+
+# Lokale instellingen per computer
+Etiketten_autoprinter.ini
+
+# Gecompileerde versies
+*.exe

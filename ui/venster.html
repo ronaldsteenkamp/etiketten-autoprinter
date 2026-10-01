@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta charset="utf-8">
+<title>Etiketten autoprinter</title>
+<style>
+/* =====================================================================
+   Etiketten autoprinter - interface
+   Draait in de ingebouwde browser van Windows (IE11-engine): alleen CSS/JS
+   gebruiken die IE11 kent (geen var(), geen => en geen template strings).
+   Compact gehouden (540 x 702) zodat het venster rechtsonder past zonder
+   de zoekcriteria van Pharmacom te bedekken.
+   ===================================================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body {
+    font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
+    font-size: 13px; color: #0f172a; background: #eef2f7;
+    -ms-user-select: none; cursor: default;
+}
+.ico { font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets"; font-style: normal; font-weight: normal; line-height: 1; }
+.num { font-feature-settings: "tnum"; }
+.dun { scrollbar-face-color: #cbd5e1; scrollbar-track-color: #ffffff; scrollbar-arrow-color: #94a3b8;
+    scrollbar-shadow-color: #cbd5e1; scrollbar-highlight-color: #cbd5e1; scrollbar-3dlight-color: #ffffff; scrollbar-darkshadow-color: #ffffff; }
+
+/* --- Kopbalk --- */
+#kop {
+    height: 62px; padding: 0 10px 0 18px; position: relative;
+    background: #0f172a;
+    background: linear-gradient(120deg, #0b1224 0%, #172554 55%, #312e81 100%);
+    display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center;
+}
+#kop:after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+    background: linear-gradient(90deg, rgba(96,165,250,0), rgba(96,165,250,.7), rgba(129,140,248,0)); }
+#kop img { width: 36px; height: 36px; margin-right: 12px; }
+#kop .titel { color: #fff; font-family: "Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI"; font-weight: 600; font-size: 17px; letter-spacing: -.01em; }
+#kop .onder { color: #94a3b8; font-size: 11.5px; margin-top: 1px; }
+#kop .vul { -ms-flex: 1; flex: 1; }
+#kop .versie { color: #c7d2fe; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 20px; padding: 1px 9px; font-size: 10.5px; margin: 0 6px 0 4px; }
+.vknop { width: 32px; height: 30px; border-radius: 8px; color: #cbd5e1; font-size: 13px; text-align: center; line-height: 30px; cursor: pointer; }
+.vknop.klein { font-size: 10.5px; }
+.vknop:hover { background: rgba(255,255,255,.1); color: #fff; }
+.vknop.sluit:hover { background: #e11d48; color: #fff; }
+.scheid { width: 1px; height: 20px; background: rgba(255,255,255,.15); margin: 0 4px; }
+
+/* --- Inhoud --- */
+#inhoud { padding: 12px 16px 0 16px; }
+.kaart { background: #fff; border-radius: 12px; border: 1px solid #e3e8ef;
+    box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 16px -8px rgba(15,23,42,.10); }
+
+/* Status (met voortgang eronder tijdens het printen) */
+#status { padding: 12px 14px; position: relative; overflow: hidden; }
+#status .rij1 { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; }
+#status .balk { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #2563eb; transition: background .3s; }
+#status .rond { width: 40px; height: 40px; border-radius: 11px; margin-right: 12px; -ms-flex-negative: 0; flex-shrink: 0;
+    background: #eff6ff; color: #2563eb; font-size: 18px; text-align: center; line-height: 40px; transition: all .3s; }
+#status .tekst { -ms-flex: 1; flex: 1; min-width: 0; }
+#status .kop { font-family: "Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI"; font-weight: 600; font-size: 15px; transition: color .3s; }
+#status .sub { color: #64748b; font-size: 12px; margin-top: 1px; line-height: 1.4; max-height: 34px; overflow: hidden; }
+.pil { display: inline-block; white-space: nowrap; border-radius: 20px; padding: 3px 9px 3px 8px; font-size: 11px; font-weight: 600; margin-left: 10px; -ms-flex-item-align: start; align-self: flex-start; }
+.pil i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: currentColor; }
+.pil.ok   { background: #ecfdf5; color: #047857; }
+.pil.warn { background: #fff7ed; color: #c2410c; }
+.pil.err  { background: #fef2f2; color: #b91c1c; }
+.pil.off  { background: #f1f5f9; color: #64748b; }
+.fase-klaar .balk { background: #16a34a; } .fase-klaar .rond { background: #ecfdf5; color: #16a34a; } .fase-klaar .kop { color: #15803d; }
+.fase-gestopt .balk { background: #ea580c; } .fase-gestopt .rond { background: #fff7ed; color: #ea580c; } .fase-gestopt .kop { color: #c2410c; }
+.fase-fout .balk { background: #dc2626; } .fase-fout .rond { background: #fef2f2; color: #dc2626; } .fase-fout .kop { color: #b91c1c; }
+.fase-bezig .kop { color: #1d4ed8; }
+.fase-bezig .rond { animation: puls 1.6s ease-in-out infinite; }
+@keyframes puls { 0%,100% { box-shadow: 0 0 0 0 rgba(37,99,235,.35); } 50% { box-shadow: 0 0 0 8px rgba(37,99,235,0); } }
+#voortgang { display: none; margin: 10px 0 0 52px; }
+#voortgang.toon { display: block; }
+#spoor { height: 6px; border-radius: 6px; background: #eef2f7; overflow: hidden; }
+#vulling { height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, #3b82f6, #6366f1); transition: width .45s ease, background .3s; }
+#vulling.groen { background: linear-gradient(90deg, #22c55e, #16a34a); }
+#vulling.oranje { background: linear-gradient(90deg, #fb923c, #ea580c); }
+#vtekst { display: -ms-flexbox; display: flex; margin-top: 5px; font-size: 11.5px; color: #64748b; }
+#vtekst .vul { -ms-flex: 1; flex: 1; }
+
+/* Tegels */
+#tegels { display: -ms-flexbox; display: flex; margin: 10px -5px 0 -5px; }
+.tegel { -ms-flex: 1; flex: 1; margin: 0 5px; padding: 9px 12px; position: relative; }
+.tegel .chip { position: absolute; right: 10px; top: 10px; width: 24px; height: 24px; border-radius: 7px; text-align: center; line-height: 24px; font-size: 12px; }
+.tegel .getal { font-family: "Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI"; font-size: 24px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; }
+.tegel .label { color: #64748b; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; font-weight: 600; }
+.c-blauw { background: #eff6ff; color: #2563eb; } .c-indigo { background: #eef2ff; color: #4f46e5; }
+.c-grijs { background: #f1f5f9; color: #64748b; } .c-groen { background: #ecfdf5; color: #16a34a; }
+#t-ontslag .getal { color: #94a3b8; } #t-geprint .getal { color: #16a34a; }
+
+/* Lijst */
+#lijstkaart { margin-top: 10px; overflow: hidden; }
+#lijstkop { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; height: 34px; padding: 0 14px 0 12px;
+    border-bottom: 1px solid #eef2f7; background: #fafbfd; color: #64748b; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+#lijst { height: 290px; overflow-y: auto; transition: height .25s; }
+#lijst.kort { height: 250px; }
+.rij { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; height: 42px; padding: 0 14px 0 12px; border-bottom: 1px solid #f1f5f9; position: relative; transition: background .2s; }
+.rij:hover { background: #f8fafc; }
+.rij.actief { background: #eff6ff; }
+.rij.actief:before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 0 3px 3px 0; background: #2563eb; }
+.k-vink { width: 32px; -ms-flex-negative: 0; flex-shrink: 0; }
+.k-naam { -ms-flex: 1; flex: 1; min-width: 0; }
+.k-nr { width: 62px; -ms-flex-negative: 0; flex-shrink: 0; color: #64748b; }
+.k-status { width: 134px; -ms-flex-negative: 0; flex-shrink: 0; text-align: right; }
+.rij .naam { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rij .detail { font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.rij.uit .naam { color: #94a3b8; font-weight: 500; }
+.vink { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid #cbd5e1; background: #fff; color: #fff; font-size: 11px; text-align: center; line-height: 16px; cursor: pointer; transition: all .15s; }
+.vink:hover { border-color: #2563eb; }
+.vink.aan { background: #2563eb; border-color: #2563eb; }
+.vink.dicht { background: #f1f5f9; border-color: #e2e8f0; cursor: default; }
+.chip2 { display: inline-block; border-radius: 20px; padding: 3px 9px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.s-print { background: #eff6ff; color: #1d4ed8; }
+.s-al { background: #f0fdfa; color: #0f766e; }
+.s-ontslag, .s-skip { background: #f1f5f9; color: #64748b; }
+.s-controle { background: #fffbeb; color: #b45309; }
+.s-bezig { background: #2563eb; color: #fff; }
+.s-ok { background: #ecfdf5; color: #15803d; }
+.s-fout { background: #fef2f2; color: #b91c1c; }
+.s-bezig i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #fff; margin-right: 5px; vertical-align: 1px; animation: knipper 1s ease-in-out infinite; }
+@keyframes knipper { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+#leeg { text-align: center; color: #94a3b8; padding-top: 80px; font-size: 13px; }
+#leeg .ico { font-size: 26px; display: block; margin-bottom: 10px; color: #cbd5e1; }
+
+/* Knoppen */
+#knoppen { display: -ms-flexbox; display: flex; margin-top: 12px; }
+.knop { height: 44px; border-radius: 11px; font-size: 14px; font-weight: 600; text-align: center; line-height: 44px; cursor: pointer;
+    transition: transform .12s, box-shadow .2s, background .2s, opacity .2s; white-space: nowrap; }
+.knop .ico { font-size: 14px; margin-right: 9px; vertical-align: -2px; }
+.knop:active { transform: translateY(1px); }
+.knop.primair { -ms-flex: 1; flex: 1; margin: 0 10px; color: #fff;
+    background: linear-gradient(135deg, #3b82f6, #4f46e5); box-shadow: 0 6px 16px -6px rgba(79,70,229,.6); }
+.knop.primair:hover { box-shadow: 0 10px 22px -8px rgba(79,70,229,.75); background: linear-gradient(135deg, #2563eb, #4338ca); }
+.knop.oranje { -ms-flex: 1; flex: 1; margin: 0 10px; color: #fff; background: linear-gradient(135deg, #fb923c, #ea580c); box-shadow: 0 6px 16px -6px rgba(234,88,12,.6); }
+.knop.tweede { width: 122px; background: #fff; color: #0f172a; border: 1px solid #dfe5ee; line-height: 42px; box-shadow: 0 1px 2px rgba(15,23,42,.05); }
+.knop.tweede:hover { background: #f8fafc; border-color: #cbd5e1; }
+.knop.stop { width: 104px; background: #fff; color: #dc2626; border: 1px solid #fecaca; line-height: 42px; }
+.knop.stop.aan { background: #dc2626; color: #fff; border-color: #dc2626; box-shadow: 0 6px 16px -6px rgba(220,38,38,.6); }
+.knop.stop.aan:hover { background: #b91c1c; }
+.knop.uit { opacity: .42; cursor: default; box-shadow: none !important; transform: none !important; }
+.knop.weg { display: none; }
+#hint { text-align: center; color: #94a3b8; font-size: 11px; margin-top: 8px; }
+kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; background: #fff; border: 1px solid #d5dce6; border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; }
+/* Voetbalk met links */
+#voet { position: absolute; left: 0; right: 0; bottom: 0; height: 42px; background: #fff; border-top: 1px solid #e3e8ef;
+    display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; -ms-flex-pack: distribute; justify-content: space-around; padding: 0 10px; }
+.link { color: #475569; font-size: 12px; font-weight: 600; cursor: pointer; padding: 6px 10px; border-radius: 8px; transition: background .15s, color .15s; }
+.link .ico { font-size: 13px; margin-right: 7px; vertical-align: -2px; color: #64748b; }
+.link:hover { background: #eff6ff; color: #2563eb; }
+.link:hover .ico { color: #2563eb; }
+
+/* Dialoog */
+#scherm { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(15,23,42,.5); display: none; }
+#scherm.open { display: block; }
+#dialoog { position: absolute; left: 50%; top: 50%; width: 440px; margin-left: -220px; transform: translateY(-50%);
+    background: #fff; border-radius: 16px; box-shadow: 0 24px 64px -12px rgba(15,23,42,.45); padding: 22px; animation: op .18s ease-out; }
+@keyframes op { from { opacity: 0; margin-top: 12px; } to { opacity: 1; margin-top: 0; } }
+#dialoog .dkop { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; }
+#dialoog .drond { width: 40px; height: 40px; border-radius: 11px; text-align: center; line-height: 40px; font-size: 18px; margin-right: 13px; -ms-flex-negative: 0; flex-shrink: 0; }
+#dialoog .dtitel { font-family: "Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI"; font-size: 17px; font-weight: 600; }
+#dialoog .dtekst { margin-top: 14px; color: #475569; font-size: 13px; line-height: 1.55; white-space: pre-wrap; max-height: 380px; overflow-y: auto; -ms-user-select: text; cursor: text; }
+#dialoog .dknoppen { margin-top: 20px; text-align: right; }
+.dknop { display: inline-block; min-width: 100px; height: 36px; line-height: 34px; padding: 0 16px; border-radius: 10px; font-weight: 600; font-size: 13px; text-align: center; margin-left: 8px; cursor: pointer; border: 1px solid #dfe5ee; background: #fff; color: #0f172a; }
+.dknop:hover { background: #f8fafc; }
+.dknop.hoofd { background: #2563eb; border-color: #2563eb; color: #fff; }
+.dknop.hoofd:hover { background: #1d4ed8; }
+.d-vraag .drond { background: #eff6ff; color: #2563eb; }
+.d-info .drond { background: #ecfdf5; color: #16a34a; }
+.d-waarschuwing .drond { background: #fff7ed; color: #ea580c; }
+.d-fout .drond { background: #fef2f2; color: #dc2626; }
+.d-code .drond { background: #eef2ff; color: #4f46e5; }
+.d-code .dtekst { font-family: Consolas, monospace; font-size: 11.5px; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px; padding: 12px; }
+
+/* Instellingen-dialoog */
+#dialoog.breed { width: 504px; margin-left: -252px; padding: 20px 8px 18px 22px; }
+#dialoog.breed .dknoppen { padding-right: 14px; }
+#instinhoud { max-height: 500px; overflow-y: auto; padding-right: 12px; margin-top: 8px; }
+.sectie { color: #94a3b8; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin: 16px 0 6px 0; }
+.optie { display: -ms-flexbox; display: flex; -ms-flex-align: start; align-items: flex-start; padding: 10px 12px; border-radius: 10px; cursor: pointer; border: 1px solid #eef2f7; margin-bottom: 6px; transition: background .15s, border-color .15s; }
+.optie:hover { background: #f8fafc; border-color: #e2e8f0; }
+.optie .otekst { -ms-flex: 1; flex: 1; padding-right: 14px; }
+.optie .otitel { font-size: 13px; font-weight: 600; color: #0f172a; }
+.optie .ouitleg { font-size: 12px; color: #64748b; line-height: 1.45; margin-top: 3px; }
+.optie .ouitleg b { color: #334155; font-weight: 600; }
+.schakel { width: 36px; height: 20px; border-radius: 20px; background: #cbd5e1; position: relative; transition: background .2s; -ms-flex-negative: 0; flex-shrink: 0; margin-top: 2px; }
+.schakel:after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(15,23,42,.3); transition: left .2s; }
+.optie.aan .schakel { background: #2563eb; }
+.optie.aan .schakel:after { left: 18px; }
+.wtrij { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; min-height: 32px; padding: 2px 0; }
+.wtrij .lbl { -ms-flex: 1; flex: 1; color: #334155; font-size: 12.5px; }
+.wtrij .lbl small { display: block; color: #94a3b8; font-size: 11px; }
+.veld { height: 30px; border: 1px solid #d5dce6; border-radius: 8px; padding: 0 9px; font-family: inherit; font-size: 12.5px; color: #0f172a; background: #fff; -ms-user-select: text; }
+.veld:focus { border-color: #2563eb; outline: none; }
+.wtrij .veld { width: 76px; text-align: right; }
+.wtrij .ms { width: 26px; color: #94a3b8; font-size: 11.5px; padding-left: 6px; }
+.uitleg { color: #64748b; font-size: 12px; line-height: 1.45; }
+.klein { font-size: 12px; color: #2563eb; font-weight: 600; cursor: pointer; margin-right: 18px; }
+.klein:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div id="kop" data-sleep="1">
+    <img src="icoon.png" alt="" data-sleep="1">
+    <div data-sleep="1">
+        <div class="titel" data-sleep="1">Etiketten autoprinter</div>
+        <div class="onder" data-sleep="1">Pharmacom &middot; aanschrijfbuffer</div>
+    </div>
+    <div class="vul" data-sleep="1"></div>
+    <span class="versie" id="versie" data-sleep="1">v5</span>
+    <div class="scheid" data-sleep="1"></div>
+    <div class="vknop klein" title="Minimaliseren" onclick="stuur('venster/min')"><span class="ico">&#xE921;</span></div>
+    <div class="vknop klein sluit" title="Sluiten" onclick="stuur('venster/sluit')"><span class="ico">&#xE8BB;</span></div>
+</div>
+
+<div id="inhoud">
+    <div id="status" class="kaart fase-idle">
+        <div class="balk"></div>
+        <div class="rij1">
+            <div class="rond ico" id="s-ico">&#xE749;</div>
+            <div class="tekst">
+                <div class="kop" id="s-kop">Klaar voor start</div>
+                <div class="sub" id="s-sub">Verbinden met Pharmacom&hellip;</div>
+            </div>
+            <span class="pil off" id="verb"><i></i><span id="verb-t">Verbinden&hellip;</span></span>
+        </div>
+        <div id="voortgang">
+            <div id="spoor"><div id="vulling"></div></div>
+            <div id="vtekst"><span class="vul" id="v-links"></span><span id="v-rechts"></span></div>
+        </div>
+    </div>
+
+    <div id="tegels">
+        <div class="tegel kaart" id="t-totaal" title="Aantal pati&euml;nten in de aanschrijfbuffer"><div class="chip c-indigo ico">&#xE8A5;</div><div class="getal num" id="n-totaal">0</div><div class="label">In buffer</div></div>
+        <div class="tegel kaart" id="t-print" title="Aangevinkte pati&euml;nten die geprint worden"><div class="chip c-blauw ico">&#xE749;</div><div class="getal num" id="n-print">0</div><div class="label">Te printen</div></div>
+        <div class="tegel kaart" id="t-ontslag" title="Pati&euml;nten met een ontslagdatum: die worden nooit geprint"><div class="chip c-grijs ico">&#xE8BB;</div><div class="getal num" id="n-ontslag">0</div><div class="label">Ontslag</div></div>
+        <div class="tegel kaart" id="t-geprint" title="Pati&euml;nten in de buffer die vandaag al geprint zijn"><div class="chip c-groen ico">&#xE73E;</div><div class="getal num" id="n-geprint">0</div><div class="label">Geprint</div></div>
+    </div>
+
+    <div id="lijstkaart" class="kaart">
+        <div id="lijstkop">
+            <div class="k-vink"><div class="vink" id="allesvink" title="Alles aan/uit" onclick="stuur('alles')"></div></div>
+            <div class="k-naam">Pati&euml;nt</div>
+            <div class="k-nr">Pat.nr</div>
+            <div class="k-status">Status</div>
+        </div>
+        <div id="lijst" class="dun"><div id="leeg"><span class="ico">&#xE8A5;</span>Nog geen pati&euml;nten ingelezen</div></div>
+    </div>
+
+    <div id="knoppen">
+        <div class="knop tweede" id="b-vernieuwen" title="De aanschrijfbuffer opnieuw uitlezen" onclick="knop('vernieuwen')"><span class="ico">&#xE72C;</span>Vernieuwen</div>
+        <div class="knop primair" id="b-start" onclick="knop('start')"><span class="ico">&#xE768;</span><span class="t">Start printen</span></div>
+        <div class="knop oranje weg" id="b-koppel" onclick="knop('koppel')"><span class="ico">&#xE71B;</span>Koppeling inschakelen</div>
+        <div class="knop stop uit" id="b-stop" onclick="knop('stop')"><span class="ico">&#xE71A;</span>Stop</div>
+    </div>
+    <div id="hint"></div>
+</div>
+
+<div id="voet">
+    <span class="link" title="Opties, wachttijden en updates" onclick="stuur('link/instellingen')"><span class="ico">&#xE713;</span>Instellingen</span>
+    <span class="link" title="Overzicht per printronde (opent in Excel)" onclick="stuur('link/rapporten')"><span class="ico">&#xE8B7;</span>Rapporten</span>
+    <span class="link" title="Logbestand van vandaag" onclick="stuur('link/log')"><span class="ico">&#xE9F9;</span>Logbestand</span>
+    <span class="link" title="Wat ziet de app in Pharmacom?" onclick="stuur('link/diagnose')"><span class="ico">&#xE9D9;</span>Diagnose</span>
+</div>
+
+<div id="scherm"><div id="dialoog"></div></div>
+
+<script>
+// ---------------------------------------------------------------------
+// Communicatie: klikken gaan als "ahk:..." naar de app (die de navigatie
+// onderschept); de app roept api(opdracht, json) aan om iets te tonen.
+// ---------------------------------------------------------------------
+function stuur(a) { window.location.href = "ahk:" + a; }
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function zetKlasse(el, k, aan) { if (el) { if (aan) el.classList.add(k); else el.classList.remove(k); } }
+
+var Knoppen = { start: true, stop: false, vernieuwen: true, koppel: true };
+var Bezig = false;
+var Rijen = [];
+var Opties = {};
+function knop(n) { if (Knoppen[n]) stuur("knop/" + n); }
+function optie(n) { stuur("opt/" + n + "/" + (Opties[n] == "1" ? "0" : "1")); }
+
+// Venster verslepen via de kopbalk
+$("kop").onmousedown = function (e) {
+    e = e || window.event;
+    var t = e.target || e.srcElement;
+    if (t.getAttribute && t.getAttribute("data-sleep")) stuur("venster/slepen");
+};
+document.oncontextmenu = function () { return false; };
+document.onselectstart = function (e) { var t = (e || window.event).srcElement; return !!(t && (t.tagName == "INPUT" || (t.className && t.className.indexOf("dtekst") >= 0))); };
+
+var Chips = { print: "Klaar voor printen", al: "Al geprint", ontslag: "Ontslag", controle: "Controleren",
+              bezig: "Bezig", ok: "Geprint", skip: "Overgeslagen", fout: "Gestopt" };
+var StatusIco = { idle: "&#xE749;", bezig: "&#xE749;", klaar: "&#xE73E;", gestopt: "&#xE769;", fout: "&#xE7BA;" };
+var DialoogIco = { vraag: "&#xE9CE;", info: "&#xE73E;", waarschuwing: "&#xE7BA;", fout: "&#xE783;", code: "&#xE9D9;" };
+
+function kan(s) { return s == "print" || s == "al"; }
+function rijHtml(r, i) {
+    var dicht = !kan(r.soort) || Bezig;
+    var vink = '<div class="vink' + (dicht ? " dicht" : (r.aan == "1" ? " aan" : "")) + '" onclick="stuur(\'toggle/' + i + '\')">' +
+               (r.aan == "1" && !dicht ? '<span class="ico">&#xE73E;</span>' : "") + "</div>";
+    var label = (r.soort == "ontslag" && r.ontslag) ? "Ontslag " + esc(r.ontslag) : Chips[r.soort];
+    var chip = '<span class="chip2 s-' + r.soort + '">' + (r.soort == "bezig" ? "<i></i>" : "") + label + "</span>";
+    return '<div class="rij' + (r.soort == "bezig" ? " actief" : "") + ((dicht || r.aan != "1") && r.soort != "ok" && r.soort != "bezig" ? " uit" : "") + '" id="rij' + i + '" title="' + esc(r.detail) + '">' +
+        '<div class="k-vink">' + vink + '</div>' +
+        '<div class="k-naam"><div class="naam">' + esc(r.naam) + '</div><div class="detail">' + esc(r.detail) + "</div></div>" +
+        '<div class="k-nr num">' + esc(r.patnr) + "</div>" +
+        '<div class="k-status">' + chip + "</div></div>";
+}
+function tekenLijst() {
+    var h = [], l = $("lijst"), top = l.scrollTop;
+    for (var i = 0; i < Rijen.length; i++) h.push(rijHtml(Rijen[i], i));
+    l.innerHTML = h.join("");
+    l.scrollTop = top;
+    tekenAllesVink();
+}
+function tekenAllesVink() {
+    var n = 0, aan = 0;
+    for (var i = 0; i < Rijen.length; i++) if (kan(Rijen[i].soort)) { n++; if (Rijen[i].aan == "1") aan++; }
+    var el = $("allesvink");
+    el.className = "vink" + (aan == 0 ? "" : " aan");
+    el.innerHTML = aan == 0 ? "" : (aan == n ? '<span class="ico">&#xE73E;</span>' : '<span class="ico">&#xE738;</span>');
+}
+function toonVoortgang(ja) { zetKlasse($("voortgang"), "toon", ja); zetKlasse($("lijst"), "kort", ja); }
+
+function api(cmd, j) {
+    var d = j ? JSON.parse(j) : null;
+    switch (cmd) {
+    case "versie": $("versie").innerHTML = "v" + esc(d); break;
+    case "status":
+        $("status").className = "kaart fase-" + d.fase;
+        $("s-ico").innerHTML = StatusIco[d.fase] || StatusIco.idle;
+        $("s-kop").innerHTML = esc(d.titel);
+        $("s-sub").innerHTML = esc(d.sub);
+        break;
+    case "sub": $("s-sub").innerHTML = esc(d); break;
+    case "tijd": $("v-rechts").innerHTML = esc(d); break;
+    case "verbinding": $("verb").className = "pil " + d.soort; $("verb-t").innerHTML = esc(d.tekst); break;
+    case "tellers":
+        $("n-totaal").innerHTML = d.totaal; $("n-print").innerHTML = d.print;
+        $("n-ontslag").innerHTML = d.ontslag; $("n-geprint").innerHTML = d.geprint; break;
+    case "voortgang":
+        var tot = +d.totaal;
+        toonVoortgang(tot > 0);
+        var pct = tot > 0 ? Math.round(100 * (+d.klaar) / tot) : 0;
+        $("vulling").style.width = pct + "%";
+        $("vulling").className = d.kleur || "";
+        if (d.links != null) $("v-links").innerHTML = esc(d.links);
+        if (d.rechts != null) $("v-rechts").innerHTML = esc(d.rechts);
+        break;
+    case "lijst":
+        Rijen = d;
+        if (!d.length) { $("lijst").innerHTML = '<div id="leeg"><span class="ico">&#xE8A5;</span>Geen pati&euml;nten in de aanschrijfbuffer</div>'; tekenAllesVink(); break; }
+        tekenLijst();
+        break;
+    case "rij":
+        var r = Rijen[+d.i]; if (!r) break;
+        r.soort = d.soort; r.detail = d.detail; if (d.aan != null) r.aan = d.aan;
+        var el = $("rij" + d.i); if (!el) break;
+        var tmp = document.createElement("div"); tmp.innerHTML = rijHtml(r, +d.i);
+        el.parentNode.replaceChild(tmp.firstChild, el);
+        if (d.focus == "1") { var n = $("rij" + d.i), l = $("lijst");
+            if (n.offsetTop < l.scrollTop || n.offsetTop + 42 > l.scrollTop + l.clientHeight) l.scrollTop = n.offsetTop - 84; }
+        tekenAllesVink();
+        break;
+    case "bezig": Bezig = d == "1"; if (Rijen.length) tekenLijst(); break;
+    case "knop":
+        Knoppen[d.naam] = d.aan == "1";
+        var b = $("b-" + d.naam);
+        if (d.naam == "stop") { zetKlasse(b, "aan", d.aan == "1"); zetKlasse(b, "uit", d.aan != "1"); }
+        else zetKlasse(b, "uit", d.aan != "1");
+        zetKlasse(b, "weg", d.zichtbaar == "0");
+        if (d.tekst) { var t = b.getElementsByTagName("span")[1]; if (t) t.innerHTML = esc(d.tekst); }
+        break;
+    case "opties":
+        Opties = d;
+        for (var k in d) if (d.hasOwnProperty(k)) zetKlasse($("o-" + k), "aan", d[k] == "1");
+        break;
+    case "hint": $("hint").innerHTML = d; break;
+    case "dialoog": toonDialoog(d); break;
+    case "dialoogdicht": $("scherm").className = ""; break;
+    case "instellingen": toonInstellingen(d); break;
+    case "instmap": var v = $("i-map"); if (v) v.value = d; break;
+    }
+    return "";
+}
+
+function toonDialoog(d) {
+    var dl = $("dialoog");
+    dl.className = "d-" + (d.soort || "vraag");
+    var h = '<div class="dkop"><div class="drond ico">' + (DialoogIco[d.soort] || DialoogIco.vraag) + '</div><div class="dtitel">' + esc(d.titel) + "</div></div>" +
+            '<div class="dtekst dun">' + esc(d.tekst) + "</div><div class=\"dknoppen\">";
+    if (d.nee) h += '<div class="dknop" onclick="stuur(\'dialoog/' + d.id + '/0\')">' + esc(d.nee) + "</div>";
+    h += '<div class="dknop hoofd" onclick="stuur(\'dialoog/' + d.id + '/1\')">' + esc(d.ja || "OK") + "</div></div>";
+    dl.innerHTML = h;
+    $("scherm").className = "open";
+}
+
+// --- Instellingen: opties met uitleg, wachttijden en updates ---
+var OptieTekst = [
+    { sectie: "Wat wordt er geprint" },
+    { k: "deelbaar", titel: "Alleen regels met ‘ASB: Deelbaar’",
+      uitleg: "<b>Aan:</b> de app print de bovenste regel in de medicatiehistorie van jouw apotheek waarbij bij Herhaal info <b>ASB: Deelbaar</b> staat. Heeft een patiënt zo’n regel niet, dan wordt hij overgeslagen (en staat hij in het overzicht na afloop).<br><b>Uit:</b> gewoon de bovenste regel van jouw apotheek, wat er ook bij Herhaal info staat." },
+    { sectie: "Veiligheid" },
+    { k: "controle", titel: "Dossier controleren",
+      uitleg: "<b>Aan:</b> voordat er geprint wordt, kijkt de app of het geopende dossier echt van de juiste patiënt is (Pat.nr, of achternaam + geboortedatum). Klopt dat niet, dan stopt de app.<br>Alleen uitzetten als deze controle steeds onterecht stopt." },
+    { k: "blokkeer", titel: "Toetsenbord en muis blokkeren tijdens het printen",
+      uitleg: "<b>Aan:</b> zolang de app print, doen toetsenbord en muis niets. Zo kun je niet per ongeluk in Pharmacom klikken terwijl de app bezig is. Met <b>Esc</b> stop je altijd direct.<br><b>Uit:</b> je kunt de computer blijven gebruiken, maar klik je in een ander venster, dan stopt de app de ronde." },
+    { k: "bevestigen", titel: "Eerst om bevestiging vragen",
+      uitleg: "<b>Aan:</b> na <i>Start printen</i> toont de app eerst hoeveel etiketten er geprint worden en voor welke apotheek, en vraagt of je wilt beginnen.<br><b>Uit:</b> de app begint meteen." },
+    { sectie: "Venster en meldingen" },
+    { k: "geluid", titel: "Geluid als een ronde klaar is of stopt",
+      uitleg: "<b>Aan:</b> je hoort een geluidje als alle etiketten geprint zijn, of een waarschuwingsgeluid als de app gestopt is. Het venster komt dan ook weer naar voren en knippert in de taakbalk.<br><b>Uit:</b> alleen het venster en de melding, zonder geluid." },
+    { k: "bovenop", titel: "Venster altijd bovenop",
+      uitleg: "<b>Aan:</b> dit venster blijft altijd zichtbaar boven Pharmacom.<br><b>Uit:</b> het venster kan achter Pharmacom verdwijnen; terughalen via de taakbalk of het icoon bij de klok." }
+];
+var Inst = null;
+function toonInstellingen(d) {
+    Inst = d;
+    var dl = $("dialoog");
+    dl.className = "breed d-vraag";
+    var h = '<div class="dkop"><div class="drond ico">&#xE713;</div><div class="dtitel">Instellingen</div></div>';
+    h += '<div id="instinhoud" class="dun">';
+    for (var i = 0; i < OptieTekst.length; i++) {
+        var o = OptieTekst[i];
+        if (o.sectie) { h += '<div class="sectie"' + (i == 0 ? ' style="margin-top:6px"' : "") + ">" + o.sectie + "</div>"; continue; }
+        h += '<div class="optie' + (Opties[o.k] == "1" ? " aan" : "") + '" id="o-' + o.k + '" onclick="optie(\'' + o.k + '\')">' +
+             '<div class="otekst"><div class="otitel">' + o.titel + '</div><div class="ouitleg">' + o.uitleg + "</div></div>" +
+             '<span class="schakel"></span></div>';
+    }
+    h += '<div class="sectie">Wachttijden</div>';
+    h += '<div class="uitleg">Korte pauzes tussen de stappen, in milliseconden (1000 = 1 seconde). De app wacht zelf al tot een scherm in Pharmacom verschenen is; verhoog een waarde alleen als Pharmacom een stap niet bijbeent. Met <i>Standaard</i> zet je alles terug.</div>';
+    h += '<div style="margin-top:6px">';
+    for (var i = 0; i < d.items.length; i++) {
+        var it = d.items[i];
+        h += '<div class="wtrij"><span class="lbl">' + esc(it.label) + '</span><input class="veld num" id="w-' + it.k + '" value="' + esc(it.v) + '"><span class="ms">ms</span></div>';
+    }
+    h += "</div>";
+    h += '<div class="sectie">Updates</div>';
+    h += '<div class="uitleg">Voor gebruik op meerdere computers: kies een map (bijv. op de netwerkschijf) waar de nieuwste Etiketten_autoprinter.exe staat. Bij het starten kijkt de app of daar een nieuwere versie staat en vraagt dan of hij moet bijwerken.</div>';
+    h += '<div style="display:-ms-flexbox;display:flex;margin-top:8px"><input class="veld" id="i-map" style="-ms-flex:1;flex:1" value="' + esc(d.map) + '">' +
+         '<div class="dknop" style="min-width:0;height:30px;line-height:28px" onclick="stuur(\'inst/bladeren\')">Bladeren</div></div>';
+    h += '<div style="margin:10px 0 4px 0"><span class="klein" onclick="instActie(\'controleer\')">Nu controleren op updates</span><span class="klein" onclick="instActie(\'publiceer\')">Deze versie in de updatemap zetten</span></div>';
+    h += '<div class="sectie">Installeren</div>';
+    h += '<div class="uitleg">De app op deze computer zetten (met snelkoppeling op het bureaublad en in het startmenu). Handig als je hem nu vanaf de netwerkschijf start: dan start hij sneller en werkt hij ook als de schijf even weg is.</div>';
+    h += '<div style="margin:8px 0 4px 0"><span class="klein" onclick="stuur(\'inst/installeer\')">Op deze computer installeren</span></div>';
+    h += "</div>";
+    h += '<div class="dknoppen"><div class="dknop" style="float:left;margin-left:0" onclick="instStandaard()">Standaard</div>' +
+         '<div class="dknop" onclick="stuur(\'inst/annuleer\')">Annuleren</div><div class="dknop hoofd" onclick="instActie(\'opslaan\')">Opslaan</div></div>';
+    dl.innerHTML = h;
+    $("scherm").className = "open";
+}
+function instStandaard() { for (var i = 0; i < Inst.items.length; i++) $("w-" + Inst.items[i].k).value = Inst.items[i].d; }
+function instActie(a) {
+    var p = [];
+    for (var i = 0; i < Inst.items.length; i++) p.push(Inst.items[i].k + "=" + encodeURIComponent($("w-" + Inst.items[i].k).value));
+    p.push("map=" + encodeURIComponent($("i-map").value));
+    stuur("inst/" + a + "?" + p.join("&"));
+}
+</script>
+</body>
+</html>
