@@ -246,6 +246,7 @@ class Ronde {
         Log(Instel)
         Opslag.StartRapport(Proef)
         Invoer.Blokkeer(true, Inst.Optie("blokkeer"))
+        Venster.GeenActivatie(true)
 
         Afgebroken := false
         for i, r in Doelen {
@@ -300,14 +301,16 @@ class Ronde {
         }
 
         ; --- Afronden ---
-        ; Na een fout: Pharmacom netjes terugzetten op de aanschrijfbuffer, zodat
-        ; Doorgaan meteen werkt. Niet als de gebruiker zelf stopte of in een
-        ; ander venster bezig is.
-        if Afgebroken && this.StopReden != "gestopt door gebruiker" && this.StopReden != "Pharmacom was niet meer het actieve venster" {
+        ; Na een stop of fout: Pharmacom netjes terugzetten op de
+        ; aanschrijfbuffer (dossier dicht), zodat Doorgaan meteen werkt. Niet
+        ; als de gebruiker in een ander venster bezig is.
+        if Afgebroken && this.StopReden != "Pharmacom was niet meer het actieve venster" {
+            this.Stoppen := false   ; anders weigert Stap de Escape
             Venster.Sub("Pharmacom terugzetten op de aanschrijfbuffer" Teken.Ellips)
             if Ph.TerugNaarBuffer()
                 this.StopReden .= " (Pharmacom staat weer op de aanschrijfbuffer)"
         }
+        Venster.GeenActivatie(false)
         Invoer.Blokkeer(false)
         this.Bezig := false
         Venster.Ui("bezig", 0)

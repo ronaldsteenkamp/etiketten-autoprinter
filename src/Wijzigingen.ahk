@@ -5,7 +5,9 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.4.1", ["De knop Vernieuwen is een klein knopje (↻) boven de lijst geworden; F5 werkt nog steeds."
+        ["6.4.2", ["De knop Stop werkt nu ook tijdens het printen (muisklikken op dit venster worden niet meer geblokkeerd)."
+            , "Na Stop of Esc zet de app Pharmacom terug op de aanschrijfbuffer, zodat Doorgaan meteen werkt."]]
+        , ["6.4.1", ["De knop Vernieuwen is een klein knopje (↻) boven de lijst geworden; F5 werkt nog steeds."
             , "Na een proefronde kun je meteen weer vinkjes zetten; de uitkomst blijft zichtbaar."
             , "Heeft een andere computer net geprint, dan ziet de lijst dat vanzelf binnen 30 seconden."]]
         , ["6.4.0", ["Proefronde: alles doorlopen zonder te printen (knop Proef of Ctrl+Shift+Enter)."

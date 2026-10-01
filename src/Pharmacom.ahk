@@ -303,8 +303,12 @@ class Ph {
     static Stap(Toets, Ms, Label) {
         if Ronde.Stoppen
             return Ronde.Fout("gestopt door gebruiker", false)
-        if !WinActive("ahk_pid " this.Pid)
+        if !WinActive("ahk_pid " this.Pid) {
+            ; Op het venster van de app geklikt (bijv. Stop) = stoppen
+            if Venster.Hwnd && WinActive("ahk_id " Venster.Hwnd)
+                return Ronde.Fout("gestopt door gebruiker", false)
             return Ronde.Fout("Pharmacom was niet meer het actieve venster", false)
+        }
         Send Toets
         Log("  " Label)
         this.Wacht(Ms)

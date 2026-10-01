@@ -83,6 +83,12 @@ class Venster {
         return false
     }
 
+    ; Tijdens een ronde: klikken op het venster (bijv. Stop) maken het niet
+    ; actief, zodat Pharmacom op de voorgrond blijft (WS_EX_NOACTIVATE).
+    static GeenActivatie(Aan) {
+        try this.Gui.Opt(Aan ? "+E0x08000000" : "-E0x08000000")
+    }
+
     static ZetBovenop() => this.Gui.Opt(Inst.Optie("bovenop") ? "+AlwaysOnTop" : "-AlwaysOnTop")
 
     static Toon(Activeren := false) {
@@ -112,7 +118,7 @@ class Venster {
         this.Ui("opties", o)
     }
 
-    static Hint() => this.Ui("hint", (Inst.Optie("blokkeer") ? "Toetsenbord en muis zijn geblokkeerd tijdens het printen" : "Klik tijdens het printen niet in Pharmacom") " &middot; <kbd>Esc</kbd> stopt")
+    static Hint() => this.Ui("hint", (Inst.Optie("blokkeer") ? "Toetsenbord en muis zijn geblokkeerd tijdens het printen" : "Klik tijdens het printen niet in Pharmacom") " &middot; <kbd>Esc</kbd> of <b>Stop</b> stopt")
 
     static Status(Fase, Sub := "") {
         Koppen := Map("idle", "Klaar voor start", "bezig", "Bezig met printen" Teken.Ellips, "gestopt", "Gestopt", "klaar", "Klaar!", "fout", "Let op")
