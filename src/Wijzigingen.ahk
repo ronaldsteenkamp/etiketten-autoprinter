@@ -5,7 +5,9 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.5.0", ["Planning: volgorde zelf aanpassen met de pijltjes, of sorteren op naam (A–Z)."
+        ["6.5.1", ["Planning: regels slepen om de volgorde te veranderen."
+            , "De knop 'Overnemen uit Pharmacom' is vervallen; kies de groep uit de lijst."]]
+        , ["6.5.0", ["Planning: volgorde zelf aanpassen met de pijltjes, of sorteren op naam (A–Z)."
             , "Planning: Instelling en Afdeling kiezen uit een lijst (of typen). Met 'Alle groepen ophalen' haalt de app de lijst uit Pharmacom."]]
         , ["6.4.2", ["De knop Stop werkt nu ook tijdens het printen (muisklikken op dit venster worden niet meer geblokkeerd)."
             , "Na Stop of Esc zet de app Pharmacom terug op de aanschrijfbuffer, zodat Doorgaan meteen werkt."]]

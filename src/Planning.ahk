@@ -79,6 +79,18 @@ class Planning {
         }
     }
 
+    ; Regel Id naar plek Plek (0 = bovenaan) slepen
+    static VerplaatsNaar(Id, Plek) {
+        Items := this.Lees()
+        for i, it in Items {
+            if it.id != Id
+                continue
+            Items.RemoveAt(i)
+            Items.InsertAt(Max(1, Min(Integer(Plek) + 1, Items.Length + 1)), it)
+            return this.SchrijfVolgorde(Items)
+        }
+    }
+
     ; Op naam sorteren (A-Z, hoofdletterongevoelig)
     static SorteerOpNaam() {
         Items := this.Lees()
@@ -254,12 +266,6 @@ class Planning {
                     it.computer := A_ComputerName
                     this.Schrijf(it)
                 }
-            case "overnemen":
-                G := Ph.LeesGroep()
-                if !IsObject(G)
-                    return Venster.Ui("planfout", "De groep kon niet uit Pharmacom gelezen worden: " G)
-                Venster.Ui("plangroepen", Groepen.VoorPagina())
-                return Venster.Ui("planveld", G)
             case "ophalen":
                 if Ronde.Bezig
                     return
@@ -278,6 +284,9 @@ class Planning {
                 Venster.Ui("plangroepen", Groepen.VoorPagina())
                 Venster.Toon(true)
                 return Venster.Ui("planinfo", G.instellingen.Count " instellingen en " nA " afdelingen opgehaald. Pharmacom staat weer op je eigen groep.")
+            case "naar":
+                if P.Has("plek") && IsInteger(P["plek"])
+                    this.VerplaatsNaar(Id, P["plek"])
             case "omhoog":
                 this.Verplaats(Id, -1)
             case "omlaag":
@@ -309,7 +318,7 @@ PlanningTik() => Planning.Tik()
 ;   I    = T1=2 WEKELIJKS 1|T2=2 WEKELIJKS 2|...
 ;   A_T1 = T1DI=T1 Dinsdag Bezorgen|T1GUA=T1 GUA|...
 ; Wordt gevuld door "Alle groepen ophalen" en door elke groep die de app in
-; Pharmacom tegenkomt (Overnemen, geplande rondes).
+; Pharmacom tegenkomt (geplande rondes).
 ; =====================================================================
 class Groepen {
     static Sectie => "Groepen" (Inst.Apotheek != "" ? " " Inst.Apotheek : "")

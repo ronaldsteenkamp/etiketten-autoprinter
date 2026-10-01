@@ -115,24 +115,9 @@ class Ph {
     }
 
     ; --- Groep (zoekcriteria van de aanschrijfbuffer) -----------------------
-    ; Leest Instelling en Afdeling uit de zoekcriteria: {instelling, afdeling},
-    ; of een tekst met de reden waarom het niet lukte.
     ; De velden zijn een paneel met de naam van het label ("Instelling:",
     ; "Afdeling:") met daarin een bewerkbaar tekstvak (de code) en een tekstvak
     ; met de omschrijving.
-    static LeesGroep() {
-        if !this.Verbonden && this.Verbind() != "ok"
-            return "Pharmacom is niet bereikbaar"
-        if !this.OpBufferScherm()
-            return "Pharmacom staat niet op de aanschrijfbuffer"
-        i := this.Veld("Instelling:"), a := this.Veld("Afdeling:")
-        if !i || !a
-            return "de velden Instelling en Afdeling zijn niet gevonden"
-        if a.code = ""
-            return "er is in Pharmacom geen afdeling gekozen"
-        Groepen.Leer(i.code, i.omschrijving, a.code, a.omschrijving)
-        return {instelling: i.code, afdeling: a.code}
-    }
 
     ; --- Alle groepen ophalen ----------------------------------------------
     ; Leest alle instellingen (venster "Kies een instelling", sluiten met

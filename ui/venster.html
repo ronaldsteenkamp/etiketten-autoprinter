@@ -205,6 +205,11 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
 .aptag { display: inline-block; font-size: 10.5px; font-weight: 700; color: #002664; background: #e9eef6; border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: 2px; letter-spacing: 0; }
 .planrij { display: flex; align-items: flex-start; padding: 10px 10px 10px 12px; border: 1px solid #eef2f7; border-radius: 10px; margin-bottom: 6px; }
 .planrij .ptekst { flex: 1; padding-right: 8px; min-width: 0; }
+.planrij[draggable="true"] { cursor: grab; }
+.planrij.sleept { opacity: .45; }
+.planrij.boven { box-shadow: inset 0 3px 0 #407c05; }
+.planrij.onder { box-shadow: inset 0 -3px 0 #407c05; }
+.planrij .pk, .planrij .schakel, .planrij .pvolg span { cursor: pointer; }
 .planrij:not(.aan) .ptekst { opacity: .5; }
 .planrij .otitel { font-size: 13px; font-weight: 600; color: #0f172a; }
 .planrij .ouitleg { font-size: 12px; color: #64748b; line-height: 1.5; margin-top: 2px; }
@@ -492,9 +497,6 @@ function api(cmd, j) {
     case "dialoogdicht": $("scherm").className = ""; break;
     case "instellingen": toonInstellingen(d); break;
     case "planning": toonPlanning(d); break;
-    case "planveld":
-        if ($("p-inst")) { $("p-inst").value = d.instelling; $("p-afd").value = d.afdeling; $("p-fout").innerHTML = ""; if (!$("p-naam").value) $("p-naam").value = d.afdeling; vulInstKeuze(); }
-        break;
     case "planfout": if ($("p-fout")) $("p-fout").innerHTML = esc(d); break;
     case "planinfo": if ($("p-info")) { $("p-info").innerHTML = esc(d); if (d && $("p-fout")) $("p-fout").innerHTML = ""; } break;
     case "plangroepen": if (Plan) { Plan.groepen = d; if ($("p-inst-kies")) vulInstKeuze(); } break;
@@ -614,7 +616,7 @@ function toonPlanning(d) {
         h += '<div class="planleeg"><span class="ico">' + I("calendar-clock") + '</span>Nog niets gepland. Klik op <b>Nieuwe planning</b>.</div>';
     for (var i = 0; i < d.items.length; i++) {
         var it = d.items[i];
-        h += '<div class="planrij' + (it.aan == "1" ? " aan" : "") + '">' +
+        h += '<div class="planrij' + (it.aan == "1" ? " aan" : "") + '" draggable="true" data-i="' + i + '" title="Sleep om de volgorde te veranderen">' +
              '<div class="pvolg">' +
              '<span class="' + (i == 0 ? "leeg" : "") + '" title="Omhoog" onclick="stuur(\'plan/omhoog?id=' + it.id + '\')">' + I("chevron-up") + '</span>' +
              '<span class="' + (i == d.items.length - 1 ? "leeg" : "") + '" title="Omlaag" onclick="stuur(\'plan/omlaag?id=' + it.id + '\')">' + I("chevron-down") + '</span></div>' +
@@ -635,7 +637,44 @@ function toonPlanning(d) {
          '<div class="dknop hoofd" data-esc="1" onclick="stuur(\'plan/sluit\')">Sluiten</div></div>';
     dl.innerHTML = h;
     $("scherm").className = "open";
+    sleepbaar();
 }
+
+// Planningen slepen: tijdens het slepen een groene lijn waar hij komt
+var SleepVan = -1;
+function sleepbaar() {
+    var rijen = document.querySelectorAll("#dialoog .planrij");
+    function wis() { for (var j = 0; j < rijen.length; j++) { rijen[j].classList.remove("boven"); rijen[j].classList.remove("onder"); } }
+    for (var j = 0; j < rijen.length; j++) {
+        var r = rijen[j];
+        r.addEventListener("dragstart", function (e) {
+            SleepVan = +this.getAttribute("data-i");
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", String(SleepVan));
+            this.classList.add("sleept");
+        });
+        r.addEventListener("dragend", function () { this.classList.remove("sleept"); wis(); SleepVan = -1; });
+        r.addEventListener("dragover", function (e) {
+            if (SleepVan < 0) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            var b = this.getBoundingClientRect(), onder = e.clientY > b.top + b.height / 2;
+            wis();
+            this.classList.add(onder ? "onder" : "boven");
+        });
+        r.addEventListener("drop", function (e) {
+            e.preventDefault();
+            if (SleepVan < 0) return;
+            var doel = +this.getAttribute("data-i"), b = this.getBoundingClientRect();
+            var plek = doel + (e.clientY > b.top + b.height / 2 ? 1 : 0);
+            if (SleepVan < plek) plek--;           // na het weghalen schuift alles op
+            var van = SleepVan;
+            wis(); SleepVan = -1;
+            if (plek != van) stuur("plan/naar?id=" + Plan.items[van].id + "&plek=" + plek);
+        });
+    }
+}
+
 function toonPlanForm(i) {
     var it = i >= 0 ? Plan.items[i] : { id: "", naam: "", instelling: "", afdeling: "", dagen: "1", tijd: "08:00", weken: "alle" };
     var dl = $("dialoog");
@@ -643,13 +682,12 @@ function toonPlanForm(i) {
     var h = planKop(i >= 0 ? "Planning wijzigen" : "Nieuwe planning") + '<div id="instinhoud" class="dun">';
     h += '<div class="prij"><span class="lbl">Naam</span><input class="veld" id="p-naam" maxlength="40" placeholder="bijv. Baxter T1GUA" value="' + esc(it.naam) + '"></div>';
     h += '<div class="sectie">Groep</div>';
-    h += '<div class="uitleg">Typ de code, kies hem uit de lijst, of neem de groep over die nu in Pharmacom staat.</div>';
+    h += '<div class="uitleg">Typ de code of kies hem uit de lijst.</div>';
     h += '<div class="prij"><span class="lbl">Instelling</span><input class="veld kort" id="p-inst" value="' + esc(it.instelling) + '" placeholder="T1" oninput="instGetypt()">' +
          '<select class="veld" id="p-inst-kies" style="margin-left:8px" onchange="instGekozen()"></select></div>';
     h += '<div class="prij"><span class="lbl">Afdeling</span><input class="veld kort" id="p-afd" value="' + esc(it.afdeling) + '" placeholder="T1GUA" oninput="afdGetypt()">' +
          '<select class="veld" id="p-afd-kies" style="margin-left:8px" onchange="afdGekozen()"></select></div>';
-    h += '<div style="margin:2px 0 0 92px"><span class="klein" onclick="stuur(\'plan/overnemen\')"><span class="ico">' + I("download") + '</span>Overnemen uit Pharmacom</span>' +
-         '<span class="klein" title="Leest alle instellingen en afdelingen uit Pharmacom (duurt even; je eigen groep wordt daarna teruggezet)" onclick="stuur(\'plan/ophalen\')"><span class="ico">' + I("refresh-cw") + '</span>Alle groepen ophalen</span></div>';
+    h += '<div style="margin:2px 0 0 92px"><span class="klein" title="Leest alle instellingen en afdelingen uit Pharmacom (duurt even; je eigen groep wordt daarna teruggezet)" onclick="stuur(\'plan/ophalen\')"><span class="ico">' + I("refresh-cw") + '</span>Alle groepen ophalen</span></div>';
     h += '<div class="pinfo" id="p-info"></div><div class="pfout" id="p-fout"></div>';
     h += '<div class="sectie">Wanneer</div>';
     h += '<div class="prij"><span class="lbl">Dagen</span><span>';

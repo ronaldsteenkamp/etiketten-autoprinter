@@ -33,8 +33,13 @@ er komt een rapport `Proefronde <datum>.csv` in de map Rapporten.
 ## Planning
 
 Onder **Planning** (of Ctrl+G) stel je in welke groepen (afdelingen) automatisch
-geprint worden: naam, Instelling + Afdeling (met **Overnemen uit Pharmacom**),
+geprint worden: naam, Instelling + Afdeling (typen of kiezen uit de lijst),
 dagen, tijd en elke week / even weken / oneven weken (ISO-weeknummer).
+
+- **Alle groepen ophalen** leest alle instellingen en afdelingen uit Pharmacom
+  (venster "Kies een instelling" en de keuzelijst bij Afdeling) en zet daarna je
+  eigen groep terug. De lijst staat per apotheek in de ini (`[Groepen AN]`).
+- Volgorde: regels slepen, of de pijltjes gebruiken; **A–Z** sorteert op naam.
 
 - Een planning start binnen 15 minuten na de ingestelde tijd, één keer per dag,
   zolang de app draait en Pharmacom open is.
