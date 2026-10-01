@@ -114,6 +114,14 @@ Bewaking() {
             Ronde.Vernieuw(false, true)
             Gepauzeerd := ""
         } else {
+            ; Apotheek nog onbekend (Pharmacom stond bij het starten niet op de
+            ; aanschrijfbuffer): aflezen uit de statusbalk, die op elk scherm
+            ; staat. Nodig voor de planning en de opties per apotheek.
+            if Inst.Apotheek = "" && (Ap := Ph.LeesApotheek()) != "" {
+                Inst.ZetApotheek(Ap)
+                Venster.UiOpties()
+                Log("Ingelogde apotheek: " Ap)
+            }
             Pauze := Venster.Geminimaliseerd() ? "app geminimaliseerd"
                 : WinGetMinMax(Ph.Hwnd) = -1 ? "Pharmacom geminimaliseerd"
                 : !Ph.OpBufferScherm() ? "ander scherm in Pharmacom" : ""

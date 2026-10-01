@@ -273,7 +273,7 @@ class Planning {
         St := Venster.Verbind()
         if St != "ok"
             return St = "geen" ? "Pharmacom is niet open" : "geen verbinding met Pharmacom"
-        return Ph.Gereed()
+        return Ph.Gereed(false)   ; de aanschrijfbuffer opent de app zelf (Ctrl+F11)
     }
 
     static StelUit(it, Reden, Nu := "") {

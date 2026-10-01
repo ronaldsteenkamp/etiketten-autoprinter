@@ -58,9 +58,13 @@ dagen, tijd en elke week / even weken / oneven weken (ISO-weeknummer).
   terug), met een melding en bij het icoon bij de klok.
 - Zet **Starten met Windows** aan (Instellingen) als je de planning gebruikt:
   de app maakt dan een snelkoppeling in de map Opstarten van Windows.
+- De aanschrijfbuffer hoeft niet open te staan: staat Pharmacom op een ander
+  scherm (bijv. het dashboard), dan opent de planning hem zelf met Ctrl+F11 (de
+  knop *Aanschrijfbuffer* in de werkbalk). Na de ronde blijft hij open. De
+  apotheek leest de app uit de statusbalk van Pharmacom (staat op elk scherm).
 - **Uitstel:** kan een geplande ronde niet starten omdat de computer vergrendeld
-  is, Pharmacom niet open is, niet op de aanschrijfbuffer staat, er een melding of
-  inlogvenster openstaat of niemand is ingelogd, dan wacht hij (status
+  is, Pharmacom niet open is, er een melding of inlogvenster openstaat of
+  niemand is ingelogd, dan wacht hij (status
   *uitgesteld*) en start hij zodra het kan, tot 2 uur na de ingestelde tijd.
   Daarna: *mislukt* met de reden, en een melding. Na ontgrendelen kijkt de app
   meteen. Ook na het aftellen wordt dit nog een keer gecontroleerd.

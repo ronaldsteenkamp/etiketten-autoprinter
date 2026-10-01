@@ -102,7 +102,7 @@ class Ph {
     ; "" of de reden waarom niet. Een melding of inlogvenster in Pharmacom
     ; schakelt het hoofdvenster uit (WS_DISABLED); de titels van open vensters
     ; komen in de reden.
-    static Gereed() {
+    static Gereed(BufferNodig := true) {
         try {
             if WinGetStyle(this.Hwnd) & 0x08000000 {
                 Titels := ""
@@ -111,7 +111,7 @@ class Ph {
                         Titels .= (Titels != "" ? ", " : "") "'" t "'"
                 return "in Pharmacom staat een melding of venster open" (Titels != "" ? " (" Titels ")" : "")
             }
-            if !this.OpBufferScherm()
+            if BufferNodig && !this.OpBufferScherm()
                 return "Pharmacom staat niet op de aanschrijfbuffer"
             if this.LeesApotheek() = ""
                 return "er is niemand ingelogd in Pharmacom (geen apotheek te zien)"
@@ -349,6 +349,30 @@ class Ph {
 
     ; Vult Instelling en Afdeling in, klikt op Zoeken en wacht tot de lijst
     ; geladen is. Geeft "" als het gelukt is, anders de reden.
+    ; Opent de aanschrijfbuffer met Ctrl+F11 (knop "Aanschrijfbuffer" in de
+    ; werkbalk van Pharmacom) en wacht tot het scherm met de zoekvelden en de
+    ; lijst er is. Geeft "" of de reden waarom het niet lukte.
+    static OpenBuffer() {
+        if !WinActive("ahk_id " this.Hwnd)
+            return "Pharmacom was niet het actieve venster"
+        Log("  aanschrijfbuffer openen (Ctrl+F11)")
+        this.VergeetBuffer()
+        Send "^{F11}"
+        Eind := A_TickCount + Inst.Wt["MaxWachtScherm"]
+        loop {
+            Sleep 250
+            if this.OpBufferScherm() && this.Buffer() && this.Veld("Afdeling:") {
+                Log("  aanschrijfbuffer geopend")
+                Sleep 300
+                return ""
+            }
+            if A_TickCount > Eind
+                return "de aanschrijfbuffer ging niet open (Ctrl+F11)"
+            if !WinActive("ahk_pid " this.Pid)
+                return "Pharmacom was niet meer het actieve venster"
+        }
+    }
+
     static ZetGroep(Instelling, Afdeling) {
         if this.Verbind() != "ok"
             return "Pharmacom is niet bereikbaar"
@@ -357,8 +381,8 @@ class Ph {
         WinActivate "ahk_id " this.Hwnd
         if !WinWaitActive("ahk_id " this.Hwnd, , 3)
             return "Pharmacom kon niet naar voren gehaald worden (staat er een venster open?)"
-        if !this.OpBufferScherm()
-            return "Pharmacom staat niet op de aanschrijfbuffer"
+        if !this.OpBufferScherm() && (R := this.OpenBuffer()) != ""
+            return R
         Sleep 200
         if Instelling != "" && (R := this.ZetVeld("Instelling:", Instelling)) != ""
             return R
