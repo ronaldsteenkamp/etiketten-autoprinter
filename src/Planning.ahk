@@ -20,12 +20,19 @@ class Planning {
     static Sectie => "Planning" (Inst.Apotheek != "" ? " " Inst.Apotheek : "")
 
     ; --- Opslag ----------------------------------------------------------------
+    ; Lijst in de volgorde van de gebruiker (sleutel _volgorde = "3,1,2";
+    ; regels die daar niet in staan komen erachter, op id).
     static Lees() {
         Items := []
         try Inhoud := IniRead(Inst.Bestand, this.Sectie)
         catch
             return Items
+        Volgorde := ""
         loop parse Inhoud, "`n", "`r" {
+            if RegExMatch(A_LoopField, "^_volgorde=(.*)$", &M) {
+                Volgorde := M[1]
+                continue
+            }
             if !RegExMatch(A_LoopField, "^(\d+)=(.*)$", &M)
                 continue
             d := StrSplit(M[2], "|")
@@ -34,7 +41,55 @@ class Planning {
             Items.Push({id: M[1], aan: d[1] = "1" ? 1 : 0, naam: d[2], instelling: d[3], afdeling: d[4]
                 , dagen: d[5], tijd: d[6], weken: d[7], computer: d[8]})
         }
-        return Items
+        ; Sorteren op de opgeslagen volgorde
+        Plek := Map()
+        for i, Id in StrSplit(Volgorde, ",")
+            Plek[Trim(Id)] := i
+        Gesorteerd := [], Rest := []
+        loop Plek.Count + 1 {
+            n := A_Index
+            for it in Items
+                if Plek.Has(it.id) && Plek[it.id] = n
+                    Gesorteerd.Push(it)
+        }
+        for it in Items
+            if !Plek.Has(it.id)
+                Gesorteerd.Push(it)
+        return Gesorteerd
+    }
+
+    static SchrijfVolgorde(Items) {
+        s := ""
+        for it in Items
+            s .= (A_Index > 1 ? "," : "") it.id
+        Inst.Schrijf(s, this.Sectie, "_volgorde")
+    }
+
+    ; Regel Id een plek omhoog (-1) of omlaag (+1)
+    static Verplaats(Id, Richting) {
+        Items := this.Lees()
+        for i, it in Items {
+            if it.id != Id
+                continue
+            j := i + Richting
+            if j < 1 || j > Items.Length
+                return
+            Tmp := Items[i], Items[i] := Items[j], Items[j] := Tmp
+            return this.SchrijfVolgorde(Items)
+        }
+    }
+
+    ; Op naam sorteren (A-Z, hoofdletterongevoelig)
+    static SorteerOpNaam() {
+        Items := this.Lees()
+        loop Items.Length - 1 {
+            loop Items.Length - A_Index {
+                k := A_Index
+                if StrCompare(Items[k].naam, Items[k + 1].naam, "Logical") > 0
+                    Tmp := Items[k], Items[k] := Items[k + 1], Items[k + 1] := Tmp
+            }
+        }
+        this.SchrijfVolgorde(Items)
     }
 
     static Schrijf(it) {
@@ -43,13 +98,19 @@ class Planning {
     }
 
     static Verwijder(Id) {
+        if IsInteger(Id) && Integer(Id) > Inst.Getal(Inst.Lees1(this.Sectie, "_laatsteid", 0), 0)
+            Inst.Schrijf(Integer(Id), this.Sectie, "_laatsteid")
         try IniDelete Inst.Bestand, this.Sectie, Id
+        try IniDelete Inst.Bestand, "Planning gedraaid", A_ComputerName "-" Inst.Apotheek "-" Id
     }
 
+    ; Nummers worden nooit hergebruikt (anders zou een nieuwe planning het
+    ; "laatst gedraaid" van een verwijderde erven)
     static NieuwId() {
-        Hoogste := 0
+        Hoogste := Inst.Getal(Inst.Lees1(this.Sectie, "_laatsteid", 0), 0)
         for it in this.Lees()
             Hoogste := Max(Hoogste, Integer(it.id))
+        Inst.Schrijf(Hoogste + 1, this.Sectie, "_laatsteid")
         return Hoogste + 1
     }
 
@@ -141,7 +202,7 @@ class Planning {
                 , hier: it.computer = A_ComputerName ? 1 : 0, laatst: this.LaatstTekst(it)})
         Wk := this.WeekNr()
         Venster.Ui("planning", {items: Items, apotheek: Inst.Apotheek, computer: A_ComputerName
-            , week: Wk, even: Mod(Wk, 2) = 0 ? 1 : 0})
+            , week: Wk, even: Mod(Wk, 2) = 0 ? 1 : 0, groepen: Groepen.VoorPagina()})
     }
 
     static LaatstTekst(it) {
@@ -197,7 +258,32 @@ class Planning {
                 G := Ph.LeesGroep()
                 if !IsObject(G)
                     return Venster.Ui("planfout", "De groep kon niet uit Pharmacom gelezen worden: " G)
+                Venster.Ui("plangroepen", Groepen.VoorPagina())
                 return Venster.Ui("planveld", G)
+            case "ophalen":
+                if Ronde.Bezig
+                    return
+                this.Bezig := true      ; bewaking even stil
+                try {
+                    Venster.Ui("planinfo", "Groepen ophalen uit Pharmacom" Teken.Ellips)
+                    G := Ph.HaalGroepen((t) => Venster.Ui("planinfo", t))
+                } finally
+                    this.Bezig := false
+                if !IsObject(G)
+                    return (Venster.Ui("planinfo", ""), Venster.Ui("planfout", "Ophalen mislukt: " G))
+                Groepen.Bewaar(G)
+                nA := 0
+                for c, L in G.afdelingen
+                    nA += L.Count
+                Venster.Ui("plangroepen", Groepen.VoorPagina())
+                Venster.Toon(true)
+                return Venster.Ui("planinfo", G.instellingen.Count " instellingen en " nA " afdelingen opgehaald. Pharmacom staat weer op je eigen groep.")
+            case "omhoog":
+                this.Verplaats(Id, -1)
+            case "omlaag":
+                this.Verplaats(Id, 1)
+            case "sorteer":
+                this.SorteerOpNaam()
             case "nu":
                 if (it := Zoek(Id)) && Venster.Vraag("Nu uitvoeren", "'" it.naam "' nu uitvoeren? De app zoekt groep " it.afdeling " in Pharmacom en print de etiketten.", "Nu uitvoeren", "Annuleren") {
                     Venster.Ui("dialoogdicht")
@@ -216,3 +302,80 @@ class Planning {
 }
 
 PlanningTik() => Planning.Tik()
+
+; =====================================================================
+; Bekende groepen per apotheek (voor de keuzelijsten bij de planning).
+; [Groepen AN]
+;   I    = T1=2 WEKELIJKS 1|T2=2 WEKELIJKS 2|...
+;   A_T1 = T1DI=T1 Dinsdag Bezorgen|T1GUA=T1 GUA|...
+; Wordt gevuld door "Alle groepen ophalen" en door elke groep die de app in
+; Pharmacom tegenkomt (Overnemen, geplande rondes).
+; =====================================================================
+class Groepen {
+    static Sectie => "Groepen" (Inst.Apotheek != "" ? " " Inst.Apotheek : "")
+
+    static Schoon(s) => StrReplace(StrReplace(StrReplace(Trim(s), "|", "/"), "=", "-"), "`n", " ")
+
+    static LeesLijst(Sleutel) {
+        M := Map()
+        for Paar in StrSplit(Inst.Lees1(this.Sectie, Sleutel, ""), "|") {
+            kv := StrSplit(Paar, "=", , 2)
+            if kv.Length = 2 && kv[1] != ""
+                M[kv[1]] := kv[2]
+        }
+        return M
+    }
+
+    static SchrijfLijst(Sleutel, M) {
+        s := ""
+        for k, v in M
+            s .= (s = "" ? "" : "|") this.Schoon(k) "=" this.Schoon(v)
+        Inst.Schrijf(s, this.Sectie, Sleutel)
+    }
+
+    ; {instellingen: Map, afdelingen: Map inst -> Map}
+    static Lees() {
+        I := this.LeesLijst("I"), A := Map()
+        for Code in I
+            A[Code] := this.LeesLijst("A_" Code)
+        return {instellingen: I, afdelingen: A}
+    }
+
+    ; Eén groep onthouden (als die nog niet bekend is)
+    static Leer(InstCode, InstNaam, AfdCode, AfdNaam) {
+        if InstCode = "" || Inst.Apotheek = "" || InStr(InstCode, "*") || InStr(InstCode, "$")
+            return
+        I := this.LeesLijst("I")
+        if !I.Has(InstCode) || (I[InstCode] = "" && InstNaam != "") {
+            I[InstCode] := InstNaam
+            this.SchrijfLijst("I", I)
+        }
+        if AfdCode = ""
+            return
+        A := this.LeesLijst("A_" InstCode)
+        if !A.Has(AfdCode) || (A[AfdCode] = "" && AfdNaam != "") {
+            A[AfdCode] := AfdNaam
+            this.SchrijfLijst("A_" InstCode, A)
+        }
+    }
+
+    ; Volledige lijst opslaan (na "Alle groepen ophalen")
+    static Bewaar(G) {
+        this.SchrijfLijst("I", G.instellingen)
+        for Code, Afd in G.afdelingen
+            this.SchrijfLijst("A_" Code, Afd)
+    }
+
+    ; Voor de pagina: {inst: [{c, n}], afd: {T1: [{c, n}], ...}}
+    static VoorPagina() {
+        G := this.Lees(), Ins := [], Afd := Map()
+        for Code, Naam in G.instellingen {
+            Ins.Push({c: Code, n: Naam})
+            L := []
+            for c, n in G.afdelingen[Code]
+                L.Push({c: c, n: n})
+            Afd[Code] := L
+        }
+        return {inst: Ins, afd: Afd}
+    }
+}

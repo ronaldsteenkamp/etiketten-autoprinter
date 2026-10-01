@@ -225,6 +225,13 @@ kbd { font-family: inherit; font-size: 10px; font-weight: 600; color: #475569; b
 .dag { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 30px; border: 1px solid #d5dce6; border-radius: 8px; margin-right: 5px; cursor: pointer; font-size: 12.5px; color: #334155; background: #fff; }
 .dag.aan { background: #407c05; border-color: #407c05; color: #fff; }
 .pfout { color: #b91c1c; font-size: 12px; min-height: 16px; margin-top: 2px; }
+.pinfo { color: #407c05; font-size: 12px; margin-top: 4px; }
+.pinfo:empty { display: none; }
+.pvolg { display: flex; flex-direction: column; margin: -2px 8px 0 -6px; }
+.pvolg span { width: 20px; height: 17px; display: flex; align-items: center; justify-content: center; color: #94a3b8; cursor: pointer; border-radius: 4px; }
+.pvolg span:hover { color: #407c05; background: #eef7e6; }
+.pvolg span.leeg { visibility: hidden; }
+.pvolg svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 select.veld { padding: 0 6px; }
 .dknop .ico, .klein .ico { margin-right: 6px; vertical-align: -2px; }
 .wtrij { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; min-height: 32px; padding: 2px 0; }
@@ -311,6 +318,9 @@ select.veld { padding: 0 6px; }
 <script>
 // Iconen: Lucide (https://lucide.dev), ISC-licentie, Copyright (c) Lucide Icons and Contributors
 var Iconen = {
+    "chevron-up": '<path d="m18 15-6-6-6 6"/>',
+    "chevron-down": '<path d="m6 9 6 6 6-6"/>',
+    "arrow-down-a-z": '<path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M20 8h-5"/><path d="M15 10V6.5a2.5 2.5 0 0 1 5 0V10"/><path d="M15 14h5l-5 6h5"/>',
     "flask-conical": '<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/>',
     "calendar-clock": '<path d="M16 14v2.2l1.6 1"/><path d="M16 2v3"/><path d="M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338"/><path d="M3 9h5.859"/><path d="M8 2v3"/><circle cx="16" cy="16" r="6"/>',
     "keyboard": '<path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/>',
@@ -483,9 +493,11 @@ function api(cmd, j) {
     case "instellingen": toonInstellingen(d); break;
     case "planning": toonPlanning(d); break;
     case "planveld":
-        if ($("p-inst")) { $("p-inst").value = d.instelling; $("p-afd").value = d.afdeling; $("p-fout").innerHTML = ""; if (!$("p-naam").value) $("p-naam").value = d.afdeling; }
+        if ($("p-inst")) { $("p-inst").value = d.instelling; $("p-afd").value = d.afdeling; $("p-fout").innerHTML = ""; if (!$("p-naam").value) $("p-naam").value = d.afdeling; vulInstKeuze(); }
         break;
     case "planfout": if ($("p-fout")) $("p-fout").innerHTML = esc(d); break;
+    case "planinfo": if ($("p-info")) { $("p-info").innerHTML = esc(d); if (d && $("p-fout")) $("p-fout").innerHTML = ""; } break;
+    case "plangroepen": if (Plan) { Plan.groepen = d; if ($("p-inst-kies")) vulInstKeuze(); } break;
     case "instmap": var v = $("i-map"); if (v) v.value = d; break;
     }
     return "";
@@ -603,6 +615,9 @@ function toonPlanning(d) {
     for (var i = 0; i < d.items.length; i++) {
         var it = d.items[i];
         h += '<div class="planrij' + (it.aan == "1" ? " aan" : "") + '">' +
+             '<div class="pvolg">' +
+             '<span class="' + (i == 0 ? "leeg" : "") + '" title="Omhoog" onclick="stuur(\'plan/omhoog?id=' + it.id + '\')">' + I("chevron-up") + '</span>' +
+             '<span class="' + (i == d.items.length - 1 ? "leeg" : "") + '" title="Omlaag" onclick="stuur(\'plan/omlaag?id=' + it.id + '\')">' + I("chevron-down") + '</span></div>' +
              '<div class="ptekst"><div class="otitel">' + esc(it.naam) + '</div>' +
              '<div class="ouitleg">Afdeling <b>' + esc(it.afdeling) + '</b>' + (it.instelling ? ' (' + esc(it.instelling) + ')' : '') +
              ' &middot; ' + dagenTekst(it.dagen) + ' om <b>' + esc(it.tijd) + '</b> &middot; ' + wekenTekst(it.weken) + '<br>' +
@@ -616,6 +631,7 @@ function toonPlanning(d) {
              '<span class="schakel" title="Aan/uit" onclick="stuur(\'plan/wissel?id=' + it.id + '\')"></span></div></div>';
     }
     h += '</div><div class="dknoppen"><div class="dknop" style="float:left;margin-left:0" onclick="toonPlanForm(-1)"><span class="ico">' + I("plus") + '</span>Nieuwe planning</div>' +
+         (d.items.length > 1 ? '<div class="dknop" style="float:left;margin-left:8px;min-width:0" title="Op naam sorteren (A-Z)" onclick="stuur(\'plan/sorteer\')"><span class="ico">' + I("arrow-down-a-z") + '</span>A&ndash;Z</div>' : '') +
          '<div class="dknop hoofd" data-esc="1" onclick="stuur(\'plan/sluit\')">Sluiten</div></div>';
     dl.innerHTML = h;
     $("scherm").className = "open";
@@ -627,11 +643,14 @@ function toonPlanForm(i) {
     var h = planKop(i >= 0 ? "Planning wijzigen" : "Nieuwe planning") + '<div id="instinhoud" class="dun">';
     h += '<div class="prij"><span class="lbl">Naam</span><input class="veld" id="p-naam" maxlength="40" placeholder="bijv. Baxter T1GUA" value="' + esc(it.naam) + '"></div>';
     h += '<div class="sectie">Groep</div>';
-    h += '<div class="uitleg">Kies in Pharmacom de Instelling en Afdeling en klik op <b>Overnemen uit Pharmacom</b>, of vul de codes zelf in.</div>';
-    h += '<div class="prij"><span class="lbl">Instelling</span><input class="veld kort" id="p-inst" value="' + esc(it.instelling) + '" placeholder="T1">' +
-         '<span class="lbl" style="width:auto;margin:0 8px 0 14px">Afdeling</span><input class="veld kort" id="p-afd" value="' + esc(it.afdeling) + '" placeholder="T1GUA"></div>';
-    h += '<div style="margin:2px 0 0 92px"><span class="klein" onclick="stuur(\'plan/overnemen\')"><span class="ico">' + I("download") + '</span>Overnemen uit Pharmacom</span></div>';
-    h += '<div class="pfout" id="p-fout"></div>';
+    h += '<div class="uitleg">Typ de code, kies hem uit de lijst, of neem de groep over die nu in Pharmacom staat.</div>';
+    h += '<div class="prij"><span class="lbl">Instelling</span><input class="veld kort" id="p-inst" value="' + esc(it.instelling) + '" placeholder="T1" oninput="instGetypt()">' +
+         '<select class="veld" id="p-inst-kies" style="margin-left:8px" onchange="instGekozen()"></select></div>';
+    h += '<div class="prij"><span class="lbl">Afdeling</span><input class="veld kort" id="p-afd" value="' + esc(it.afdeling) + '" placeholder="T1GUA" oninput="afdGetypt()">' +
+         '<select class="veld" id="p-afd-kies" style="margin-left:8px" onchange="afdGekozen()"></select></div>';
+    h += '<div style="margin:2px 0 0 92px"><span class="klein" onclick="stuur(\'plan/overnemen\')"><span class="ico">' + I("download") + '</span>Overnemen uit Pharmacom</span>' +
+         '<span class="klein" title="Leest alle instellingen en afdelingen uit Pharmacom (duurt even; je eigen groep wordt daarna teruggezet)" onclick="stuur(\'plan/ophalen\')"><span class="ico">' + I("refresh-cw") + '</span>Alle groepen ophalen</span></div>';
+    h += '<div class="pinfo" id="p-info"></div><div class="pfout" id="p-fout"></div>';
     h += '<div class="sectie">Wanneer</div>';
     h += '<div class="prij"><span class="lbl">Dagen</span><span>';
     for (var d = 1; d <= 7; d++)
@@ -648,7 +667,37 @@ function toonPlanForm(i) {
          '<div class="dknop hoofd" onclick="planOpslaan(\'' + it.id + '\')">Opslaan</div></div>';
     dl.innerHTML = h;
     $("scherm").className = "open";
+    vulInstKeuze();
     $("p-naam").focus();
+}
+
+// Keuzelijsten met bekende groepen (Plan.groepen = {inst: [{c, n}], afd: {T1: [{c, n}]}})
+function opties(lijst, waarde, leeg) {
+    var h = '<option value="">' + leeg + '</option>', gevonden = false;
+    for (var i = 0; i < lijst.length; i++) {
+        var s = lijst[i].c == waarde;
+        if (s) gevonden = true;
+        h += '<option value="' + esc(lijst[i].c) + '"' + (s ? " selected" : "") + '>' + esc(lijst[i].c) + (lijst[i].n ? " – " + esc(lijst[i].n) : "") + "</option>";
+    }
+    if (waarde && !gevonden) h += '<option value="" selected>' + esc(waarde) + ' (onbekend)</option>';
+    return h;
+}
+function groepen() { return (Plan && Plan.groepen) || { inst: [], afd: {} }; }
+function vulInstKeuze() {
+    var g = groepen();
+    $("p-inst-kies").innerHTML = opties(g.inst, $("p-inst").value, g.inst.length ? "— kies een instelling —" : "— nog geen lijst —");
+    vulAfdKeuze();
+}
+function vulAfdKeuze() {
+    var g = groepen(), lijst = g.afd[$("p-inst").value] || [];
+    $("p-afd-kies").innerHTML = opties(lijst, $("p-afd").value, lijst.length ? "— kies een afdeling —" : ($("p-inst").value ? "— geen afdelingen bekend —" : "— kies eerst een instelling —"));
+}
+function instGetypt() { $("p-inst").value = $("p-inst").value.toUpperCase(); vulInstKeuze(); }
+function afdGetypt() { $("p-afd").value = $("p-afd").value.toUpperCase(); vulAfdKeuze(); }
+function instGekozen() { var v = $("p-inst-kies").value; if (v) { $("p-inst").value = v; vulAfdKeuze(); } }
+function afdGekozen() {
+    var v = $("p-afd-kies").value;
+    if (v) { $("p-afd").value = v; if (!$("p-naam").value) $("p-naam").value = v; }
 }
 function planOpslaan(id) {
     var naam = $("p-naam").value.replace(/^\s+|\s+$/g, ""), afd = $("p-afd").value.replace(/\s/g, ""), inst = $("p-inst").value.replace(/\s/g, "");

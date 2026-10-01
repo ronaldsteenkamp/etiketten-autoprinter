@@ -5,7 +5,9 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.4.2", ["De knop Stop werkt nu ook tijdens het printen (muisklikken op dit venster worden niet meer geblokkeerd)."
+        ["6.5.0", ["Planning: volgorde zelf aanpassen met de pijltjes, of sorteren op naam (A–Z)."
+            , "Planning: Instelling en Afdeling kiezen uit een lijst (of typen). Met 'Alle groepen ophalen' haalt de app de lijst uit Pharmacom."]]
+        , ["6.4.2", ["De knop Stop werkt nu ook tijdens het printen (muisklikken op dit venster worden niet meer geblokkeerd)."
             , "Na Stop of Esc zet de app Pharmacom terug op de aanschrijfbuffer, zodat Doorgaan meteen werkt."]]
         , ["6.4.1", ["De knop Vernieuwen is een klein knopje (↻) boven de lijst geworden; F5 werkt nog steeds."
             , "Na een proefronde kun je meteen weer vinkjes zetten; de uitkomst blijft zichtbaar."

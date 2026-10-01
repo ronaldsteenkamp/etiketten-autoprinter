@@ -130,7 +130,114 @@ class Ph {
             return "de velden Instelling en Afdeling zijn niet gevonden"
         if a.code = ""
             return "er is in Pharmacom geen afdeling gekozen"
+        Groepen.Leer(i.code, i.omschrijving, a.code, a.omschrijving)
         return {instelling: i.code, afdeling: a.code}
+    }
+
+    ; --- Alle groepen ophalen ----------------------------------------------
+    ; Leest alle instellingen (venster "Kies een instelling", sluiten met
+    ; Annuleren - Escape zou "Alle toegestane instellingen" kiezen) en per
+    ; instelling de afdelingen (keuzelijst "Kies een code", sluiten met
+    ; Escape). Zet daarna de oorspronkelijke instelling en afdeling terug.
+    ; Geeft {instellingen: Map code->naam, afdelingen: Map inst->Map}, of
+    ; een tekst met de reden waarom het niet lukte.
+    static HaalGroepen(Voortgang := "") {
+        if this.Verbind() != "ok"
+            return "Pharmacom is niet bereikbaar"
+        if WinGetMinMax(this.Hwnd) = -1
+            WinRestore "ahk_id " this.Hwnd
+        WinActivate "ahk_id " this.Hwnd
+        if !WinWaitActive("ahk_id " this.Hwnd, , 3)
+            return "Pharmacom kon niet naar voren gehaald worden (staat er een venster open?)"
+        if !this.OpBufferScherm()
+            return "Pharmacom staat niet op de aanschrijfbuffer"
+        OrigI := this.Veld("Instelling:"), OrigA := this.Veld("Afdeling:")
+        if !OrigI || !OrigA
+            return "de velden Instelling en Afdeling zijn niet gevonden"
+        Fout := ""
+        Inst_ := this.LeesKeuzevenster("Instelling:", "Kies een instelling", Map("code", "i)^Memo$", "naam", "i)^Ziekenhuis"), "Annuleren")
+        if !IsObject(Inst_)
+            Fout := Inst_
+        Afd := Map()
+        if !Fout {
+            for Code, Naam in Inst_ {
+                if Voortgang
+                    Voortgang("Afdelingen van " Code " ophalen (" A_Index " van " Inst_.Count ")" Teken.Ellips)
+                if (R := this.ZetVeld("Instelling:", Code)) != "" {
+                    Fout := R
+                    break
+                }
+                v := this.Veld("Afdeling:")
+                if !v || !v.aan {
+                    Afd[Code] := Map()      ; deze instelling heeft geen afdelingen
+                    continue
+                }
+                L := this.LeesKeuzevenster("Afdeling:", "Kies een code", Map("code", "i)^Code$", "naam", "i)^Omschrijving$"), "")
+                if !IsObject(L) {
+                    Fout := L
+                    break
+                }
+                Afd[Code] := L
+            }
+        }
+        ; Altijd terugzetten
+        if OrigI.code != ""
+            this.ZetVeld("Instelling:", OrigI.code)
+        if OrigA.code != ""
+            this.ZetVeld("Afdeling:", OrigA.code)
+        I2 := this.Veld("Instelling:"), A2 := this.Veld("Afdeling:")
+        if !I2 || I2.code != OrigI.code || !A2 || A2.code != OrigA.code
+            Fout := (Fout ? Fout ". " : "") "Let op: Instelling/Afdeling konden niet teruggezet worden naar " OrigI.code " / " OrigA.code
+        Log("Groepen opgehaald: " (IsObject(Inst_) ? Inst_.Count : 0) " instellingen" (Fout ? " - " Fout : ""))
+        return Fout ? Fout : {instellingen: Inst_, afdelingen: Afd}
+    }
+
+    ; Opent het keuzevenster naast een veld (vergrootglas, of het pijltje
+    ; rechts van het tekstvak), leest de tabel (Map code->naam) en sluit het
+    ; weer met de knop Sluitknop, of Escape als Sluitknop leeg is.
+    static LeesKeuzevenster(Label, Titel, Koppen, Sluitknop) {
+        v := this.Veld(Label)
+        if !v
+            return "het veld " Label " is niet gevonden"
+        Plek := v.HasProp("knop") ? v.knop : {x: v.x + v.w, y: v.y, w: 18, h: v.h}
+        if !this.KlikOp(Plek)
+            return "Pharmacom was niet het actieve venster"
+        Venster_ := 0, Eind := A_TickCount + 4000
+        while !Venster_ && A_TickCount < Eind {
+            Sleep 100
+            a := WinExist("A")
+            try
+                if a && WinGetPID(a) = this.Pid && InStr(WinGetTitle(a), Titel)
+                    Venster_ := a
+        }
+        if !Venster_
+            return "het venster '" Titel "' verscheen niet"
+        Sleep 300
+        Res := Map()
+        t := Jab.ZoekTabel(this.Pid, Koppen)
+        if t
+            loop t.Rijen() {
+                c := t.Cel(A_Index - 1, "code")
+                if c != ""
+                    Res[c] := t.Cel(A_Index - 1, "naam")
+            }
+        t := ""
+        ; Sluiten (alleen als het keuzevenster nog vooraan staat)
+        if WinActive("ahk_id " Venster_) {
+            k := Sluitknop != "" ? this.Knop(Sluitknop) : ""
+            if k {
+                CoordMode "Mouse", "Screen"
+                MouseGetPos &Mx, &My
+                Click k.x + k.w // 2, k.y + k.h // 2
+                MouseMove Mx, My, 0
+            } else
+                Send "{Escape}"
+        }
+        WinWaitClose "ahk_id " Venster_, , 3
+        if WinExist("ahk_id " Venster_)
+            return "het venster '" Titel "' ging niet dicht"
+        Sleep 200
+        return Res
     }
 
     ; {code, omschrijving, x, y, w, h} van een zoekveld, of ""
@@ -156,9 +263,13 @@ class Ph {
                 if Ki && Ki.role = "text" {
                     if Jab.Heeft(Ki, "editable") && !Gevonden {
                         Res.code := Trim(Jab.Naam(Vm, Kind)), Res.x := Ki.x, Res.y := Ki.y, Res.w := Ki.w, Res.h := Ki.h
+                        Res.aan := Jab.Heeft(Ki, "enabled")
                         Gevonden := 1
                     } else if !Jab.Heeft(Ki, "editable")
                         Res.omschrijving := Trim(Jab.Naam(Vm, Kind))
+                } else if Ki && Ki.role = "push button" && Ki.w > 0 && !Res.HasProp("knop") {
+                    ; Zoekknop (vergrootglas) naast het veld
+                    Res.knop := {x: Ki.x, y: Ki.y, w: Ki.w, h: Ki.h}
                 } else if Ki && Diepte < 3
                     Verzamel(Vm, Kind, Diepte + 1)
                 Jab.Release(Vm, Kind)
@@ -280,6 +391,9 @@ class Ph {
             if Andere
                 return "de lijst bevat ook " Andere " pati" Teken.EUml "nt(en) van een andere afdeling"
         }
+        i := this.Veld("Instelling:"), a := this.Veld("Afdeling:")
+        if i && a
+            Groepen.Leer(i.code, i.omschrijving, a.code, a.omschrijving)
         Log("  groep " Instelling " / " Afdeling " geladen (" StrSplit(Vorige, ":")[1] " regels)")
         return ""
     }
