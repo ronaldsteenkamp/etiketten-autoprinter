@@ -583,11 +583,17 @@ function toonInstellingen(d) {
         h += '<div class="wtrij"><span class="lbl">' + esc(it.label) + '</span><input class="veld num" id="w-' + it.k + '" value="' + esc(it.v) + '"><span class="ms">ms</span></div>';
     }
     h += "</div>";
-    h += '<div class="sectie">Updates</div>';
-    h += '<div class="uitleg">Voor gebruik op meerdere computers: kies een map (bijv. op de netwerkschijf) waar de nieuwste Etiketten_autoprinter.exe staat. Bij het starten kijkt de app of daar een nieuwere versie staat en vraagt dan of hij moet bijwerken.</div>';
+    h += '<div class="sectie">Netwerkmap en updates</div>';
+    h += '<div class="uitleg">De netwerkmap waar de app vandaan komt (bijv. op de W:-schijf). Daarin delen de computers de <b>planning en instellingen</b>' +
+         (d.gedeeld == "1" ? ' (deze computer gebruikt ze nu)' : '') + ', en daar kijkt de app bij het starten of er een nieuwere versie staat. ' +
+         'Staat daar niets nieuwers, dan kijkt hij op GitHub. Laat dit veld staan zoals het is, tenzij de netwerkmap verhuist.</div>';
     h += '<div style="display:-ms-flexbox;display:flex;margin-top:8px"><input class="veld" id="i-map" style="-ms-flex:1;flex:1" value="' + esc(d.map) + '">' +
          '<div class="dknop" style="min-width:0;height:30px;line-height:28px" onclick="stuur(\'inst/bladeren\')">Bladeren</div></div>';
-    h += '<div style="margin:10px 0 4px 0"><span class="klein" onclick="instActie(\'controleer\')">Nu controleren op updates</span><span class="klein" onclick="instActie(\'publiceer\')">Deze versie in de updatemap zetten</span></div>';
+    h += '<div class="uitleg" style="margin-top:6px">' + (d.netwerk == "1" && !d.map
+            ? 'Deze app start vanaf de netwerkmap: na een herstart heb je altijd de versie die daar staat. Sneller en zonder waarschuwing van Windows: <i>Op deze computer installeren</i> (hieronder).'
+            : 'Updates: ' + (d.map ? 'netwerkmap' : 'geen netwerkmap') + (d.github ? ' en GitHub (' + esc(d.github) + ')' : '') + '.') +
+         (d.gekeken ? '<br>Laatst gekeken: ' + esc(d.gekeken) : '') + '</div>';
+    h += '<div style="margin:6px 0 4px 0"><span class="klein" onclick="instActie(\'controleer\')">Nu controleren op updates</span></div>';
     if (d.computers && d.computers.length) {
         h += '<div class="sectie">Computers</div>';
         h += '<div class="uitleg">Computers die de app gebruiken, met hun versie en wanneer de app daar het laatst draaide (bijgewerkt bij het starten en elk uur).</div>';

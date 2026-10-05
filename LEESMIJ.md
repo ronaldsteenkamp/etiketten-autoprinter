@@ -275,7 +275,8 @@ Staat hier een nieuwere .exe zonder passende controlewaarde, dan weigeren de and
 computers de update ("Bijwerken niet mogelijk"). Test de nieuwe versie (bijv. met de
 nep-Pharmacom, die `Bouw\` gebruikt als daar een .exe staat), kopieer hem daarna naar
 deze map en zet de controlewaarde (`Etiketten_autoprinter.exe.sha256`, SHA-256 in kleine
-letters) ernaast, of gebruik *Deze versie in de updatemap zetten*.
+letters) ernaast. `Hulpmiddelen\maak_release.ps1` maakt die controlewaarde in `Bouw\`
+al aan; dan kun je beide bestanden kopiëren.
 Gebruik altijd de **32-bit** base (`AutoHotkey32.exe`): Pharmacom draait op 32-bit Java.
 De pagina, het pictogram en de WebView2Loader.dll worden in de .exe meegenomen.
 De app heeft de WebView2 Runtime nodig; die zit standaard in Windows 10/11.
@@ -364,9 +365,22 @@ GitHub.
 
 ## Updates voor meerdere computers
 
-Stel onder **Instellingen → Updates** een (netwerk)map in. Met *Deze versie in de
-updatemap zetten* publiceer je de huidige versie; andere computers krijgen bij het
-starten de vraag of ze willen bijwerken.
+Onder **Instellingen → Netwerkmap en updates** staat de netwerkmap waar de app
+vandaan komt. Die is tegelijk de map met de gedeelde planning en instellingen (zie
+*Op deze computer installeren*), dus laat hem staan tenzij de map verhuist. Daar
+zie je ook waar de app naar updates kijkt en wanneer het laatst (met de uitkomst),
+en kun je *Nu controleren op updates*.
+
+Een nieuwe versie zet de beheerder in de netwerkmap: kopieer de geteste .exe uit
+`Bouw\` en zet de controlewaarde ernaast (zie *Compileren*). Lokaal geïnstalleerde
+computers krijgen bij het starten de vraag of ze willen bijwerken; computers die
+vanaf de netwerkmap starten hebben hem na een herstart. De knop *Deze versie in de
+updatemap zetten* staat niet meer in Instellingen (voor collega's verwarrend); de
+functie `Update.Publiceer()` bestaat nog.
+
+Een app die vanaf de netwerkmap zelf draait, werkt **niet** bij van GitHub: dat zou
+de gedeelde .exe vervangen zonder controlewaarde, waarna de lokale installaties de
+update weigeren.
 
 Bij het publiceren komt naast de .exe een controlewaarde
 (`Etiketten_autoprinter.exe.sha256`). Een computer werkt alleen bij als de

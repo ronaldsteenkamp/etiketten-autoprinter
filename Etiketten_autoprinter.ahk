@@ -46,7 +46,7 @@ global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
 global AppGitHub := "ronaldsteenkamp/etiketten-autoprinter"                        ; GitHub-repository voor updates ("eigenaar/naam"); leeg = alleen de updatemap
-global AppVersie := "6.10.1"
+global AppVersie := "6.10.2"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel

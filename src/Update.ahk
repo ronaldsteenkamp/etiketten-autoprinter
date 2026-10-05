@@ -73,18 +73,31 @@ class Update {
             if VersieNummer(v) > VersieNummer(AppVersie)
                 Nieuw := Inst.UpdateMap "\" this.ExeNaam, NieuweVersie := v
         }
-        if Nieuw = "" && this.GitHub != "" {
+        GitHubWeg := false
+        ; Draait de app vanaf de netwerkmap zelf, dan niet van GitHub bijwerken:
+        ; dat zou de .exe in de gedeelde map vervangen zonder controlewaarde,
+        ; en dan weigeren de lokaal geïnstalleerde computers de update. Die map
+        ; werkt de beheerder bij (maak_release.ps1 + kopiëren).
+        VanafMap := this.OpNetwerk() && (Inst.UpdateMap = "" || Inst.UpdateMap = A_ScriptDir)
+        if Nieuw = "" && this.GitHub != "" && !VanafMap {
             Release := this.GitHubNieuwste()
+            GitHubWeg := !IsObject(Release)
             if IsObject(Release) && VersieNummer(Release.versie) > VersieNummer(AppVersie)
                 NieuweVersie := Release.versie
-            else if !Stil && !IsObject(Release)
-                return Venster.Melding("Updates", "GitHub (" this.GitHub ") was niet bereikbaar of heeft geen release met " this.ExeNaam " en " this.ExeNaam ".sha256.", "waarschuwing")
             else
                 Release := ""
         }
+        ; Uitkomst onthouden (Instellingen toont wanneer en wat)
+        this.ZetGekeken(Nieuw != "" ? "versie " NieuweVersie " staat klaar in de netwerkmap"
+            : IsObject(Release) ? "versie " NieuweVersie " staat klaar op GitHub"
+            : GitHubWeg ? "nieuwste versie in de netwerkmap; GitHub niet bereikbaar"
+            : "je hebt de nieuwste versie")
+        if GitHubWeg && !Stil && Nieuw = ""
+            return Venster.Melding("Updates", "GitHub (" this.GitHub ") was niet bereikbaar of heeft geen release met " this.ExeNaam " en " this.ExeNaam ".sha256." (Inst.UpdateMap != "" ? "`n`nIn de netwerkmap staat geen nieuwere versie." : ""), "waarschuwing")
         if Nieuw = "" && !IsObject(Release) {
             if !Stil
-                Venster.Melding("Updates", Inst.UpdateMap = "" && this.GitHub = "" ? "Er is geen updatemap of GitHub ingesteld." : "Je hebt de nieuwste versie (" AppVersie ").")
+                Venster.Melding("Updates", VanafMap ? "De app start vanaf de netwerkmap (" A_ScriptDir "): na een herstart heb je altijd de versie die daar staat (nu " AppVersie ")."
+                    : Inst.UpdateMap = "" && this.GitHub = "" ? "Er is geen updatemap of GitHub ingesteld." : "Je hebt de nieuwste versie (" AppVersie ").")
             return
         }
         if !A_IsCompiled {
@@ -117,6 +130,15 @@ class Update {
         Log("Bijwerken naar versie " NieuweVersie)
         Run '"' Hulp '"', , "Hide"
         ExitApp
+    }
+
+    ; Wanneer de app voor het laatst naar updates keek, en met welke uitkomst
+    ; (in de toestand van deze computer)
+    static ZetGekeken(Tekst) => Staat.Schrijf(SubStr(A_Now, 1, 12) "|" Tekst, "App", "Updates")
+
+    static LaatstGekeken() {
+        d := StrSplit(Staat.Lees("App", "Updates", ""), "|", , 2)
+        return d.Length = 2 && StrLen(d[1]) = 12 ? FormatTime(d[1] "00", "ddd d-M HH:mm") ": " d[2] : ""
     }
 
     ; --- GitHub ------------------------------------------------------------------
@@ -184,7 +206,7 @@ class Update {
         Verwacht := SubStr(Verwacht, 1, 64)
         if !RegExMatch(Verwacht, "^[0-9a-f]{64}$") {
             Log("Update geweigerd: geen geldige controlewaarde (" Bron ".sha256)")
-            Venster.Melding("Bijwerken niet mogelijk", "Bij de nieuwe versie in de updatemap ontbreekt de controlewaarde (" this.ExeNaam ".sha256).`n`nZet de nieuwe versie opnieuw in de updatemap via Instellingen " Teken.Pijl " Updates " Teken.Pijl " Deze versie in de updatemap zetten.", "waarschuwing")
+            Venster.Melding("Bijwerken niet mogelijk", "Bij de nieuwe versie in de updatemap ontbreekt de controlewaarde (" this.ExeNaam ".sha256).`n`nVraag de beheerder de nieuwe versie opnieuw in de netwerkmap te zetten, met de controlewaarde erbij.", "waarschuwing")
             return ""
         }
         Kopie := A_Temp "\Etiketten_autoprinter_nieuw.exe"

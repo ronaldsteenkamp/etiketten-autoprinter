@@ -393,7 +393,9 @@ class Venster {
                 , oud: VersieNummer(c.versie) < VersieNummer(AppVersie) ? 1 : 0
                 , gezien: StrLen(c.gezien) >= 12 ? FormatTime(c.gezien, "ddd d-M HH:mm") : ""})
         this.UiOpties()
-        this.Ui("instellingen", {items: Items, map: Inst.UpdateMap, apotheek: Inst.Apotheek, printmenu: Inst.PrintItem, computers: Pcs})
+        this.Ui("instellingen", {items: Items, map: Inst.UpdateMap, apotheek: Inst.Apotheek, printmenu: Inst.PrintItem, computers: Pcs
+            , github: Update.GitHub, gekeken: Update.LaatstGekeken(), gedeeld: Inst.Bestand != Inst.Eigen ? 1 : 0
+            , netwerk: Update.OpNetwerk() ? 1 : 0})
     }
 
     ; Acties uit de instellingen-dialoog: "inst/<actie>?k=v&..."
