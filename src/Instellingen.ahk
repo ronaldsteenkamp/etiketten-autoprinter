@@ -32,8 +32,8 @@ class Inst {
     ; die in UitStandaard)
     static OptieSleutels := Map("deelbaar", "AlleenDeelbaar", "controle", "DossierControleren"
         , "patnr", "DossierAlleenPatnr", "blokkeer", "InvoerBlokkeren", "bevestigen", "Bevestigen"
-        , "bovenop", "Bovenop", "geluid", "Geluid", "focusterug", "FocusTerugpakken")
-    static UitStandaard := Map("focusterug", 1)
+        , "bovenop", "Bovenop", "altijdbovenop", "AltijdBovenop", "geluid", "Geluid", "focusterug", "FocusTerugpakken")
+    static UitStandaard := Map("focusterug", 1, "altijdbovenop", 1)
 
     static Wt := Map()
     static Opties := Map()

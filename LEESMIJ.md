@@ -128,7 +128,8 @@ om te zien of Pharmacom in de loop van de dag zwaarder wordt.
 "Alleen ASB: Deelbaar", "Dossier controleren", "Dossier alleen op Pat.nr" en het
 item in het afdrukmenu gelden per ingelogde apotheek (ini-sectie `[Opties AN]`;
 in Instellingen gemarkeerd met de apotheekcode). Staat daar niets, dan geldt de
-algemene waarde. Wachttijden, geluid, venster bovenop, bevestigen en toetsenbord
+algemene waarde. Wachttijden, geluid, venster bovenop (*tijdens het printen*,
+standaard aan; *altijd*, standaard uit), bevestigen en toetsenbord
 blokkeren horen bij de computer.
 
 Na een update toont de app één keer **Wat is er nieuw** (lijst in

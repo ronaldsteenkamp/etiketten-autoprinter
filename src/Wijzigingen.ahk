@@ -5,7 +5,8 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.10.0", ["Updates ook via GitHub: staat er geen nieuwere versie in de updatemap, dan kijkt de app bij de nieuwste release op GitHub."
+        ["6.10.1", ["Het venster staat alleen nog bovenop tijdens het printen, zodat je Pharmacom gewoon ziet als de app niets doet. Wil je hem toch altijd bovenop, zet dan in Instellingen 'Venster altijd bovenop' aan."]]
+        , ["6.10.0", ["Updates ook via GitHub: staat er geen nieuwere versie in de updatemap, dan kijkt de app bij de nieuwste release op GitHub."
             , "Gedownload en gestart vanuit Downloads of het bureaublad: de app biedt aan zich op de computer te installeren."]]
         , ["6.9.1", ["Bijwerken: wacht nu tot de app echt gesloten is (eerst startte soms gewoon de oude versie weer)."]]
         , ["6.9.0", ["Geplande ronde: stopt hij door een hapering, dan gaat de app zelf verder (tot 3 keer). Stopt hij twee keer bij dezelfde patiënt, dan wordt die overgeslagen."

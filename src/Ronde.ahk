@@ -234,6 +234,7 @@ class Ronde {
         this.Proef := Proef, this.Auto := Auto
         Wat := Proef ? "Proefronde" : Auto != "" ? "Geplande ronde '" Auto "'" : "Ronde"
         this.Bezig := true, this.Stoppen := false, this.StopReden := "", this.FocusTerug := 0, this.TerugGezet := false, this.StopPatnr := ""
+        Venster.ZetBovenop()   ; tijdens het printen bovenop (optie)
         this.Aantal := n, this.Verwerkt := 0, this.Geprint := 0, this.Overgeslagen := 0
         OverslaanLijst := ""
         this.Start := A_TickCount
@@ -326,6 +327,7 @@ class Ronde {
         Wakker.Zet("ronde", false)
         Waakhond.Patient(0)
         this.Bezig := false
+        Venster.ZetBovenop()
         Venster.Ui("bezig", 0)
         SetTimer RondeTijd, 0
         Duur := FmtTijd((A_TickCount - this.Start) // 1000)

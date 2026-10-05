@@ -89,7 +89,13 @@ class Venster {
         try this.Gui.Opt(Aan ? "+E0x08000000" : "-E0x08000000")
     }
 
-    static ZetBovenop() => this.Gui.Opt(Inst.Optie("bovenop") ? "+AlwaysOnTop" : "-AlwaysOnTop")
+    ; Bovenop: altijd (optie "altijdbovenop", standaard uit), of alleen zolang
+    ; er geprint wordt of een geplande ronde bezig is (optie "bovenop"), zodat
+    ; het venster niet voor Pharmacom blijft hangen als de app niets doet
+    static ZetBovenop() {
+        Aan := Inst.Optie("altijdbovenop") || (Inst.Optie("bovenop") && (Ronde.Bezig || Planning.Bezig))
+        try this.Gui.Opt(Aan ? "+AlwaysOnTop" : "-AlwaysOnTop")
+    }
 
     static Toon(Activeren := false) {
         if this.Gui

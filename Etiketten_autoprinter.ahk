@@ -46,7 +46,7 @@ global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
 global AppGitHub := "ronaldsteenkamp/etiketten-autoprinter"                        ; GitHub-repository voor updates ("eigenaar/naam"); leeg = alleen de updatemap
-global AppVersie := "6.10.0"
+global AppVersie := "6.10.1"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -222,6 +222,7 @@ Vangnet(e, Modus) {
         }
     }
     Planning.Bezig := false
+    try Venster.ZetBovenop()
     Tekst := "Er ging iets onverwachts mis" (WasBezig ? " tijdens het printen. De ronde is gestopt en toetsenbord en muis zijn weer vrij. Met Doorgaan ga je verder; wie al geprint is, wordt overgeslagen." : ".")
         . "`n`nFout: " e.Message "`n(" e.What ", regel " e.Line ")"
         . "`n`nDe app werkt gewoon verder. Gebeurt dit vaker, stuur dan het logbestand naar " AppMaker " (knop rechtsboven)."

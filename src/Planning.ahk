@@ -452,6 +452,7 @@ class Planning {
 
     static Voer(it, Handmatig := false, Proef := false) {
         this.Bezig := true
+        Venster.ZetBovenop()
         try {
             Log("Geplande ronde '" it.naam "' (" it.instelling " / " it.afdeling ")" (Proef ? " als proefronde" : Handmatig ? " handmatig gestart" : ""))
             Status := (Soort, Tekst := "") => Proef ? 0 : this.ZetStatus(it, Soort, Tekst)
@@ -534,8 +535,10 @@ class Planning {
             Log("  fout in geplande ronde: " e.Message " (" e.What ", regel " e.Line ")")
             if !Proef
                 this.ZetStatus(it, "mislukt", "onverwachte fout: " e.Message)
-        } finally
+        } finally {
             this.Bezig := false
+            Venster.ZetBovenop()
+        }
     }
 
     ; --- Pagina ------------------------------------------------------------------
