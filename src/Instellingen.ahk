@@ -3,6 +3,11 @@
 ; =====================================================================
 
 class Inst {
+    ; De ini naast de app. Is de app lokaal geïnstalleerd (zie Update), dan
+    ; staan alleen de updatemap en de opslagmap in de eigen ini; al het andere
+    ; (planning, groepen, opties) in de gedeelde ini in de netwerkmap.
+    static Eigen := A_ScriptDir "\Etiketten_autoprinter.ini"
+    static Test := EnvGet("ETIKETTEN_TEST") != ""   ; testmodus met de nep-Pharmacom
     static Bestand := A_ScriptDir "\Etiketten_autoprinter.ini"
 
     ; Wachttijden: [naam, standaard (ms), omschrijving]. De app wacht zelf tot
@@ -23,10 +28,12 @@ class Inst {
     ; opgeven = niet geprint). Het wachten stopt zodra het menu er is.
     static Minimum := Map("MaxWachtPrint", 1000)
 
-    ; Opties: naam in de pagina -> sleutel in de ini (standaard allemaal aan)
+    ; Opties: naam in de pagina -> sleutel in de ini (standaard aan, behalve
+    ; die in UitStandaard)
     static OptieSleutels := Map("deelbaar", "AlleenDeelbaar", "controle", "DossierControleren"
         , "patnr", "DossierAlleenPatnr", "blokkeer", "InvoerBlokkeren", "bevestigen", "Bevestigen"
-        , "bovenop", "Bovenop", "geluid", "Geluid")
+        , "bovenop", "Bovenop", "geluid", "Geluid", "focusterug", "FocusTerugpakken")
+    static UitStandaard := Map("focusterug", 1)
 
     static Wt := Map()
     static Opties := Map()
@@ -37,6 +44,19 @@ class Inst {
     static RegisterDagen := 7
 
     static Lees() {
+        ; Per computer, uit de eigen ini
+        this.UpdateMap := Trim(this.Lees1("Update", "Map", ""))
+        this.DataMap := Trim(this.Lees1("Opslag", "Map", A_ScriptDir))
+        this.Bestand := this.Gedeeld()
+        ; Testmodus met de nep-Pharmacom: eigen ini en gegevens in de
+        ; tijdelijke map, zodat de echte planning, het register en de logs
+        ; niet geraakt worden
+        if this.Test {
+            Map_ := A_Temp "\Etiketten autoprinter test"
+            try DirCreate Map_
+            this.Bestand := Map_ "\Etiketten_autoprinter.ini"
+            this.DataMap := Map_, this.UpdateMap := ""
+        }
         ; Instellingen van voor v5.1 golden voor vaste wachttijden; die worden
         ; (behalve de printinstellingen) teruggezet naar de standaard.
         if this.Getal(this.Lees1("Wachttijden", "Versie", 1), 1) < 2 {
@@ -53,16 +73,30 @@ class Inst {
             }
             this.Wt[k] := v
         }
-        for Naam, Sleutel in this.OptieSleutels
-            this.Opties[Naam] := this.Getal(this.Lees1("Opties", Sleutel, 1), 1) ? 1 : 0
+        for Naam, Sleutel in this.OptieSleutels {
+            d := this.UitStandaard.Has(Naam) ? 0 : 1
+            this.Opties[Naam] := this.Getal(this.Lees1("Opties", Sleutel, d), d) ? 1 : 0
+        }
         ; Item in het afdrukmenu (Ctrl+P in het dossier); de sneltoets leest de
         ; app uit Pharmacom (Barcode etiket = Alt+B).
         this.PrintMenu := Trim(this.Lees1("Opties", "PrintMenu", "Barcode etiket"))
-        this.UpdateMap := Trim(this.Lees1("Update", "Map", ""))
-        this.DataMap := Trim(this.Lees1("Opslag", "Map", A_ScriptDir))
         this.RapportDagen := this.Getal(this.Lees1("Opslag", "RapportDagen", 90), 90)
         this.RegisterDagen := this.Getal(this.Lees1("Opslag", "RegisterDagen", 7), 7)
     }
+
+    ; Welke ini voor de rest geldt: die in de updatemap (= de netwerkmap waar
+    ; de app vandaan komt) als de app lokaal draait en die bereikbaar is,
+    ; anders de eigen. Zo hebben lokaal geïnstalleerde computers dezelfde
+    ; planning en opties als computers die vanaf de netwerkmap starten.
+    static Gedeeld() {
+        if this.UpdateMap = "" || this.UpdateMap = A_ScriptDir
+            return this.Eigen
+        Ini := this.UpdateMap "\Etiketten_autoprinter.ini"
+        return FileExist(Ini) ? Ini : this.Eigen
+    }
+
+    ; Lokaal geïnstalleerd maar de gedeelde ini was niet bereikbaar?
+    static GedeeldWeg => this.UpdateMap != "" && this.UpdateMap != A_ScriptDir && this.Bestand = this.Eigen
 
     static Lees1(Sectie, Sleutel, Standaard) {
         try return IniRead(this.Bestand, Sectie, Sleutel, Standaard)
@@ -82,6 +116,7 @@ class Inst {
     ; computer (geluid, venster bovenop, toetsenbord blokkeren, bevestigen).
     static PerApotheek := ["deelbaar", "controle", "patnr"]
     static Apotheek := ""
+    static ApotheekBevestigd := false   ; in deze sessie echt uit Pharmacom gelezen
     static ApOpties := Map()
     static ApPrintMenu := ""
 
@@ -92,6 +127,9 @@ class Inst {
         this.ApOpties := Map(), this.ApPrintMenu := ""
         if Ap = ""
             return
+        ; Onthouden per computer: bij een herstart kent de planning de
+        ; apotheek dan al, ook als Pharmacom hem (nog) niet laat zien
+        Staat.Schrijf(Ap, "App", "Apotheek")
         for Naam in this.PerApotheek {
             v := this.Lees1("Opties " Ap, this.OptieSleutels[Naam], "")
             if IsInteger(v)
@@ -99,6 +137,8 @@ class Inst {
         }
         this.ApPrintMenu := Trim(this.Lees1("Opties " Ap, "PrintMenu", ""))
     }
+
+    static LaatsteApotheek => Trim(Staat.Lees("App", "Apotheek", "", "", "App", "Apotheek " A_ComputerName))
 
     static IsPerApotheek(Naam) {
         for n in this.PerApotheek

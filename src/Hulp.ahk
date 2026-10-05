@@ -68,6 +68,80 @@ UriDecode(S) {
 ; Aanschrijfbuffer"). Zonder schermnaam in de titel: aannemen van wel.
 TitelIsBuffer(Titel) => !RegExMatch(Titel, "^Pharmacom\s+-\s+\S") || InStr(Titel, "Aanschrijfbuffer") > 0
 
+; --- Foutcodes ------------------------------------------------------------
+; Vaste code per soort fout, zodat een melding, het log, het rapport en de
+; planningstatus makkelijk terug te vinden en te tellen zijn (lijst ook in
+; LEESMIJ.md). De eerste regel die past telt. Codes nooit hergebruiken.
+FoutCode(Tekst) {
+    static Lijst := [
+        ["i)^gestopt door gebruiker", "G01"]
+        , ["i)Pharmacom is afgesloten", "P01"]
+        , ["i)^Pharmacom (was niet (meer )?het actieve venster|kon niet naar voren)", "P02"]
+        , ["i)dossier was niet meer het actieve venster", "P03"]
+        , ["i)aanschrijfbuffer (is niet zichtbaar|ging niet open|is niet gevonden)|niet op de aanschrijfbuffer", "P04"]
+        , ["i)kon niet geselecteerd worden in de aanschrijfbuffer", "P05"]
+        , ["i)ntdossier verscheen niet", "P06"]
+        , ["i)medicatiehistorie (werd niet herkend|bleef veranderen)", "P07"]
+        , ["i)kon niet bevestigen dat het geopende dossier", "P08"]
+        , ["i)^de regel met .* kon niet geselecteerd", "P09"]
+        , ["i)afdrukmenu|kon niet gekozen worden", "P10"]
+        , ["i)keerde (na het printen )?niet terug naar de aanschrijfbuffer", "P11"]
+        , ["i)^(het veld|de velden|Pharmacom (kent|accepteerde))", "L01"]
+        , ["i)knop Zoeken|zoeken in Pharmacom duurde", "L02"]
+        , ["i)lijst bevat ook", "L03"]
+        , ["i)computer is vergrendeld", "L04"]
+        , ["i)Pharmacom is niet (open|bereikbaar)|geen verbinding met Pharmacom", "L05"]
+        , ["i)melding of venster open", "L06"]
+        , ["i)niemand ingelogd", "L07"]
+        , ["i)apotheek .* ingelogd", "L08"]
+        , ["i)kon niet gecontroleerd worden", "L09"]
+        , ["i)^niet gestart binnen", "L10"]
+        , ["i)er loopt (nog|al) een ronde", "L11"]
+        , ["i)hoort bij instelling|is niet bekend bij instelling|^instelling .* is niet bekend", "L12"]
+        , ["i)onverwachte fout|onbekende fout", "X99"]]
+    for f in Lijst
+        if RegExMatch(Tekst, f[1])
+            return f[2]
+    return ""
+}
+
+; Korte omschrijving van een foutcode (voor het overzicht in Diagnose)
+FoutOmschrijving(Code) {
+    static M := Map("G01", "gestopt door gebruiker", "P01", "Pharmacom afgesloten", "P02", "Pharmacom niet actief"
+        , "P03", "dossier niet actief", "P04", "aanschrijfbuffer niet zichtbaar", "P05", "patiënt niet te selecteren"
+        , "P06", "dossier verscheen niet", "P07", "medicatiehistorie", "P08", "dossier niet bevestigd"
+        , "P09", "regel niet te selecteren", "P10", "afdrukmenu", "P11", "niet terug naar de aanschrijfbuffer"
+        , "L01", "veld Instelling/Afdeling", "L02", "zoeken", "L03", "andere afdeling in de lijst"
+        , "L04", "computer vergrendeld", "L05", "Pharmacom niet open", "L06", "melding open in Pharmacom"
+        , "L07", "niemand ingelogd", "L08", "andere apotheek ingelogd", "L09", "Pharmacom niet te controleren"
+        , "L10", "niet gestart binnen 2 uur", "L11", "er liep al een ronde", "L12", "planning klopt niet"
+        , "X99", "onverwachte fout")
+    return M.Has(Code) ? M[Code] : ""
+}
+
+; Telt in logregels: afgeronde rondes en foutcodes (één per regel).
+; Geeft {klaar, codes: Map code -> aantal}.
+TelLogregels(Regels) {
+    Res := {klaar: 0, codes: Map()}
+    for r in Regels {
+        ; Alleen echte logregels (met tijd); niet de regels van een diagnose
+        ; die zelf in het log staat
+        if !RegExMatch(r, "^\d\d:\d\d:\d\d\.\d+ - ")
+            continue
+        if RegExMatch(r, "^\S+ - (Ronde|Proefronde|Geplande ronde '.*') klaar: ")
+            Res.klaar++
+        if RegExMatch(r, "\[([GPLX]\d\d)\]", &M)
+            Res.codes[M[1]] := (Res.codes.Has(M[1]) ? Res.codes[M[1]] : 0) + 1
+    }
+    return Res
+}
+
+; Tekst met de foutcode erachter ("... [P11]"), als er een past
+MetCode(Tekst) {
+    c := FoutCode(Tekst)
+    return c = "" || InStr(Tekst, "[" c "]") ? Tekst : Tekst " [" c "]"
+}
+
 ; Codeert tekst voor in een URL (UTF-8, %XX)
 UriEncode(S) {
     Buf := Buffer(StrPut(S, "UTF-8"))

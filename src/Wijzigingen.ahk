@@ -5,7 +5,27 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.7.0", ["Planning: de aanschrijfbuffer hoeft niet open te staan; de app opent hem zelf."
+        ["6.10.0", ["Updates ook via GitHub: staat er geen nieuwere versie in de updatemap, dan kijkt de app bij de nieuwste release op GitHub."
+            , "Gedownload en gestart vanuit Downloads of het bureaublad: de app biedt aan zich op de computer te installeren."]]
+        , ["6.9.1", ["Bijwerken: wacht nu tot de app echt gesloten is (eerst startte soms gewoon de oude versie weer)."]]
+        , ["6.9.0", ["Geplande ronde: stopt hij door een hapering, dan gaat de app zelf verder (tot 3 keer). Stopt hij twee keer bij dezelfde patiënt, dan wordt die overgeslagen."
+            , "Planning: een combinatie van instelling en afdeling die niet bestaat, kan niet meer opgeslagen worden en wordt in de lijst als fout getoond."
+            , "Lege groep: de melding 'Geen patiënten gevonden' van Pharmacom wordt nu zelf gesloten (bleef eerst openstaan, waardoor de volgende planning wachtte)."
+            , "Logbestanden van alle computers staan nu samen in de netwerkmap."
+            , "Instellingen: overzicht van de computers met hun versie en wanneer de app er het laatst draaide."
+            , "Diagnose: hoe vaak elke foutcode de afgelopen 30 dagen voorkwam."
+            , "Gegevens die vaak veranderen staan per computer in een eigen bestand (Gegevens\Computers), zodat computers elkaars wijzigingen niet overschrijven."]]
+        , ["6.8.1", ["Op deze computer installeren: geen beveiligingswaarschuwing van Windows meer bij het starten. De planning en instellingen blijven gedeeld in de netwerkmap."
+            , "'Niet meer vragen' bij installeren geldt nu per computer."]]
+        , ["6.8.0", ["De app draait nooit meer twee keer tegelijk (ook niet als hij via de netwerkmap en via de stationsletter gestart wordt)."
+            , "Planning: een minuut voor de geplande tijd controleert de app of de ronde kan starten, en waarschuwt meteen als dat niet zo is."
+            , "Planning: de app onthoudt de apotheek, zodat een planning ook draait als Pharmacom die bij het opstarten nog niet laat zien."
+            , "Planning: opent de aanschrijfbuffer ook als Pharmacom op een scherm staat waarvan de naam niet in de titel staat."
+            , "Elke fout heeft een vaste code (bijv. [P11]) in de melding, het logbestand en het rapport; de lijst staat in de LEESMIJ."
+            , "Nieuwe optie: Pharmacom terughalen als een ander venster ervoor springt (standaard uit)."
+            , "Sluit Pharmacom tijdens het printen af, dan stopt de ronde meteen."
+            , "Instelling en Afdeling worden direct ingevuld via de koppeling met Pharmacom (zonder klikken en typen)."]]
+        , ["6.7.0", ["Planning: de aanschrijfbuffer hoeft niet open te staan; de app opent hem zelf."
             , "Planning: staat de computer op slot of is Pharmacom bezet, dan wacht de geplande ronde (tot 2 uur) en start hij zodra het kan."
             , "Rond een geplande tijd en tijdens het printen gaat de computer niet in slaapstand."
             , "Waakhond: loopt de app vast tijdens het printen, dan wordt hij na 20 seconden afgesloten, zodat toetsenbord en muis weer vrij zijn."]]

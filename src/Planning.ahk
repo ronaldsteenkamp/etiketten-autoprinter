@@ -1,4 +1,4 @@
-; =====================================================================
+﻿; =====================================================================
 ; Planning: groepen (afdelingen) automatisch printen op vaste tijden.
 ;
 ; Per apotheek een lijst in de ini-sectie [Planning <code>], bijv.
@@ -127,6 +127,23 @@ class Planning {
         return Afdeling
     }
 
+    ; Klopt de combinatie instelling/afdeling volgens de bekende groepen ("Alle
+    ; groepen ophalen")? Geeft "" of wat er niet klopt. Zonder gegevens over
+    ; deze instelling wordt niets afgekeurd.
+    static GroepFout(Instelling, Afdeling, Bekend := "") {
+        Bekend := Bekend ? Bekend : Groepen.Lees()
+        if !Bekend.instellingen.Count
+            return ""
+        if !Bekend.instellingen.Has(Instelling)
+            return "instelling " Instelling " is niet bekend (nieuw? klik dan eerst op Alle groepen ophalen)"
+        if !Bekend.afdelingen.Has(Instelling) || !Bekend.afdelingen[Instelling].Count || Bekend.afdelingen[Instelling].Has(Afdeling)
+            return ""
+        for c, L in Bekend.afdelingen
+            if L.Has(Afdeling)
+                return "afdeling " Afdeling " hoort bij instelling " c ", niet bij " Instelling
+        return "afdeling " Afdeling " is niet bekend bij instelling " Instelling " (nieuw? klik dan eerst op Alle groepen ophalen)"
+    }
+
     ; Staat deze groep al in de planning (behalve regel Behalve)? Geeft die
     ; regel, of "".
     static Dubbel(Instelling, Afdeling, Behalve := "") {
@@ -140,7 +157,9 @@ class Planning {
         if IsInteger(Id) && Integer(Id) > Inst.Getal(Inst.Lees1(this.Sectie, "_laatsteid", 0), 0)
             Inst.Schrijf(Integer(Id), this.Sectie, "_laatsteid")
         try IniDelete Inst.Bestand, this.Sectie, Id
-        try IniDelete Inst.Bestand, "Planning gedraaid", A_ComputerName "-" Inst.Apotheek "-" Id
+        Staat.Wis("Planning gedraaid", Inst.Apotheek "-" Id)
+        Staat.Wis("Planning status", Inst.Apotheek "-" Id)
+        try IniDelete Inst.Bestand, "Planning gedraaid", A_ComputerName "-" Inst.Apotheek "-" Id   ; oud (tot v6.8)
         try IniDelete Inst.Bestand, "Planning status", A_ComputerName "-" Inst.Apotheek "-" Id
         for k in this.Uitgesteld.Clone()
             if k = Id
@@ -157,8 +176,13 @@ class Planning {
         return Hoogste + 1
     }
 
-    static LaatstGedraaid(it) => Inst.Lees1("Planning gedraaid", A_ComputerName "-" Inst.Apotheek "-" it.id, "")
-    static ZetGedraaid(it) => Inst.Schrijf(FormatTime(, "yyyyMMddHHmm"), "Planning gedraaid", A_ComputerName "-" Inst.Apotheek "-" it.id)
+    ; Wanneer de planning voor het laatst gedraaid heeft (yyyyMMddHHmm), op de
+    ; computer die hem uitvoert (Staat: per computer een eigen bestand)
+    static LaatstGedraaid(it) {
+        Pc := it.HasProp("computer") && it.computer != "" ? it.computer : A_ComputerName
+        return Staat.Lees("Planning gedraaid", Inst.Apotheek "-" it.id, "", Pc, "", Pc "-" Inst.Apotheek "-" it.id)
+    }
+    static ZetGedraaid(it) => Staat.Schrijf(FormatTime(, "yyyyMMddHHmm"), "Planning gedraaid", Inst.Apotheek "-" it.id)
 
     ; --- Tijd --------------------------------------------------------------------
     static WeekNr(Tijd := "") => Integer(SubStr(FormatTime(Tijd, "YWeek"), 5))
@@ -222,18 +246,27 @@ class Planning {
     }
 
     ; --- Status per planning (laatste uitkomst) --------------------------------
-    ; [Planning status] <computer>-<apotheek>-<id> = soort|yyyyMMddHHmm|tekst
+    ; Staat (per computer) [Planning status] <apotheek>-<id> = soort|yyyyMMddHHmm|tekst
     ; soort: ok / mislukt / geannuleerd / gemist
-    static StatusSleutel(it) => A_ComputerName "-" Inst.Apotheek "-" it.id
+    static StatusSleutel(it) => Inst.Apotheek "-" it.id
 
     static ZetStatus(it, Soort, Tekst := "", Tijd := "") {
         Tijd := Tijd = "" ? A_Now : Tijd
-        Tekst := StrReplace(StrReplace(StrReplace(Tekst, "|", "/"), "`n", " "), "`r", "")
-        Inst.Schrijf(Soort "|" SubStr(Tijd, 1, 12) "|" Tekst, "Planning status", this.StatusSleutel(it))
+        Tekst := StrReplace(StrReplace(StrReplace(MetCode(Tekst), "|", "/"), "`n", " "), "`r", "")
+        Staat.Schrijf(Soort "|" SubStr(Tijd, 1, 12) "|" Tekst, "Planning status", this.StatusSleutel(it))
     }
 
     static LeesStatus(it) {
-        d := StrSplit(Inst.Lees1("Planning status", this.StatusSleutel(it), ""), "|", , 3)
+        ; De nieuwste van: de computer die hem uitvoert, en deze computer (als
+        ; hij hier met de hand gestart is)
+        Beste := ""
+        for Pc in [it.HasProp("computer") && it.computer != "" ? it.computer : A_ComputerName, A_ComputerName] {
+            v := Staat.Lees("Planning status", this.StatusSleutel(it), "", Pc, "", Pc "-" this.StatusSleutel(it))
+            w := StrSplit(v, "|", , 3)
+            if w.Length >= 2 && (Beste = "" || StrCompare(w[2], StrSplit(Beste, "|", , 3)[2]) > 0)
+                Beste := v
+        }
+        d := StrSplit(Beste, "|", , 3)
         if d.Length < 2
             return ""
         return {soort: d[1], tijd: d[2], tekst: d.Length >= 3 ? d[3] : ""}
@@ -250,6 +283,7 @@ class Planning {
         this.ControleerGemist(Nu)
         this.UitstelVerlopen(Lijst, Nu)
         Wakker.Zet("planning", this.BijnaAanDeBeurt(Lijst, Nu))
+        this.Voorcontrole(Lijst, Nu)
         if this.Bezig || Ronde.Bezig
             return
         Reden := "?"
@@ -264,6 +298,48 @@ class Planning {
         }
     }
 
+    ; Vooraf-controle: een minuut vóór een geplande tijd kijkt de app, zonder
+    ; iets in Pharmacom in te voeren, of de ronde straks kan starten. Zo niet,
+    ; dan meteen een waarschuwing (geen dialoog: die zou het aftellen van de
+    ; ronde in de weg zitten), zodat iemand het nog kan oplossen.
+    static VoorafSeconden := 60
+    static Gecontroleerd := Map()     ; id -> yyyyMMdd (één keer per dag)
+
+    static Voorcontrole(Lijst, Nu := "") {
+        Nu := Nu = "" ? A_Now : Nu
+        Vandaag := SubStr(Nu, 1, 8)
+        for it in Lijst {
+            Over := this.SecondenTot(it, Nu)
+            if Over = "" || Over <= 0 || Over > this.VoorafSeconden
+                continue
+            if (this.Gecontroleerd.Has(it.id) && this.Gecontroleerd[it.id] = Vandaag)
+                || SubStr(this.LaatstGedraaid(it), 1, 8) = Vandaag
+                continue
+            this.Gecontroleerd[it.id] := Vandaag
+            Reden := (f := this.GroepFout(it.instelling, it.afdeling)) != "" ? f
+                : this.Bezig || Ronde.Bezig ? "er loopt nog een ronde" : this.Belemmering()
+            if Reden = "" {
+                Log("Vooraf-controle '" it.naam "' (" it.tijd "): in orde")
+                continue
+            }
+            Reden := MetCode(Reden)
+            Log("Vooraf-controle '" it.naam "' (" it.tijd "): " Reden)
+            TrayTip "Geplande ronde '" it.naam "' om " it.tijd " kan nu niet starten: " Reden, AppTitel, 2
+            Venster.Status("fout", "Geplande ronde '" it.naam "' om " it.tijd " kan nu niet starten: " Reden ". Los dit op; daarna start hij vanzelf (tot " this.MaxUitstel // 60 " uur na " it.tijd ").")
+            Venster.Geluid("gestopt")
+        }
+    }
+
+    ; Seconden van Nu tot de geplande tijd van vandaag (negatief = voorbij),
+    ; of "" als de planning vandaag niet hier aan de beurt is
+    static SecondenTot(it, Nu) {
+        if !it.aan || it.computer != A_ComputerName || !InStr(it.dagen, this.Weekdag(Nu)) || !this.WeekKlopt(it.weken, Nu)
+            return ""
+        if !RegExMatch(it.tijd, "^(\d{1,2}):(\d{2})$", &T)
+            return ""
+        return DateDiff(SubStr(Nu, 1, 8) Format("{:02}{:02}00", T[1], T[2]), Nu, "Seconds")
+    }
+
     ; Waarom een geplande ronde nu niet kan starten, of ""
     static Belemmering() {
         if (Test := Inst.Lees1("Test", "Belemmering", "")) != ""   ; alleen om te testen
@@ -273,7 +349,13 @@ class Planning {
         St := Venster.Verbind()
         if St != "ok"
             return St = "geen" ? "Pharmacom is niet open" : "geen verbinding met Pharmacom"
-        return Ph.Gereed(false)   ; de aanschrijfbuffer opent de app zelf (Ctrl+F11)
+        if (R := Ph.Gereed(false)) != ""   ; de aanschrijfbuffer opent de app zelf (Ctrl+F11)
+            return R
+        ; De planning is van de apotheek die de app kent (eventueel de laatst
+        ; bekende): die moet ook echt ingelogd zijn
+        if (Ap := Ph.LeesApotheek()) != Inst.Apotheek
+            return "in Pharmacom is apotheek " Ap " ingelogd, deze planning is van " Inst.Apotheek
+        return ""
     }
 
     static StelUit(it, Reden, Nu := "") {
@@ -288,7 +370,7 @@ class Planning {
         else
             return
         this.Uitgesteld[it.id] := {moment: Moment, reden: Reden}
-        Log("Planning '" it.naam "' uitgesteld: " Reden)
+        Log("Planning '" it.naam "' uitgesteld: " MetCode(Reden))
         this.ZetStatus(it, "uitgesteld", Reden, Moment)
     }
 
@@ -336,13 +418,13 @@ class Planning {
         Nu := Nu = "" ? A_Now : Nu
         Tot := DateAdd(Nu, -this.MaxMinuten, "Minutes")
         Sleutel := A_ComputerName "-" Inst.Apotheek "-gecontroleerd"
-        Vorige := Inst.Lees1("Planning gedraaid", Sleutel, "")
+        Vorige := Staat.Lees("Planning gedraaid", Inst.Apotheek "-gecontroleerd", "", "", "", Sleutel)
         Week := DateAdd(Nu, -7, "Days")
         if Vorige = "" || StrCompare(Vorige, Week) < 0
             Vorige := Vorige = "" ? Tot : Week
         if StrCompare(Vorige, Tot) >= 0
             return
-        Inst.Schrijf(Tot, "Planning gedraaid", Sleutel)
+        Staat.Schrijf(Tot, "Planning gedraaid", Inst.Apotheek "-gecontroleerd")
         Regels := ""
         for it in this.Lees() {
             for m in this.Gemist(it, Vorige, Tot, this.LaatstGedraaid(it)) {
@@ -361,6 +443,13 @@ class Planning {
     }
 
     ; --- Uitvoeren ------------------------------------------------------------
+    static MaxHerstart := 3
+
+    ; Mag een gestopte geplande ronde zelf verder? Alleen na een hapering
+    ; (niet als iemand stopte of Pharmacom dicht/niet actief was) en als
+    ; Pharmacom weer op de aanschrijfbuffer staat.
+    static Herstartbaar() => Ronde.TerugGezet && !RegExMatch(FoutCode(Ronde.StopReden), "^(G01|P01|P02|X99)$")
+
     static Voer(it, Handmatig := false, Proef := false) {
         this.Bezig := true
         try {
@@ -398,6 +487,7 @@ class Planning {
             Venster.Status("bezig", "Geplande ronde '" it.naam "': groep " it.afdeling " zoeken in Pharmacom" Teken.Ellips)
             Res := Ph.ZetGroep(it.instelling, it.afdeling)
             if Res != "" {
+                Res := MetCode(Res)
                 Log("  groep zoeken mislukt: " Res)
                 Status("mislukt", Res)
                 Venster.Status("fout", "Geplande ronde '" it.naam "' niet gestart: " Res)
@@ -405,11 +495,41 @@ class Planning {
                 Venster.Geluid("gestopt")
                 return
             }
-            Ronde.Vernieuw(false, true)
-            if Ronde.StartRun(Proef, it.naam)
-                Status("ok", Ronde.Geprint " geprint, " Ronde.Overgeslagen " overgeslagen")
+            ; Standaardvinkjes (niet wat iemand eerder met de hand uitvinkte);
+            ; de ronde leest de lijst zelf in
+            Ronde.Uitgevinkt := Map(), Ronde.HerprintOk := Map()
+            ; Stopt de ronde door een hapering en staat Pharmacom daarna weer
+            ; netjes op de aanschrijfbuffer, dan zelf verder (wie al geprint is,
+            ; wordt altijd overgeslagen). Stopt hij twee keer bij dezelfde
+            ; patiënt, dan wordt die overgeslagen (handmatig controleren).
+            Geprint := 0, Over := 0, Herstart := 0, VorigePatnr := "", NietGelukt := ""
+            loop {
+                Ok := Ronde.StartRun(Proef, it.naam)
+                Geprint += Ronde.Geprint, Over += Ronde.Overgeslagen
+                if Ok || Proef || Herstart >= this.MaxHerstart || !this.Herstartbaar()
+                    break
+                Herstart++
+                if Ronde.StopPatnr != "" && Ronde.StopPatnr = VorigePatnr {
+                    Ronde.Uitgevinkt[Ronde.StopPatnr] := true
+                    NietGelukt .= (NietGelukt = "" ? "" : ", ") Ronde.StopPatnr
+                    Log("  Pat.nr " Ronde.StopPatnr " stopte twee keer: wordt overgeslagen")
+                }
+                VorigePatnr := Ronde.StopPatnr
+                Log("  geplande ronde gestopt (" Ronde.StopReden "): zelf verder (" Herstart " van " this.MaxHerstart ")")
+                Venster.Status("bezig", "Geplande ronde '" it.naam "' gestopt: " Ronde.StopReden ". Zelf verder over een paar seconden" Teken.Ellips)
+                Sleep 3000
+                if (Reden := this.Belemmering()) != "" {
+                    Log("  niet verder: " MetCode(Reden))
+                    break
+                }
+            }
+            Extra := (Herstart ? ", " Herstart " keer zelf verder gegaan" : "") (NietGelukt != "" ? ", Pat.nr " NietGelukt " overgeslagen na fout" : "")
+            if Ok
+                Status("ok", Geprint " geprint, " Over " overgeslagen" Extra)
             else
-                Status("mislukt", Ronde.StopReden != "" ? Ronde.StopReden : "de ronde is niet afgerond")
+                Status("mislukt", (Ronde.StopReden != "" ? Ronde.StopReden : "de ronde is niet afgerond") " (" Geprint " geprint" Extra ")")
+            if NietGelukt != "" && Ok
+                TrayTip "Geplande ronde '" it.naam "' klaar, maar Pat.nr " NietGelukt " is overgeslagen na een fout. Handmatig controleren.", AppTitel, 2
         } catch as e {
             Log("  fout in geplande ronde: " e.Message " (" e.What ", regel " e.Line ")")
             if !Proef
@@ -420,11 +540,15 @@ class Planning {
 
     ; --- Pagina ------------------------------------------------------------------
     static Toon() {
-        Items := []
-        for it in this.Lees()
+        Items := [], Bekend := Groepen.Lees()
+        for it in this.Lees() {
+            ; Een planning die niet kan kloppen meteen als fout tonen
+            f := this.GroepFout(it.instelling, it.afdeling, Bekend)
             Items.Push({id: it.id, aan: it.aan, naam: it.naam, instelling: it.instelling, afdeling: it.afdeling
                 , dagen: it.dagen, tijd: it.tijd, weken: it.weken, computer: it.computer, opmerking: it.opmerking
-                , hier: it.computer = A_ComputerName ? 1 : 0, laatst: this.LaatstTekst(it), status: this.StatusVoorPagina(it)})
+                , hier: it.computer = A_ComputerName ? 1 : 0, laatst: this.LaatstTekst(it)
+                , status: f != "" ? {soort: "mislukt", tekst: "Klopt niet: " f " " Teken.Mid " pas deze planning aan of verwijder hem"} : this.StatusVoorPagina(it)})
+        }
         Wk := this.WeekNr()
         Venster.Ui("planning", {items: Items, apotheek: Inst.Apotheek, computer: A_ComputerName
             , week: Wk, even: Mod(Wk, 2) = 0 ? 1 : 0, groepen: Groepen.VoorPagina()})
@@ -481,6 +605,9 @@ class Planning {
                 ; Elke groep maar één keer in de planning
                 if d := this.Dubbel(Instelling, Afdeling, Id)
                     return Venster.Ui("planfout", "Deze groep staat al in de planning ('" d.naam "'). Pas die planning aan, bijvoorbeeld met extra dagen.")
+                ; Bestaat de combinatie wel? (anders mislukt hij altijd)
+                if (f := this.GroepFout(Instelling, Afdeling)) != ""
+                    return Venster.Ui("planfout", "Klopt niet: " f ".")
                 it := {id: Id != "" ? Id : this.NieuwId(), aan: 1, instelling: Instelling, afdeling: Afdeling
                     , naam: this.GroepNaam(Instelling, Afdeling), opmerking: P.Has("opmerking") ? P["opmerking"] : ""
                     , dagen: RegExReplace(P["dagen"], "[^1-7]"), tijd: P["tijd"], weken: P["weken"], computer: A_ComputerName}

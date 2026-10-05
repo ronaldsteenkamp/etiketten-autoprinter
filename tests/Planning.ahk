@@ -6,6 +6,7 @@
 #Include ..\src\Hulp.ahk
 #Include ..\src\Instellingen.ahk
 #Include ..\src\Planning.ahk
+#Include ..\src\Opslag.ahk
 
 Uit := A_ScriptDir "\uitvoer_planning.txt"
 try FileDelete Uit
@@ -78,5 +79,22 @@ T("Niet wakker: andere computer", !Planning.BijnaAanDeBeurt([It({weken: "alle", 
 Planning.Uitgesteld[1] := {moment: "20261001080000", reden: "test"}
 T("Wakker: zolang iets uitgesteld is", Planning.BijnaAanDeBeurt(L, "20261001120000"))
 Planning.Uitgesteld := Map()
+
+; --- Vooraf-controle (een minuut vóór 08:00, do 1-10) ---
+T("SecondenTot: 07:59:00 = 60", Planning.SecondenTot(It(), "20261001075900") = 60)
+T("SecondenTot: 08:00:30 = -30", Planning.SecondenTot(It(), "20261001080030") = -30)
+T("SecondenTot: andere dag = leeg", Planning.SecondenTot(It({dagen: "1"}), "20261001075900") = "")
+T("SecondenTot: oneven week = leeg", Planning.SecondenTot(It({weken: "oneven"}), "20261001075900") = "")
+T("SecondenTot: andere computer = leeg", Planning.SecondenTot(It({computer: "ANDERE-PC"}), "20261001075900") = "")
+
+; --- Klopt de groep? (instelling/afdeling) ---
+B := {instellingen: Map("T1", "2 WEKELIJKS 1", "T2", "2 WEKELIJKS 2", "GI", "Gezamenlijk")
+    , afdelingen: Map("T1", Map("T1HA", "T1 Halers", "T1GUA", "T1 GUA"), "T2", Map("T2HA", "T2 Halers"), "GI", Map())}
+T("Groep klopt", Planning.GroepFout("T1", "T1HA", B) = "")
+T("Groep: afdeling van andere instelling", InStr(Planning.GroepFout("T1", "T2HA", B), "hoort bij instelling T2"))
+T("Groep: onbekende afdeling", InStr(Planning.GroepFout("T1", "T1XX", B), "niet bekend bij instelling T1"))
+T("Groep: onbekende instelling", InStr(Planning.GroepFout("T9", "T1HA", B), "instelling T9 is niet bekend"))
+T("Groep: instelling zonder afdelingen = niet afkeuren", Planning.GroepFout("GI", "IETS", B) = "")
+T("Groep: niets opgehaald = niet afkeuren", Planning.GroepFout("T1", "T2HA", {instellingen: Map(), afdelingen: Map()}) = "")
 
 MsgBox Fouten ? Fouten " test(s) mislukt, zie " Uit : "Alle planningstests geslaagd.", "Planning", Fouten ? "Icon!" : "Iconi"

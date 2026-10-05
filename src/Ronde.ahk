@@ -17,13 +17,17 @@ class Ronde {
     static Bezig := false, Stoppen := false, StopReden := ""
     static Gekozen := false          ; item in het afdrukmenu gekozen (telt als geprint)
     static Huidig := ""              ; patiënt die nu aan de beurt is (voor het vangnet)
+    static FocusTerug := 0           ; zo vaak de focus teruggehaald deze ronde (Ph.HaalFocusTerug)
+    static TerugGezet := false       ; na een stop staat Pharmacom weer netjes op de aanschrijfbuffer
+    static StopPatnr := ""           ; bij welke patiënt de ronde stopte (niet geprint)
     static Aantal := 0, Verwerkt := 0, Geprint := 0, Overgeslagen := 0, Start := 0
 
-    ; Legt de reden van een stop vast (de eerste telt). Geeft {stop: true}
-    ; terug, of Terug als die is opgegeven (bijv. false voor een mislukte stap).
+    ; Legt de reden van een stop vast, met foutcode (de eerste telt). Geeft
+    ; {stop: true} terug, of Terug als die is opgegeven (bijv. false voor een
+    ; mislukte stap).
     static Fout(Reden, Terug := "stop") {
         if this.StopReden = ""
-            this.StopReden := Reden
+            this.StopReden := MetCode(Reden)
         return Terug == "stop" ? {stop: true} : Terug
     }
 
@@ -97,6 +101,7 @@ class Ronde {
         this.LaatsteSnel := n ":" (n ? Lijst[1].patnr "/" Lijst[n].patnr : "")
 
         this.Apotheek := Ph.LeesApotheek()
+        Inst.ApotheekBevestigd := this.Apotheek != ""
         if this.Apotheek != Inst.Apotheek {
             ; Instellingen van deze apotheek gebruiken
             Inst.ZetApotheek(this.Apotheek)
@@ -228,7 +233,7 @@ class Ronde {
 
         this.Proef := Proef, this.Auto := Auto
         Wat := Proef ? "Proefronde" : Auto != "" ? "Geplande ronde '" Auto "'" : "Ronde"
-        this.Bezig := true, this.Stoppen := false, this.StopReden := ""
+        this.Bezig := true, this.Stoppen := false, this.StopReden := "", this.FocusTerug := 0, this.TerugGezet := false, this.StopPatnr := ""
         this.Aantal := n, this.Verwerkt := 0, this.Geprint := 0, this.Overgeslagen := 0
         OverslaanLijst := ""
         this.Start := A_TickCount
@@ -263,7 +268,7 @@ class Ronde {
 
             if Res.HasProp("stop") {
                 if this.StopReden = ""
-                    this.StopReden := "onbekende fout"
+                    this.StopReden := MetCode("onbekende fout")
                 if p.geprintNu {
                     ; Het etiket is wel geprint, daarna ging er iets mis
                     this.Geprint++
@@ -275,6 +280,7 @@ class Ronde {
                     Opslag.Rapporteer(p, "", "Gestopt: " this.StopReden, this.Apotheek)
                 }
                 Afgebroken := true
+                this.StopPatnr := p.geprintNu ? "" : p.patnr
                 break
             }
             if Res.HasProp("proef") {
@@ -309,11 +315,11 @@ class Ronde {
         ; Na een stop of fout: Pharmacom netjes terugzetten op de
         ; aanschrijfbuffer (dossier dicht), zodat Doorgaan meteen werkt. Niet
         ; als de gebruiker in een ander venster bezig is.
-        if Afgebroken && this.StopReden != "Pharmacom was niet meer het actieve venster" {
+        if Afgebroken && !RegExMatch(FoutCode(this.StopReden), "^P0[12]$") {
             this.Stoppen := false   ; anders weigert Stap de Escape
             Venster.Sub("Pharmacom terugzetten op de aanschrijfbuffer" Teken.Ellips)
-            if Ph.TerugNaarBuffer()
-                this.StopReden .= " (Pharmacom staat weer op de aanschrijfbuffer)"
+            if this.TerugGezet := Ph.TerugNaarBuffer()   ; tekst vóór de foutcode
+                this.StopReden := RegExReplace(this.StopReden, "( \[\w+\])?$", " (Pharmacom staat weer op de aanschrijfbuffer)$1", , 1)
         }
         Venster.GeenActivatie(false)
         Invoer.Blokkeer(false)

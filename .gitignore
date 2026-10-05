@@ -2,11 +2,14 @@
 Gegevens/
 Rapporten/
 
-# Lokale instellingen per computer
+# Lokale instellingen per computer (planning, computernamen)
 Etiketten_autoprinter.ini
 
-# Gecompileerde versies
+# Gecompileerde versies en controlewaarden (die gaan in een GitHub-release)
 *.exe
+*.exe.sha256
+Bouw/
 
-tests/uitvoer.txt
-tests/uitvoer_planning.txt
+# Testuitvoer
+tests/uitvoer*.txt
+tests/nep_geprint.txt

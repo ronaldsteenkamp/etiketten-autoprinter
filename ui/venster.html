@@ -545,6 +545,8 @@ var OptieTekst = [
       uitleg: "<b>Aan:</b> het dossier telt alleen als juist als het <b>Pat.nr</b> erin staat. Het strengst: twee patiënten met dezelfde achternaam en geboortedatum kunnen niet verwisseld worden.<br><b>Uit:</b> achternaam + geboortedatum mag ook (als het Pat.nr niet in het dossier te zien is)." },
     { k: "blokkeer", titel: "Toetsenbord en muis blokkeren tijdens het printen",
       uitleg: "<b>Aan:</b> zolang de app print, doen toetsenbord en muis niets. Zo kun je niet per ongeluk in Pharmacom klikken terwijl de app bezig is. Met <b>Esc</b> stop je altijd direct.<br><b>Uit:</b> je kunt de computer blijven gebruiken, maar klik je in een ander venster, dan stopt de app de ronde." },
+    { k: "focusterug", titel: "Pharmacom terughalen als een ander venster ervoor springt",
+      uitleg: "<b>Aan:</b> springt er tijdens het printen een venster van een ander programma voor Pharmacom (bijvoorbeeld een melding van Teams), dan haalt de app Pharmacom terug naar voren en gaat verder. Alleen als toetsenbord en muis geblokkeerd zijn, en hoogstens 5 keer per ronde. Elke keer staat in het logbestand.<br><b>Uit</b> (standaard): de app stopt de ronde, zoals altijd." },
     { k: "bevestigen", titel: "Eerst om bevestiging vragen",
       uitleg: "<b>Aan:</b> na <i>Start printen</i> toont de app eerst hoeveel etiketten er geprint worden en voor welke apotheek, en vraagt of je wilt beginnen.<br><b>Uit:</b> de app begint meteen." },
     { sectie: "Venster en meldingen" },
@@ -584,6 +586,18 @@ function toonInstellingen(d) {
     h += '<div style="display:-ms-flexbox;display:flex;margin-top:8px"><input class="veld" id="i-map" style="-ms-flex:1;flex:1" value="' + esc(d.map) + '">' +
          '<div class="dknop" style="min-width:0;height:30px;line-height:28px" onclick="stuur(\'inst/bladeren\')">Bladeren</div></div>';
     h += '<div style="margin:10px 0 4px 0"><span class="klein" onclick="instActie(\'controleer\')">Nu controleren op updates</span><span class="klein" onclick="instActie(\'publiceer\')">Deze versie in de updatemap zetten</span></div>';
+    if (d.computers && d.computers.length) {
+        h += '<div class="sectie">Computers</div>';
+        h += '<div class="uitleg">Computers die de app gebruiken, met hun versie en wanneer de app daar het laatst draaide (bijgewerkt bij het starten en elk uur).</div>';
+        h += '<div style="margin-top:6px">';
+        for (var i = 0; i < d.computers.length; i++) {
+            var c = d.computers[i];
+            h += '<div class="wtrij"><span class="lbl">' + esc(c.naam) + (c.hier == "1" ? ' <b>(deze)</b>' : '') + '</span>' +
+                 '<span style="flex:2;-ms-flex:2;font-size:12px;color:#334155">' + (c.oud == "1" ? '<b style="color:#c2410c">v' + esc(c.versie) + ' (oud)</b>' : 'v' + esc(c.versie)) +
+                 ' &middot; ' + esc(c.soort || "?") + (c.apotheek ? ' &middot; ' + esc(c.apotheek) : '') + (c.gezien ? ' &middot; ' + esc(c.gezien) : '') + '</span></div>';
+        }
+        h += '</div>';
+    }
     h += '<div class="sectie">Installeren</div>';
     h += '<div class="uitleg">De app op deze computer zetten (met snelkoppeling op het bureaublad en in het startmenu). Handig als je hem nu vanaf de netwerkschijf start: dan start hij sneller en werkt hij ook als de schijf even weg is.</div>';
     h += '<div style="margin:8px 0 4px 0"><span class="klein" onclick="stuur(\'inst/installeer\')">Op deze computer installeren</span></div>';

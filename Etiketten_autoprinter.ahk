@@ -45,7 +45,8 @@ A_MaxHotkeysPerInterval := 1000
 global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
-global AppVersie := "6.7.0"
+global AppGitHub := "ronaldsteenkamp/etiketten-autoprinter"                        ; GitHub-repository voor updates ("eigenaar/naam"); leeg = alleen de updatemap
+global AppVersie := "6.10.0"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -71,15 +72,37 @@ if A_Args.Length >= 3 && A_Args[1] = "/waakhond" {
     Waakhond.Bewaak(Integer(A_Args[2]), Integer(A_Args[3]))
     ExitApp
 }
-EnkeleInstantie()
+; Testmodus (nep-Pharmacom): mag naast de echte app draaien
+if Inst.Test
+    AppTitel .= " - TEST"
+else
+    EnkeleInstantie()
 
 OnError Vangnet
 OnExit Afsluiten
 Inst.Lees()
 Opslag.Init()
+Inst.ZetApotheek(Inst.LaatsteApotheek)   ; tot Pharmacom hem laat zien
+Jab.BijAfsluiten := ObjBindMethod(Ph, "JavaAfgesloten")
 MaakTray()
 Venster.Maak()
 Log("App gestart (v" AppVersie ", AutoHotkey " A_AhkVersion ")")
+Staat.Meld()
+SetTimer () => Staat.Meld(true), 3600000
+if Inst.Test {
+    Log("TESTMODUS: nep-Pharmacom (jjs.exe), gegevens in " Inst.DataMap)
+    ; Automatisch een ronde starten, bijv. ETIKETTEN_TEST_START=T1/T1GUA/proef
+    ; (of /print): zoals een planning die met de hand gestart wordt
+    if RegExMatch(EnvGet("ETIKETTEN_TEST_START"), "i)^(\w+)/(\w+)/(proef|print)$", &T)
+        SetTimer () => Planning.Voer({id: "test", aan: 1, naam: "Test " T[1] "/" T[2], instelling: T[1], afdeling: T[2]
+            , dagen: "1234567", tijd: "00:00", weken: "alle", computer: A_ComputerName, opmerking: ""}, true, T[3] = "proef"), -12000
+}
+if Inst.Bestand != Inst.Eigen && !Inst.Test
+    Log("Instellingen uit de gedeelde map: " Inst.Bestand)
+else if Inst.GedeeldWeg {
+    Log("LET OP: gedeelde instellingen (" Inst.UpdateMap ") niet bereikbaar, eigen instellingen gebruikt")
+    SetTimer () => Venster.Melding("Netwerkmap niet bereikbaar", "De netwerkmap " Inst.UpdateMap " is niet bereikbaar. De app gebruikt nu de instellingen op deze computer, zonder de gedeelde planning.`n`nStart de app opnieuw zodra de netwerkmap weer bereikbaar is.", "waarschuwing"), -2000
+}
 Sessie.Volg()
 Waakhond.Start()
 Bewaking()
@@ -109,17 +132,22 @@ Bewaking() {
         St := Venster.Verbind()
         if St != "ok" {
             Ph.VergeetBuffer()
+            Inst.ApotheekBevestigd := false   ; na een herstart kan een andere apotheek inloggen
         } else if !WasVerbonden {
             Geheugen.LogPharmacom()
             Ronde.Vernieuw(false, true)
             Gepauzeerd := ""
         } else {
-            ; Apotheek nog onbekend (Pharmacom stond bij het starten niet op de
-            ; aanschrijfbuffer): aflezen uit de statusbalk, die op elk scherm
-            ; staat. Nodig voor de planning en de opties per apotheek.
-            if Inst.Apotheek = "" && (Ap := Ph.LeesApotheek()) != "" {
-                Inst.ZetApotheek(Ap)
-                Venster.UiOpties()
+            ; Apotheek nog niet gelezen (Pharmacom stond bij het starten niet
+            ; op de aanschrijfbuffer; tot dan geldt de laatst bekende):
+            ; aflezen uit de statusbalk, die op elk scherm staat. Nodig voor de
+            ; planning en de opties per apotheek.
+            if !Inst.ApotheekBevestigd && (Ap := Ph.LeesApotheek()) != "" {
+                Inst.ApotheekBevestigd := true
+                if Ap != Inst.Apotheek {
+                    Inst.ZetApotheek(Ap)
+                    Venster.UiOpties()
+                }
                 Log("Ingelogde apotheek: " Ap)
             }
             Pauze := Venster.Geminimaliseerd() ? "app geminimaliseerd"
@@ -161,7 +189,7 @@ Vangnet(e, Modus) {
     if BezigMetFout
         return 1
     BezigMetFout := true
-    try Log("ONVERWACHTE FOUT: " e.Message " | " e.What " | regel " e.Line " | " e.Extra " | " e.File)
+    try Log("ONVERWACHTE FOUT [X99]: " e.Message " | " e.What " | regel " e.Line " | " e.Extra " | " e.File)
     WasBezig := Ronde.Bezig
     try Invoer.Blokkeer(false)
     try Venster.GeenActivatie(false)
@@ -176,12 +204,12 @@ Vangnet(e, Modus) {
                 Log("  Pat.nr " p.patnr ": etiket was al gekozen, als geprint geregistreerd")
             }
             if IsObject(p)
-                Opslag.Rapporteer(p, "", "Gestopt: onverwachte fout (" e.Message ")", Ronde.Apotheek)
+                Opslag.Rapporteer(p, "", "Gestopt: onverwachte fout [X99] (" e.Message ")", Ronde.Apotheek)
         }
         Ronde.Bezig := false, Ronde.Stoppen := false, Ronde.Huidig := ""
         try Wakker.Zet("ronde", false)
         try Waakhond.Patient(0)
-        Ronde.StopReden := "onverwachte fout"
+        Ronde.StopReden := MetCode("onverwachte fout")
         try Ph.TerugNaarBuffer()
         try {
             Venster.Ui("bezig", 0)
@@ -197,7 +225,7 @@ Vangnet(e, Modus) {
     Tekst := "Er ging iets onverwachts mis" (WasBezig ? " tijdens het printen. De ronde is gestopt en toetsenbord en muis zijn weer vrij. Met Doorgaan ga je verder; wie al geprint is, wordt overgeslagen." : ".")
         . "`n`nFout: " e.Message "`n(" e.What ", regel " e.Line ")"
         . "`n`nDe app werkt gewoon verder. Gebeurt dit vaker, stuur dan het logbestand naar " AppMaker " (knop rechtsboven)."
-    try Venster.Status("fout", "Onverwachte fout: " e.Message)
+    try Venster.Status("fout", "Onverwachte fout [X99]: " e.Message)
     try Venster.Geluid("gestopt")
     try SetTimer () => Venster.Melding("Onverwachte fout", Tekst, "fout"), -100
     catch

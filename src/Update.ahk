@@ -55,23 +55,36 @@ class Update {
         Venster.Melding("Updates", "Versie " AppVersie " staat nu in de updatemap. Andere computers krijgen de update bij de volgende start.")
     }
 
-    ; Kijkt of er in de updatemap een nieuwere versie staat en installeert die
-    ; (na bevestiging). Stil = geen melding als er niets nieuws is.
+    ; GitHub-repository met releases ("eigenaar/naam"): AppGitHub in de app,
+    ; of [Update] GitHub= in de ini. Leeg = alleen de updatemap.
+    static GitHub => Trim(Inst.Lees1("Update", "GitHub", AppGitHub))
+
+    ; Kijkt of er een nieuwere versie is en installeert die (na bevestiging):
+    ; eerst in de updatemap (netwerkmap), anders in de nieuwste release op
+    ; GitHub. Stil = geen melding als er niets nieuws is.
     static Controleer(Stil) {
-        if Ronde.Bezig || Inst.UpdateMap = ""
+        if Ronde.Bezig || Inst.Test
             return
-        Nieuw := Inst.UpdateMap "\" this.ExeNaam
-        if !FileExist(Nieuw) {
-            if !Stil
-                Venster.Melding("Updates", "In de updatemap staat geen " this.ExeNaam ".", "waarschuwing")
-            return
+        Nieuw := "", NieuweVersie := "", Release := ""
+        if Inst.UpdateMap != "" && FileExist(Inst.UpdateMap "\" this.ExeNaam) {
+            try v := FileGetVersion(Inst.UpdateMap "\" this.ExeNaam)
+            catch
+                v := ""
+            if VersieNummer(v) > VersieNummer(AppVersie)
+                Nieuw := Inst.UpdateMap "\" this.ExeNaam, NieuweVersie := v
         }
-        try NieuweVersie := FileGetVersion(Nieuw)
-        catch
-            NieuweVersie := ""
-        if VersieNummer(NieuweVersie) <= VersieNummer(AppVersie) {
+        if Nieuw = "" && this.GitHub != "" {
+            Release := this.GitHubNieuwste()
+            if IsObject(Release) && VersieNummer(Release.versie) > VersieNummer(AppVersie)
+                NieuweVersie := Release.versie
+            else if !Stil && !IsObject(Release)
+                return Venster.Melding("Updates", "GitHub (" this.GitHub ") was niet bereikbaar of heeft geen release met " this.ExeNaam " en " this.ExeNaam ".sha256.", "waarschuwing")
+            else
+                Release := ""
+        }
+        if Nieuw = "" && !IsObject(Release) {
             if !Stil
-                Venster.Melding("Updates", "Je hebt de nieuwste versie (" AppVersie ").")
+                Venster.Melding("Updates", Inst.UpdateMap = "" && this.GitHub = "" ? "Er is geen updatemap of GitHub ingesteld." : "Je hebt de nieuwste versie (" AppVersie ").")
             return
         }
         if !A_IsCompiled {
@@ -79,26 +92,96 @@ class Update {
                 Venster.Melding("Updates", "Versie " NieuweVersie " staat klaar, maar bijwerken kan alleen vanuit de .exe.", "waarschuwing")
             return
         }
-        if !Venster.Vraag("Nieuwe versie beschikbaar", "Versie " NieuweVersie " staat klaar (je hebt nu " AppVersie ").`n`nNu bijwerken? De app wordt daarna opnieuw gestart.", "Bijwerken", "Later")
+        Waar := IsObject(Release) ? " op GitHub" : ""
+        if !Venster.Vraag("Nieuwe versie beschikbaar", "Versie " NieuweVersie " staat klaar" Waar " (je hebt nu " AppVersie ").`n`nNu bijwerken? De app wordt daarna opnieuw gestart.", "Bijwerken", "Later")
             return
+        if IsObject(Release) {
+            Nieuw := this.GitHubDownload(Release)
+            if Nieuw = ""
+                return Venster.Melding("Bijwerken niet mogelijk", "De nieuwe versie kon niet van GitHub gedownload worden. Er is niets gewijzigd.`n`nProbeer het later opnieuw.", "fout")
+        }
         Kopie := this.VeiligeKopie(Nieuw)
         if Kopie = ""
             return
-        ; Een klein hulpscript vervangt de .exe zodra deze app gesloten is
+        ; Een klein hulpscript vervangt de .exe zodra deze app gesloten is. Het
+        ; afsluiten kan even duren (het venster, de waakhond): zolang de .exe
+        ; nog in gebruik is, mislukt het kopiëren; dan elke seconde opnieuw,
+        ; tot 30 keer. (Eerst wachtte hij vast 2 s, en startte bij een
+        ; mislukte kopie gewoon de oude versie weer.)
         Hulp := A_Temp "\Etiketten_autoprinter_update.cmd"
         try FileDelete Hulp
-        FileAppend "@echo off`r`nping 127.0.0.1 -n 3 >nul`r`ncopy /y `"" Kopie "`" `"" A_ScriptFullPath "`" >nul`r`nstart `"`" `"" A_ScriptFullPath "`"`r`ndel `"%~f0`"`r`n", Hulp, "CP0"
+        FileAppend "@echo off`r`nset n=0`r`n:opnieuw`r`nping 127.0.0.1 -n 2 >nul`r`nset /a n+=1`r`n"
+            . "copy /y `"" Kopie "`" `"" A_ScriptFullPath "`" >nul 2>&1`r`n"
+            . "if errorlevel 1 if %n% lss 30 goto opnieuw`r`n"
+            . "start `"`" `"" A_ScriptFullPath "`"`r`ndel `"%~f0`"`r`n", Hulp, "CP0"
         Log("Bijwerken naar versie " NieuweVersie)
         Run '"' Hulp '"', , "Hide"
         ExitApp
     }
 
+    ; --- GitHub ------------------------------------------------------------------
+    ; Nieuwste release: {versie, exe, sha} (download-adressen), of "" als GitHub
+    ; niet bereikbaar is of de release de twee bestanden niet heeft. Download
+    ; gebruikt de proxy-instellingen van Windows.
+    static GitHubNieuwste() {
+        Json := A_Temp "\Etiketten_autoprinter_release.json"
+        try {
+            try FileDelete Json
+            ; ?t=... voorkomt een oud antwoord uit de cache van Windows
+            Download "https://api.github.com/repos/" this.GitHub "/releases/latest?t=" A_TickCount, Json
+            J := FileRead(Json, "UTF-8")
+        } catch as e {
+            Log("GitHub niet bereikbaar (" this.GitHub "): " e.Message)
+            return ""
+        }
+        R := this.LeesRelease(J)
+        if !IsObject(R)
+            Log("GitHub: geen bruikbare release (" this.GitHub ")")
+        return R
+    }
+
+    ; Uit het antwoord van GitHub (JSON): {versie, exe, sha} of ""
+    static LeesRelease(J) {
+        if !RegExMatch(J, '"tag_name"\s*:\s*"v?(\d+(?:\.\d+){0,3})"', &T)
+            return ""
+        Exe := "", Sha := "", Pos := 1
+        while Pos := RegExMatch(J, '"browser_download_url"\s*:\s*"([^"]+)"', &U, Pos) {
+            if RegExMatch(U[1], "i)/\Q" this.ExeNaam "\E$")
+                Exe := U[1]
+            else if RegExMatch(U[1], "i)/\Q" this.ExeNaam ".sha256\E$")
+                Sha := U[1]
+            Pos += U.Len
+        }
+        return Exe != "" && Sha != "" ? {versie: T[1], exe: Exe, sha: Sha} : ""
+    }
+
+    ; Downloadt de .exe en de controlewaarde naar een eigen tijdelijke map.
+    ; Geeft het pad van de .exe (met .sha256 ernaast voor VeiligeKopie) of "".
+    static GitHubDownload(R) {
+        Map_ := A_Temp "\Etiketten autoprinter download"
+        Exe := Map_ "\" this.ExeNaam
+        try {
+            DirCreate Map_
+            try FileDelete Exe
+            try FileDelete Exe ".sha256"
+            Download R.sha, Exe ".sha256"
+            Download R.exe, Exe
+            Log("Versie " R.versie " gedownload van GitHub")
+            return Exe
+        } catch as e {
+            Log("Downloaden van GitHub mislukt: " e.Message)
+            return ""
+        }
+    }
+
     ; Kopieert de nieuwe .exe naar de tijdelijke map en controleert die kopie
-    ; tegen <exe>.sha256 in de updatemap. Geeft het pad van de kopie, of "".
+    ; tegen <exe>.sha256 ernaast. Geeft het pad van de kopie, of "".
     static VeiligeKopie(Bron) {
         try Verwacht := StrLower(Trim(FileRead(Bron ".sha256"), " `t`r`n"))
         catch
             Verwacht := ""
+        ; Alleen de eerste 64 tekens (sha256sum zet er soms " bestandsnaam" achter)
+        Verwacht := SubStr(Verwacht, 1, 64)
         if !RegExMatch(Verwacht, "^[0-9a-f]{64}$") {
             Log("Update geweigerd: geen geldige controlewaarde (" Bron ".sha256)")
             Venster.Melding("Bijwerken niet mogelijk", "Bij de nieuwe versie in de updatemap ontbreekt de controlewaarde (" this.ExeNaam ".sha256).`n`nZet de nieuwe versie opnieuw in de updatemap via Instellingen " Teken.Pijl " Updates " Teken.Pijl " Deze versie in de updatemap zetten.", "waarschuwing")
@@ -132,10 +215,22 @@ class Update {
 
     static LokaleMap => EnvGet("LOCALAPPDATA") "\Etiketten autoprinter"
 
+    ; "Niet meer vragen" geldt per computer (de ini in de netwerkmap is gedeeld)
+    static NietVragenSleutel => "LokaalNietVragen " A_ComputerName
+
+    ; Net gedownload (bijv. van GitHub) en gestart vanuit Downloads of het
+    ; bureaublad: dan ook aanbieden om te installeren
+    static UitDownloads() {
+        for m in [EnvGet("USERPROFILE") "\Downloads", A_Desktop]
+            if InStr(A_ScriptDir, m) = 1
+                return true
+        return false
+    }
+
     static ControleerLokaal() {
-        if Ronde.Bezig || !A_IsCompiled || !this.OpNetwerk()
+        if Ronde.Bezig || !A_IsCompiled || Inst.Test || !(this.OpNetwerk() || this.UitDownloads())
             return
-        if Inst.Getal(Inst.Lees1("Opties", "LokaalNietVragen", 0), 0)
+        if Inst.Getal(Inst.Lees1("Opties", this.NietVragenSleutel, 0), 0)
             return
         this.InstalleerLokaal(false)
     }
@@ -146,14 +241,22 @@ class Update {
         Doel := this.LokaleMap
         if !this.OpNetwerk() && InStr(A_ScriptDir, Doel) = 1
             return Venster.Melding("Installeren", "De app draait al vanaf deze computer:`n" A_ScriptDir)
-        Tekst := "De app start nu vanaf de netwerkschijf. Op deze computer installeren?`n`n"
+        Netwerk := this.OpNetwerk()
+        Tekst := Netwerk
+            ? "De app start nu vanaf de netwerkschijf. Op deze computer installeren?`n`n"
+            . Teken.Punt " geen beveiligingswaarschuwing van Windows meer bij het starten`n"
             . Teken.Punt " sneller opstarten, en hij werkt ook als de netwerkschijf even weg is`n"
             . Teken.Punt " snelkoppeling op het bureaublad en in het startmenu`n"
             . Teken.Punt " nieuwe versies in deze netwerkmap worden automatisch aangeboden`n`n"
-            . "Rapporten en het register van geprinte pati" Teken.EUml "nten blijven in de netwerkmap."
+            . "De planning, de instellingen, de rapporten en het register van geprinte pati" Teken.EUml "nten blijven in de netwerkmap (gedeeld met de andere computers)."
+            : "De app start nu vanuit " A_ScriptDir ". Op deze computer installeren?`n`n"
+            . Teken.Punt " vaste plek (" Doel ")`n"
+            . Teken.Punt " snelkoppeling op het bureaublad en in het startmenu`n"
+            . (this.GitHub != "" ? Teken.Punt " nieuwe versies op GitHub worden automatisch aangeboden`n" : "")
+            . "`nDaarna kun je het gedownloade bestand weggooien."
         if !Venster.Vraag("Op deze computer installeren?", Tekst, "Installeren", Gevraagd ? "Annuleren" : "Niet meer vragen") {
             if !Gevraagd
-                Inst.Schrijf(1, "Opties", "LokaalNietVragen")
+                Inst.Schrijf(1, "Opties", this.NietVragenSleutel)
             return
         }
         Exe := Doel "\" this.ExeNaam
@@ -163,15 +266,24 @@ class Update {
         } catch {
             return Venster.Melding("Installeren mislukt", "De app kon niet naar " Doel " gekopieerd worden.", "fout")
         }
-        ; Instellingen meenemen, en de netwerkmap als updatemap instellen
+        ; De eigen ini bevat alleen de netwerkmap (updates en gedeelde ini) en
+        ; de opslagmap; de rest leest de lokale app uit de gedeelde ini
         Ini := Doel "\Etiketten_autoprinter.ini"
-        if !FileExist(Ini)
-            try FileCopy Inst.Bestand, Ini
-        IniWrite A_ScriptDir, Ini, "Update", "Map"
-        IniWrite (InStr(FileExist(Inst.DataMap), "D") ? Inst.DataMap : A_ScriptDir), Ini, "Opslag", "Map"
-        IniWrite 1, Ini, "Opties", "LokaalNietVragen"
+        if Netwerk {
+            IniWrite A_ScriptDir, Ini, "Update", "Map"
+            IniWrite (InStr(FileExist(Inst.DataMap), "D") ? Inst.DataMap : A_ScriptDir), Ini, "Opslag", "Map"
+        } else {
+            ; Gedownload: geen netwerkmap; instellingen meenemen, gegevens in
+            ; de nieuwe map, updates via GitHub
+            if !FileExist(Ini) && FileExist(Inst.Bestand)
+                try FileCopy Inst.Bestand, Ini
+            IniWrite Doel, Ini, "Opslag", "Map"
+        }
         FileCreateShortcut Exe, A_Desktop "\Etiketten autoprinter.lnk", Doel, , "Etiketten printen vanuit de aanschrijfbuffer van Pharmacom"
         FileCreateShortcut Exe, A_Programs "\Etiketten autoprinter.lnk", Doel, , "Etiketten printen vanuit de aanschrijfbuffer van Pharmacom"
+        ; Starten met Windows voortaan de lokale versie
+        if Opstart.Aan()
+            FileCreateShortcut Exe, Opstart.Snelkoppeling, Doel, , "Etiketten printen vanuit de aanschrijfbuffer van Pharmacom"
         Log("Lokaal ge" Teken.IUml "nstalleerd in " Doel)
         Venster.Melding("Ge" Teken.IUml "nstalleerd", "De app staat nu op deze computer, met een snelkoppeling op het bureaublad en in het startmenu.`n`nDe lokale versie wordt nu gestart. Gebruik voortaan de snelkoppeling.")
         Run '"' Exe '"', Doel

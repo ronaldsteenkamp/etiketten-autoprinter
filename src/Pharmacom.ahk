@@ -7,7 +7,8 @@
 ; =====================================================================
 
 class Ph {
-    static Win := "Pharmacom ahk_exe javaw.exe"
+    ; Testmodus (tests\Test met nep-Pharmacom.cmd): de nep-Pharmacom draait in jjs.exe
+    static Win := "Pharmacom ahk_exe " (EnvGet("ETIKETTEN_TEST") != "" ? "jjs.exe" : "javaw.exe")
     static Hwnd := 0, Pid := 0, JreBin := "", Verbonden := false
 
     ; Kolommen waaraan de tabellen herkend worden (reguliere expressies op de
@@ -47,7 +48,32 @@ class Ph {
             return "64bit"
         }
         this.Verbonden := Jab.Koppel(Hwnd, this.JreBin)
+        if this.Verbonden && this.VmHwnd != Hwnd {
+            ; Nummer van de Java-omgeving van Pharmacom (voor JavaAfgesloten)
+            R := Jab.VanVenster(Hwnd)
+            this.Vm := R ? R.vm : 0, this.VmHwnd := R ? Hwnd : 0
+            if R
+                Jab.Release(R.vm, R.ac)
+        }
         return this.Verbonden ? "ok" : "jab"
+    }
+
+    ; Melding van de koppeling: een Java-programma is afgesloten. Is dat
+    ; Pharmacom, dan direct de verbinding vergeten en een lopende ronde
+    ; stoppen (niet pas bij de volgende stap of controle).
+    static Vm := 0, VmHwnd := 0
+
+    static JavaAfgesloten(Vm) {
+        if !this.Vm || Vm != this.Vm
+            return
+        Log("Pharmacom is afgesloten (melding van de koppeling)" (Ronde.Bezig ? ": ronde wordt gestopt" : ""))
+        this.Vm := 0, this.VmHwnd := 0, this.Verbonden := false
+        this.VergeetBuffer()
+        Inst.ApotheekBevestigd := false
+        if Ronde.Bezig {
+            Ronde.Fout("Pharmacom is afgesloten")
+            Ronde.Stoppen := true
+        }
     }
 
     static JabPropsAan() {
@@ -247,8 +273,9 @@ class Ph {
         return Res
     }
 
-    ; {code, omschrijving, x, y, w, h} van een zoekveld, of ""
-    static Veld(Label) {
+    ; {code, omschrijving, x, y, w, h} van een zoekveld, of "". Houd = ook
+    ; het tekstvak zelf bewaren ({vm, el}; daarna vrijgeven met Jab.Release).
+    static Veld(Label, Houd := false) {
         Bezoek(Vm, Ac, Info, Diepte) {
             if Info.role = "panel" && Trim(Info.name) = Label {
                 Res := {code: "", omschrijving: "", x: 0, y: 0, w: 0, h: 0}, Gevonden := 0
@@ -272,6 +299,10 @@ class Ph {
                         Res.code := Trim(Jab.Naam(Vm, Kind)), Res.x := Ki.x, Res.y := Ki.y, Res.w := Ki.w, Res.h := Ki.h
                         Res.aan := Jab.Heeft(Ki, "enabled")
                         Gevonden := 1
+                        if Houd {
+                            Res.vm := Vm, Res.el := Kind
+                            continue    ; niet vrijgeven
+                        }
                     } else if !Jab.Heeft(Ki, "editable")
                         Res.omschrijving := Trim(Jab.Naam(Vm, Kind))
                 } else if Ki && Ki.role = "push button" && Ki.w > 0 && !Res.HasProp("knop") {
@@ -310,21 +341,46 @@ class Ph {
         return true
     }
 
+    ; Heeft dit element de toetsenbordfocus? (even wachten: de focus wordt
+    ; door Java later verplaatst)
+    static HeeftFocus(Vm, El) {
+        loop 10 {
+            if (i := Jab.Info(Vm, El)) && Jab.Heeft(i, "focused")
+                return true
+            Sleep 30
+        }
+        return false
+    }
+
     ; Typt een code in een zoekveld en controleert dat Pharmacom hem
     ; accepteert (de code staat erin en er is een omschrijving). "" = gelukt.
+    ; Eerst direct via de koppeling (focus op het tekstvak, tekst erin zetten;
+    ; geen muisklik op een plek en geen typen), anders klikken en typen. Tab
+    ; laat Pharmacom de code controleren, zoals bij de hand.
     static ZetVeld(Label, Waarde) {
-        v := this.Veld(Label)
+        v := this.Veld(Label, true)
         if !v
             return "het veld " Label " is niet gevonden"
+        Direct := false
+        if v.HasProp("el") {
+            if !(v.code = Waarde && v.omschrijving != "") && WinActive("ahk_id " this.Hwnd)
+                && Jab.Focus(v.vm, v.el) && this.HeeftFocus(v.vm, v.el)
+                Direct := Jab.ZetTekst(v.vm, v.el, Waarde) && Trim(Jab.Naam(v.vm, v.el)) = Waarde
+            Jab.Release(v.vm, v.el)
+        }
         if v.code = Waarde && v.omschrijving != ""
             return ""
-        if !this.KlikOp(v)
+        if !Direct {
+            if !this.KlikOp(v)
+                return "Pharmacom was niet het actieve venster"
+            Sleep 150
+            Send "^a"
+            SendText Waarde
+        }
+        if !WinActive("ahk_id " this.Hwnd)
             return "Pharmacom was niet het actieve venster"
-        Sleep 150
-        Send "^a"
-        SendText Waarde
         Send "{Tab}"
-        Log("  " Label " " Waarde " ingevuld")
+        Log("  " Label " " Waarde " ingevuld" (Direct ? " (via de koppeling)" : ""))
         Eind := A_TickCount + 4000
         loop {
             Sleep 150
@@ -381,7 +437,9 @@ class Ph {
         WinActivate "ahk_id " this.Hwnd
         if !WinWaitActive("ahk_id " this.Hwnd, , 3)
             return "Pharmacom kon niet naar voren gehaald worden (staat er een venster open?)"
-        if !this.OpBufferScherm() && (R := this.OpenBuffer()) != ""
+        ; Niet alleen op de titel afgaan: een scherm zonder schermnaam in de
+        ; titel telt als aanschrijfbuffer. Ontbreken de zoekvelden, dan openen.
+        if (!this.OpBufferScherm() || !this.Veld("Afdeling:")) && (R := this.OpenBuffer()) != ""
             return R
         Sleep 200
         if Instelling != "" && (R := this.ZetVeld("Instelling:", Instelling)) != ""
@@ -400,6 +458,21 @@ class Ph {
         Sleep 500
         Vorige := "", Gelijk := 0
         loop {
+            ; Lege groep: Pharmacom toont "Geen patiënten gevonden" (een venster
+            ; dat op OK wacht). Sluiten, anders blijft het openstaan en wordt
+            ; de volgende geplande ronde uitgesteld ("melding open").
+            a := WinExist("A")
+            try {
+                if a && a != this.Hwnd && WinGetPID(a) = this.Pid && InStr(WinGetTitle(a), "Geen pati") {
+                    Send "{Enter}"
+                    WinWaitClose "ahk_id " a, , 3
+                    Log("  Pharmacom: geen pati" Teken.EUml "nten gevonden (melding gesloten)")
+                    Sleep 300
+                    if WinExist("ahk_id " a)
+                        return "de melding 'Geen pati" Teken.EUml "nten gevonden' ging niet dicht"
+                    return ""
+                }
+            }
             Stop := this.Knop("Stoppen met zoeken")
             if !(Stop && Stop.aan) {
                 H := this.Handtekening(true)
@@ -443,12 +516,44 @@ class Ph {
             Sleep 20
     }
 
+    ; Focus terugpakken (optie, standaard uit): heeft een venster van een
+    ; ander programma (bijv. een melding van Teams) Pharmacom tijdens een
+    ; ronde van de voorgrond gehaald, dan Pharmacom (of venster Doel) één keer
+    ; terughalen in plaats van te stoppen. Alleen als toetsenbord en muis
+    ; geblokkeerd zijn - dan kan de gebruiker het niet zelf gedaan hebben - en
+    ; nooit als het venster van de app zelf actief is (dat blijft "stoppen").
+    ; Maximaal MaxFocusTerug keer per ronde. True als Pharmacom weer actief is.
+    static MaxFocusTerug := 5
+
+    static HaalFocusTerug(Doel := 0) {
+        if !Inst.Optie("focusterug") || !Ronde.Bezig || !Invoer.Actief || !Invoer.Volledig
+            return false
+        if Ronde.FocusTerug >= this.MaxFocusTerug
+            return false
+        a := WinExist("A")
+        try {
+            Apid := a ? WinGetPID(a) : 0
+            Wie := a ? "'" WinGetTitle(a) "' (" WinGetProcessName(a) ")" : "geen venster"
+        } catch
+            Apid := 0, Wie := "onbekend venster"
+        if Apid = this.Pid || Apid = ProcessExist() || (Venster.Hwnd && a = Venster.Hwnd)
+            return false
+        Ronde.FocusTerug++
+        Doel := Doel ? "ahk_id " Doel : "ahk_pid " this.Pid
+        try WinActivate Doel
+        Ok := WinWaitActive(Doel, , 2) != 0
+        Log("  focus " (Ok ? "teruggehaald" : "NIET teruggehaald") " van " Wie " (" Ronde.FocusTerug " van " this.MaxFocusTerug ")")
+        if Ok
+            this.Wacht(150)
+        return Ok
+    }
+
     ; Verstuurt een toets, maar alleen als er niet gestopt is en Pharmacom
     ; (of een venster van Pharmacom zelf) actief is.
     static Stap(Toets, Ms, Label) {
         if Ronde.Stoppen
             return Ronde.Fout("gestopt door gebruiker", false)
-        if !WinActive("ahk_pid " this.Pid) {
+        if !WinActive("ahk_pid " this.Pid) && !this.HaalFocusTerug() {
             ; Op het venster van de app geklikt (bijv. Stop) = stoppen
             if Venster.Hwnd && WinActive("ahk_id " Venster.Hwnd)
                 return Ronde.Fout("gestopt door gebruiker", false)
@@ -480,9 +585,13 @@ class Ph {
             if Ronde.Stoppen
                 return Ronde.Fout("gestopt door gebruiker", 0)
             a := WinExist("A")
-            try
-                if a && a != Voor && WinGetPID(a) = this.Pid
+            try {
+                Apid := a ? WinGetPID(a) : 0
+                if a && a != Voor && Apid = this.Pid
                     return a
+                if a && Apid != this.Pid
+                    this.HaalFocusTerug()   ; het dossier komt dan mee naar voren
+            }
             if A_TickCount > Eind
                 return 0
             Sleep 20
@@ -624,7 +733,7 @@ class Ph {
             return Ronde.Fout("'" Item "' kon niet gekozen worden in het afdrukmenu (er is niets geprint)", false)
         }
         Log("  afdrukmenu verschenen")
-        if !WinActive("ahk_id " Voor)
+        if !WinActive("ahk_id " Voor) && !this.HaalFocusTerug(Voor)
             return Ronde.Fout("het dossier was niet meer het actieve venster", false)
         Toets := StrLower(Gevonden.toets)
         if !this.Stap("!" Toets, 0, "Alt+" StrUpper(Toets) " - " Item)
@@ -653,6 +762,8 @@ class Ph {
             if Ronde.Stoppen
                 return Ronde.Fout("gestopt door gebruiker", false)
             if Jab.ZoekTabel(this.Pid, this.HistorieKoppen) {
+                if Dossier && Opnieuw && A_TickCount > Opnieuw && !WinActive("ahk_id " Dossier)
+                    this.HaalFocusTerug(Dossier)
                 if Dossier && Opnieuw && A_TickCount > Opnieuw && WinActive("ahk_id " Dossier) {
                     Opnieuw := 0
                     Log("  dossier nog open na 3 s")
@@ -663,10 +774,27 @@ class Ph {
                 this.Wacht(Inst.Wt["SleepNaScherm"])
                 return true
             }
-            if A_TickCount > Eind
+            if A_TickCount > Eind {
+                this.LogToestand("niet terug")
                 return false
+            }
             this.Wacht(60)
         }
+    }
+
+    ; Voor het onderzoeken van een stop: welk venster actief is en wat er van
+    ; Pharmacom zichtbaar is (geen patiëntgegevens)
+    static LogToestand(Wanneer) {
+        a := WinExist("A")
+        try Wie := a ? "'" WinGetTitle(a) "' (" WinGetProcessName(a) (WinGetPID(a) = this.Pid ? ", Pharmacom" : "") ")" : "geen"
+        catch
+            Wie := "onbekend"
+        Vensters := ""
+        for h in WinGetList("ahk_pid " this.Pid)
+            try Vensters .= (Vensters = "" ? "" : ", ") "'" WinGetTitle(h) "'" (h = this.Hwnd ? " (hoofd)" : "")
+        Log("  toestand (" Wanneer "): actief venster " Wie "; vensters van Pharmacom: " Vensters
+            . "; medicatiehistorie " (Jab.ZoekTabel(this.Pid, this.HistorieKoppen) ? "zichtbaar" : "weg")
+            . ", aanschrijfbuffer " (this.Buffer() ? "zichtbaar" : "niet zichtbaar"))
     }
 
     ; Na een fout: met Escape (afdrukmenu, dossier) terug naar het hoofdvenster
@@ -678,6 +806,8 @@ class Ph {
             try Apid := WinGetPID(a)
             catch
                 Apid := 0
+            if Apid != this.Pid && this.HaalFocusTerug()
+                continue
             if Apid != this.Pid {
                 Log("  terugzetten: Pharmacom is niet het actieve venster, niets gedaan")
                 return false

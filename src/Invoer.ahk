@@ -14,6 +14,7 @@
 
 class Invoer {
     static Actief := false
+    static Volledig := false   ; toetsenbord en muis (niet alleen Esc)
     static Muis := ["LButton", "RButton", "MButton", "XButton1", "XButton2", "WheelUp", "WheelDown", "WheelLeft", "WheelRight"]
     static NietOpApp := (*) => !Invoer.MuisOpApp()
 
@@ -30,7 +31,7 @@ class Invoer {
                     try Hotkey "*" k, InvoerNiets, "On"
                 HotIf
             }
-            this.Actief := true
+            this.Actief := true, this.Volledig := Volledig
             Waakhond.Geblokkeerd(true)
             Log(Volledig ? "Toetsenbord en muis geblokkeerd (Esc of Stop = stoppen)" : "Esc = stoppen")
             return
@@ -44,7 +45,7 @@ class Invoer {
         for k in this.Muis
             try Hotkey "*" k, "Off"
         HotIf
-        this.Actief := false
+        this.Actief := false, this.Volledig := false
         Waakhond.Geblokkeerd(false)
         Log("Toetsenbord en muis weer vrij")
     }

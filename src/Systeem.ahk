@@ -93,7 +93,8 @@ class Waakhond {
         DetectHiddenWindows true
         ; Andere titel, zodat een nieuwe start van de app hem niet voor de app aanziet
         try WinSetTitle AppTitel " waakhond", "ahk_id " A_ScriptHwnd
-        Opslag.LogMap := A_ScriptDir "\Gegevens\Log"
+        Inst.Lees()   ; voor de map van het log (gedeelde map)
+        Opslag.LogMap := Opslag.Hoofdmap() "\Gegevens\Log"
         loop {
             Sleep 1000
             if !ProcessExist(Pid) || !WinExist("ahk_id " Hwnd)
@@ -127,10 +128,18 @@ WaakhondHartslag() => Waakhond.Hartslag()
 ; eerder gestarte app vanuit dezelfde .exe wordt afgesloten.
 EnkeleInstantie() {
     DetectHiddenWindows true
-    for h in WinGetList(A_ScriptFullPath " ahk_class AutoHotkey") {
+    ; Op bestandsnaam, niet op pad: via W:\ en via \\server\ (of een korte
+    ; 8.3-naam) gestart is het pad anders, en dan draaiden er twee (die elkaar
+    ; in de weg zitten). De titel van het verborgen venster is het volledige
+    ; pad met de lange naam (ook bij een korte naam); het procespad niet
+    ; (bij een netwerkmap \Device\Mup\...\ETIKET~1.EXE).
+    Patroon := "i)(^|\\)\Q" A_ScriptName "\E( - AutoHotkey.*)?$"
+    for h in WinGetList("ahk_class AutoHotkey") {
         if h = A_ScriptHwnd
             continue
         try {
+            if !RegExMatch(WinGetTitle(h), Patroon)
+                continue
             Pid := WinGetPID(h)
             PostMessage 0x0111, 65307, 0, , "ahk_id " h   ; WM_COMMAND: afsluiten
             if !WinWaitClose("ahk_id " h, , 3)

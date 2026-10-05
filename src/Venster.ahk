@@ -380,8 +380,14 @@ class Venster {
         Items := []
         for w in Inst.Wachttijden
             Items.Push({k: w[1], label: w[3], v: Inst.Wt[w[1]], d: w[2]})
+        ; Overzicht van de computers (Gegevens\Computers in de gedeelde map)
+        Pcs := []
+        for c in Staat.Computers()
+            Pcs.Push({naam: c.naam, hier: c.hier, versie: c.versie, soort: c.soort, apotheek: c.apotheek
+                , oud: VersieNummer(c.versie) < VersieNummer(AppVersie) ? 1 : 0
+                , gezien: StrLen(c.gezien) >= 12 ? FormatTime(c.gezien, "ddd d-M HH:mm") : ""})
         this.UiOpties()
-        this.Ui("instellingen", {items: Items, map: Inst.UpdateMap, apotheek: Inst.Apotheek, printmenu: Inst.PrintItem})
+        this.Ui("instellingen", {items: Items, map: Inst.UpdateMap, apotheek: Inst.Apotheek, printmenu: Inst.PrintItem, computers: Pcs})
     }
 
     ; Acties uit de instellingen-dialoog: "inst/<actie>?k=v&..."
@@ -413,7 +419,7 @@ class Venster {
         if Params.Has("printmenu")
             Inst.ZetPrintItem(Params["printmenu"])
         Inst.UpdateMap := Trim(Params.Has("map") ? Params["map"] : Inst.UpdateMap)
-        Inst.Schrijf(Inst.UpdateMap, "Update", "Map")
+        try IniWrite Inst.UpdateMap, Inst.Eigen, "Update", "Map"   ; hoort bij deze computer
         Log("Instellingen opgeslagen")
         switch Actie {
             case "opslaan":
@@ -438,6 +444,9 @@ class Venster {
         D .= "App: " (A_PtrSize = 8 ? "64-bit" : "32-bit") ", AutoHotkey " A_AhkVersion "`n"
         D .= "Koppeling ingesteld: " (Ph.JabPropsAan() ? "ja" : "nee") "`n"
         D .= "Koppeling actief: " (Ph.Verbonden ? "ja (" Jab.dll ")" : "nee") "`n"
+        D .= "Instellingen: " Inst.Bestand "`n"
+        D .= "Updates: " (Inst.UpdateMap != "" ? "map " Inst.UpdateMap : "geen map") ", " (Update.GitHub != "" ? "GitHub " Update.GitHub : "geen GitHub") "`n"
+        D .= "`n" Opslag.FoutOverzicht(30)
         if Ph.Verbonden {
             Ap := Ph.LeesApotheek()
             D .= "Ingelogde apotheek: " (Ap != "" ? Ap : "niet gevonden") "`n"

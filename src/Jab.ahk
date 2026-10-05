@@ -19,7 +19,11 @@ class Jab {
         , "getAccessibleTableColumnDescription", "getAccessibleTableRowSelectionCount"
         , "getAccessibleTableRowSelections", "getAccessibleTextInfo", "getAccessibleTextRange"
         , "getAccessibleKeyBindings", "addAccessibleSelectionFromContext"
-        , "clearAccessibleSelectionFromContext"]
+        , "clearAccessibleSelectionFromContext", "setTextContents", "requestFocus"
+        , "setJavaShutdownFP"]
+
+    ; Wordt aangeroepen (met het vm-nummer) als een Java-programma afsluit
+    static BijAfsluiten := ""
 
     ; Eerst de moderne (-32) variant, dan de oude. True als Hwnd bereikbaar is.
     static Koppel(Hwnd, JreMap) {
@@ -40,6 +44,10 @@ class Jab {
                 if !v.f["Windows_run"] || !v.f["isJavaWindow"]
                     continue
                 DllCall(v.f["Windows_run"], "Cdecl")
+                ; Melding van Java als een programma afsluit (komt binnen via
+                ; de berichten van dit venster; het werk zelf via een timer)
+                if v.f["setJavaShutdownFP"]
+                    DllCall(v.f["setJavaShutdownFP"], "Ptr", CallbackCreate(JabAfgesloten, "C", 1), "Cdecl")
                 Sleep 700   ; de bridge meldt zich via berichten bij Java
             }
             v := this.geladen[Dll]
@@ -108,6 +116,14 @@ class Jab {
             return ""
         return StrGet(Tb, "UTF-16")
     }
+
+    ; Zet de tekst van een tekstvak direct (zonder typen). True als gelukt.
+    static ZetTekst(Vm, Ac, Tekst) => this.f["setTextContents"]
+        ? DllCall(this.f["setTextContents"], "Int", Vm, this.jt, Ac, "Str", Tekst, "Cdecl Int") != 0 : false
+
+    ; Geeft een element de toetsenbordfocus (binnen het actieve venster)
+    static Focus(Vm, Ac) => this.f["requestFocus"]
+        ? DllCall(this.f["requestFocus"], "Int", Vm, this.jt, Ac, "Cdecl Int") != 0 : false
 
     ; Eerste sneltoets (letter/cijfer) van een element, of "".
     static Sneltoets(Vm, Ac) {
@@ -337,6 +353,13 @@ class Jab {
             this.Release(Vm, Kind)
         }
     }
+}
+
+; Melding van de bridge: een Java-programma (vm) sluit af. Hier niets doen
+; dat lang duurt of zelf de bridge aanroept: alleen doorgeven via een timer.
+JabAfgesloten(Vm) {
+    if Fn := Jab.BijAfsluiten
+        SetTimer () => Fn(Vm), -1
 }
 
 ; Een gevonden tabel. Geeft zijn Java-objecten zelf vrij als hij niet meer

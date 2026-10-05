@@ -38,6 +38,33 @@ T("Json Map", Json(Map("k", "v")) = '{"k":"v"}')
 T("Json regeleinde", Json("a`nb") = '"a\nb"')
 T("Sha256 leeg bestand", Sha256(Leeg) = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
 T("Sha256 ontbrekend bestand", Sha256(A_Temp "\bestaat-niet-etiketten.txt") = "")
+T("Foutcode gebruiker", FoutCode("gestopt door gebruiker") = "G01")
+T("Foutcode niet terug", FoutCode("Pharmacom keerde niet terug naar de aanschrijfbuffer") = "P11")
+T("Foutcode na printen niet terug", FoutCode("Pharmacom keerde na het printen niet terug naar de aanschrijfbuffer") = "P11")
+T("Foutcode niet actief", FoutCode("Pharmacom was niet meer het actieve venster") = "P02")
+T("Foutcode dossier niet actief", FoutCode("het dossier was niet meer het actieve venster") = "P03")
+T("Foutcode buffer niet open", FoutCode("de aanschrijfbuffer ging niet open (Ctrl+F11)") = "P04")
+T("Foutcode afdrukmenu", FoutCode("het afdrukmenu met 'Barcode etiket' verscheen niet (er is niets geprint)") = "P10")
+T("Foutcode dossier", FoutCode("kon niet bevestigen dat het geopende dossier van X (1) is") = "P08")
+T("Foutcode veld", FoutCode("Pharmacom kent Afdeling: T9 niet") = "L01")
+T("Foutcode niemand ingelogd", FoutCode("er is niemand ingelogd in Pharmacom (geen apotheek te zien)") = "L07")
+T("Foutcode andere apotheek", FoutCode("in Pharmacom is apotheek BG ingelogd, deze planning is van AN") = "L08")
+T("Foutcode controle", FoutCode("Pharmacom kon niet gecontroleerd worden (x)") = "L09")
+T("Foutcode onbekend", FoutCode("iets anders") = "")
+T("MetCode", MetCode("gestopt door gebruiker") = "gestopt door gebruiker [G01]")
+T("MetCode niet dubbel", MetCode("gestopt door gebruiker [G01]") = "gestopt door gebruiker [G01]")
+T("MetCode leeg", MetCode("") = "")
+T("Foutcode groep klopt niet", FoutCode("afdeling T2HA hoort bij instelling T2, niet bij T1") = "L12")
+T("FoutOmschrijving", FoutOmschrijving("P11") != "" && FoutOmschrijving("Z00") = "")
+L := TelLogregels(["10:00:00.1 - Ronde klaar: 3 geprint, 0 overgeslagen in 0:10"
+    , "10:01:00.1 - Geplande ronde 'T1 GUA' klaar: 2 geprint"
+    , "10:02:00.1 - Proefronde gestopt: Pharmacom keerde niet terug naar de aanschrijfbuffer [P11] (0 ...)"
+    , "10:03:00.1 -   groep zoeken mislukt: Pharmacom accepteerde Afdeling: X niet [L01]"
+    , "10:04:00.1 - Ronde gestopt: iets [P11]"
+    , "  [P11] 2x  regel uit een diagnose (geen tijd)"])
+T("TelLogregels klaar", L.klaar = 2)
+T("TelLogregels P11", L.codes.Has("P11") && L.codes["P11"] = 2)
+T("TelLogregels L01", L.codes.Has("L01") && L.codes["L01"] = 1)
 
 try FileDelete Leeg
 MsgBox Fouten ? Fouten " test(s) mislukt, zie " Uit : "Alle tests geslaagd.", "Eenheid", Fouten ? "Icon!" : "Iconi"
