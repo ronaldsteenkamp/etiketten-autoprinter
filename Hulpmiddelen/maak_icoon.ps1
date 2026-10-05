@@ -1,6 +1,6 @@
 # Maakt Etiketten_autoprinter.ico (16 t/m 256 px) en ui\icoon.png uit de
 # SVG-ontwerpen in deze map:
-#   icoon.svg        - etiket met barcode en vinkje (32 px en groter)
+#   icoon.svg        - vliegend etiket met barcode (32 px en groter)
 #   icoon-klein.svg  - vereenvoudigd (16-24 px), blijft herkenbaar
 # De SVG's worden met Microsoft Edge (headless) op 512 px gerenderd en daarna
 # met hoge kwaliteit verkleind.
