@@ -5,7 +5,8 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.11.0", ["Meldingen rechtsonder zijn aan te klikken: bij een planningsmelding opent de planning, anders de app."
+        ["6.11.1", ["Nieuw icoon: een vliegend etiket met barcode in BENU-groen."]]
+        , ["6.11.0", ["Meldingen rechtsonder zijn aan te klikken: bij een planningsmelding opent de planning, anders de app."
             , "Vraag of idee: nieuwe knop GitHub maakt een (openbare) melding met de versie en foutcodes al ingevuld, nooit patiëntgegevens."
             , "Nieuwe versies worden voortaan op GitHub zelf gebouwd en getest, met een herkomstbewijs."]]
         , ["6.10.3", ["Updates komen nu eerst van GitHub; de netwerkmap is alleen nog de reserve als GitHub niet bereikbaar is."]]
