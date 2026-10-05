@@ -3,6 +3,7 @@
 #   - controlewaarde Bouw\Etiketten_autoprinter.exe.sha256
 #   - release v<versie> met de .exe en de controlewaarde, en als tekst de
 #     regels van die versie uit src\Wijzigingen.ahk
+#   - daarna dezelfde .exe + controlewaarde in de netwerkmap (reserve)
 # Nodig: GitHub CLI (gh), ingelogd met "gh auth login". Zonder gh toont het
 # script wat je met de hand op GitHub moet doen.
 #
@@ -35,7 +36,20 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
     Push-Location $Map
     try { gh release create "v$Versie" $Exe $Sha --title "Versie $Versie" --notes-file $NotesBestand }
     finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { throw "gh release create mislukt" }
     Write-Host "Release v$Versie aangemaakt. De app biedt hem aan bij de volgende start."
+
+    # Netwerkmap (= deze projectmap) bijwerken: reserve als GitHub niet
+    # bereikbaar is, voor computers die vanaf de netwerkmap starten en voor
+    # versies van voor 6.10 (die kennen GitHub niet). Eerst de controlewaarde
+    # weg, zodat niemand een half gekopieerde .exe installeert.
+    $Doel = Join-Path $Map "Etiketten_autoprinter.exe"
+    if (Test-Path "$Doel.sha256") { [IO.File]::Delete("$Doel.sha256") }
+    Copy-Item $Exe $Doel -Force
+    if ((Get-FileHash $Doel -Algorithm SHA256).Hash.ToLower() -eq $Hash) {
+        [IO.File]::WriteAllText("$Doel.sha256", $Hash, (New-Object Text.UTF8Encoding $false))
+        Write-Host "Netwerkmap bijgewerkt naar $Versie."
+    } else { Write-Host "LET OP: kopie in de netwerkmap klopt niet; controlewaarde niet gezet." }
 } else {
     Write-Host ""
     Write-Host "GitHub CLI (gh) niet gevonden. Met de hand op GitHub:"

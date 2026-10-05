@@ -59,27 +59,20 @@ class Update {
     ; of [Update] GitHub= in de ini. Leeg = alleen de updatemap.
     static GitHub => Trim(Inst.Lees1("Update", "GitHub", AppGitHub))
 
-    ; Kijkt of er een nieuwere versie is en installeert die (na bevestiging):
-    ; eerst in de updatemap (netwerkmap), anders in de nieuwste release op
-    ; GitHub. Stil = geen melding als er niets nieuws is.
+    ; Kijkt of er een nieuwere versie is en installeert die (na bevestiging).
+    ; GitHub is de eerste bron: de nieuwste release daar telt. Alleen als
+    ; GitHub niet bereikbaar is (of niet ingesteld), kijkt de app in de
+    ; updatemap (netwerkmap). Stil = geen melding als er niets nieuws is.
     static Controleer(Stil) {
         if Ronde.Bezig || Inst.Test
             return
-        Nieuw := "", NieuweVersie := "", Release := ""
-        if Inst.UpdateMap != "" && FileExist(Inst.UpdateMap "\" this.ExeNaam) {
-            try v := FileGetVersion(Inst.UpdateMap "\" this.ExeNaam)
-            catch
-                v := ""
-            if VersieNummer(v) > VersieNummer(AppVersie)
-                Nieuw := Inst.UpdateMap "\" this.ExeNaam, NieuweVersie := v
-        }
-        GitHubWeg := false
+        Nieuw := "", NieuweVersie := "", Release := "", GitHubWeg := false
         ; Draait de app vanaf de netwerkmap zelf, dan niet van GitHub bijwerken:
         ; dat zou de .exe in de gedeelde map vervangen zonder controlewaarde,
         ; en dan weigeren de lokaal geïnstalleerde computers de update. Die map
         ; werkt de beheerder bij (maak_release.ps1 + kopiëren).
         VanafMap := this.OpNetwerk() && (Inst.UpdateMap = "" || Inst.UpdateMap = A_ScriptDir)
-        if Nieuw = "" && this.GitHub != "" && !VanafMap {
+        if this.GitHub != "" && !VanafMap {
             Release := this.GitHubNieuwste()
             GitHubWeg := !IsObject(Release)
             if IsObject(Release) && VersieNummer(Release.versie) > VersieNummer(AppVersie)
@@ -87,13 +80,21 @@ class Update {
             else
                 Release := ""
         }
+        ; Reserve: de netwerkmap, als GitHub niet bereikbaar of niet ingesteld is
+        if (GitHubWeg || this.GitHub = "") && Inst.UpdateMap != "" && FileExist(Inst.UpdateMap "\" this.ExeNaam) {
+            try v := FileGetVersion(Inst.UpdateMap "\" this.ExeNaam)
+            catch
+                v := ""
+            if VersieNummer(v) > VersieNummer(AppVersie)
+                Nieuw := Inst.UpdateMap "\" this.ExeNaam, NieuweVersie := v
+        }
         ; Uitkomst onthouden (Instellingen toont wanneer en wat)
-        this.ZetGekeken(Nieuw != "" ? "versie " NieuweVersie " staat klaar in de netwerkmap"
-            : IsObject(Release) ? "versie " NieuweVersie " staat klaar op GitHub"
-            : GitHubWeg ? "nieuwste versie in de netwerkmap; GitHub niet bereikbaar"
+        this.ZetGekeken(IsObject(Release) ? "versie " NieuweVersie " staat klaar op GitHub"
+            : Nieuw != "" ? "versie " NieuweVersie " staat klaar in de netwerkmap" (GitHubWeg ? " (GitHub niet bereikbaar)" : "")
+            : GitHubWeg ? "GitHub niet bereikbaar; in de netwerkmap niets nieuwers"
             : "je hebt de nieuwste versie")
         if GitHubWeg && !Stil && Nieuw = ""
-            return Venster.Melding("Updates", "GitHub (" this.GitHub ") was niet bereikbaar of heeft geen release met " this.ExeNaam " en " this.ExeNaam ".sha256." (Inst.UpdateMap != "" ? "`n`nIn de netwerkmap staat geen nieuwere versie." : ""), "waarschuwing")
+            return Venster.Melding("Updates", "GitHub (" this.GitHub ") was niet bereikbaar of heeft geen release met " this.ExeNaam " en " this.ExeNaam ".sha256." (Inst.UpdateMap != "" ? "`n`nIn de netwerkmap staat ook geen nieuwere versie." : ""), "waarschuwing")
         if Nieuw = "" && !IsObject(Release) {
             if !Stil
                 Venster.Melding("Updates", VanafMap ? "De app start vanaf de netwerkmap (" A_ScriptDir "): na een herstart heb je altijd de versie die daar staat (nu " AppVersie ")."

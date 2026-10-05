@@ -340,11 +340,11 @@ beveiligingsinstelling; laat dat door de ICT doen.
 
 ## Updates via GitHub
 
-Naast de updatemap kan de app nieuwe versies van GitHub halen. De repository staat
-in `AppGitHub := "eigenaar/naam"` (hoofdbestand), of per ini in `[Update]
-GitHub=eigenaar/naam`. Bij het starten kijkt de app eerst in de updatemap; staat daar
-niets nieuwers, dan bij de nieuwste release op GitHub
-(`api.github.com/repos/<repo>/releases/latest`). Een release moet twee bestanden
+GitHub is de **eerste bron** voor nieuwe versies. De repository staat in
+`AppGitHub := "eigenaar/naam"` (hoofdbestand), of per ini in `[Update]
+GitHub=eigenaar/naam`. Bij het starten kijkt de app naar de nieuwste release op GitHub
+(`api.github.com/repos/<repo>/releases/latest`). Alleen als GitHub niet bereikbaar is
+(of niet ingesteld), kijkt hij in de updatemap (netwerkmap) als reserve. Een release moet twee bestanden
 hebben: `Etiketten_autoprinter.exe` en `Etiketten_autoprinter.exe.sha256`. De
 download komt in `%TEMP%\Etiketten autoprinter download` en wordt net zo
 gecontroleerd als bij de updatemap. Downloaden gebruikt de proxy-instellingen van
@@ -353,7 +353,9 @@ Windows. Is GitHub niet bereikbaar, dan staat dat alleen in het log.
 Een release maken: test de versie in `Bouw\`, en dan
 `powershell -ExecutionPolicy Bypass -File Hulpmiddelen\maak_release.ps1` (met de
 GitHub CLI `gh`, ingelogd met `gh auth login`; zonder `gh` toont het script de
-stappen voor de website). De releasetekst komt uit `src\Wijzigingen.ahk`.
+stappen voor de website). De releasetekst komt uit `src\Wijzigingen.ahk`. Het script
+zet dezelfde .exe met controlewaarde daarna ook in de netwerkmap (reserve, en voor
+computers die vanaf de netwerkmap starten of een versie van voor 6.10 hebben).
 
 Wat nooit in de repository komt (zie `.gitignore`): `Gegevens\` (logs, register),
 `Rapporten\` (namen en geboortedata), de ini (planning, computernamen), `.exe`'s en

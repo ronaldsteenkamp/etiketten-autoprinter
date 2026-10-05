@@ -5,7 +5,8 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.10.2", ["Instellingen: 'Netwerkmap en updates' legt uit waar de planning gedeeld wordt en laat zien wanneer de app het laatst naar updates keek."
+        ["6.10.3", ["Updates komen nu eerst van GitHub; de netwerkmap is alleen nog de reserve als GitHub niet bereikbaar is."]]
+        , ["6.10.2", ["Instellingen: 'Netwerkmap en updates' legt uit waar de planning gedeeld wordt en laat zien wanneer de app het laatst naar updates keek."
             , "De knop 'Deze versie in de updatemap zetten' is weg uit Instellingen (alleen voor de beheerder)."]]
         , ["6.10.1", ["Het venster staat alleen nog bovenop tijdens het printen, zodat je Pharmacom gewoon ziet als de app niets doet. Wil je hem toch altijd bovenop, zet dan in Instellingen 'Venster altijd bovenop' aan."]]
         , ["6.10.0", ["Updates ook via GitHub: staat er geen nieuwere versie in de updatemap, dan kijkt de app bij de nieuwste release op GitHub."
