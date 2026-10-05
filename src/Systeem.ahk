@@ -124,6 +124,37 @@ class Waakhond {
 
 WaakhondHartslag() => Waakhond.Hartslag()
 
+; =====================================================================
+; Meldingen bij de klok (TrayTip; in Windows 10/11 een melding rechtsonder)
+; die je kunt aanklikken: de app opent dan de plek waar de melding over
+; gaat (bijv. de planning). Windows meldt de klik met AHK_NOTIFYICON
+; (0x404) en NIN_BALLOONUSERCLICK (0x405). Echte knoppen in een melding
+; vragen een geregistreerde app-ID (winrt.ahk); dat is bewust niet gedaan.
+; =====================================================================
+class Melder {
+    static Actie := "", Tot := 0
+
+    ; Soort: 1 = info, 2 = waarschuwing, 3 = fout. Actie = functie bij een klik
+    ; (standaard: het venster van de app tonen). Een klik telt tot 10 minuten.
+    static Toon(Tekst, Titel := "", Soort := 1, Actie := "") {
+        this.Actie := Actie, this.Tot := A_TickCount + 600000
+        TrayTip Tekst, Titel != "" ? Titel : AppTitel, Soort
+    }
+
+    static Klik() {
+        Fn := A_TickCount < this.Tot ? this.Actie : ""
+        this.Actie := "", this.Tot := 0
+        Venster.Toon(true)
+        if Fn
+            try Fn()
+    }
+}
+
+MelderBericht(wParam, lParam, *) {
+    if (lParam & 0xFFFF) = 0x405   ; NIN_BALLOONUSERCLICK
+        SetTimer () => Melder.Klik(), -10
+}
+
 ; Vervangt #SingleInstance Force (die zou ook de waakhond afsluiten): een
 ; eerder gestarte app vanuit dezelfde .exe wordt afgesloten.
 EnkeleInstantie() {

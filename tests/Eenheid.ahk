@@ -1,4 +1,4 @@
-; Unit-tests voor de hulpfuncties (src\Hulp.ahk). Draaien met:
+﻿; Unit-tests voor de hulpfuncties (src\Hulp.ahk). Draaien met:
 ;   AutoHotkey32.exe tests\Eenheid.ahk
 ; Het resultaat komt in tests\uitvoer.txt (en in een melding).
 #Requires AutoHotkey v2.0
@@ -67,4 +67,7 @@ T("TelLogregels P11", L.codes.Has("P11") && L.codes["P11"] = 2)
 T("TelLogregels L01", L.codes.Has("L01") && L.codes["L01"] = 1)
 
 try FileDelete Leeg
+; Zonder melding (bijv. op GitHub): met /ci de uitkomst als exitcode
+if A_Args.Length && A_Args[1] = "/ci"
+    ExitApp Fouten ? 1 : 0
 MsgBox Fouten ? Fouten " test(s) mislukt, zie " Uit : "Alle tests geslaagd.", "Eenheid", Fouten ? "Icon!" : "Iconi"

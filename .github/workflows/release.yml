@@ -1,0 +1,112 @@
+# =====================================================================
+# Release: bij een tag vX.Y.Z bouwt GitHub de app zelf (32-bit), draait de
+# tests, ondertekent hem (als SignPath is ingesteld), zet een herkomstbewijs
+# (build provenance attestation) en maakt de release met de .exe en de
+# controlewaarde. De versie in de tag moet gelijk zijn aan AppVersie.
+#
+# Ondertekenen (SignPath Foundation, gratis voor open source): zet in de
+# repository het secret SIGNPATH_API_TOKEN en de variabelen
+# SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG en SIGNPATH_POLICY_SLUG.
+# Zonder die instellingen wordt de stap overgeslagen (niet ondertekend).
+# =====================================================================
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write       # release maken
+  id-token: write       # herkomstbewijs (attestation)
+  attestations: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      SIGNPATH_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versie controleren (tag = AppVersie)
+        id: versie
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart("v")
+          $m = Select-String -Path Etiketten_autoprinter.ahk -Pattern 'global AppVersie := "([^"]+)"'
+          $app = $m.Matches[0].Groups[1].Value
+          if ($tag -ne $app) { Write-Error "Tag v$tag past niet bij AppVersie $app"; exit 1 }
+          "versie=$app" >> $env:GITHUB_OUTPUT
+
+      - name: AutoHotkey v2.0.26 en Ahk2Exe 1.1.37.02 ophalen
+        shell: pwsh
+        run: |
+          Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.26/AutoHotkey_2.0.26.zip" -OutFile ahk.zip
+          Expand-Archive ahk.zip -DestinationPath "$env:RUNNER_TEMP\ahk"
+          Invoke-WebRequest "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a2/Ahk2Exe1.1.37.02a2.zip" -OutFile ahk2exe.zip
+          Expand-Archive ahk2exe.zip -DestinationPath "$env:RUNNER_TEMP\ahk2exe"
+
+      - name: Unit-tests
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File tests\alle_tests.ps1 -Ahk "$env:RUNNER_TEMP\ahk\AutoHotkey32.exe"
+
+      - name: Compileren (32-bit)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force Bouw | Out-Null
+          $p = Start-Process "$env:RUNNER_TEMP\ahk2exe\Ahk2Exe.exe" -ArgumentList "/in Etiketten_autoprinter.ahk /out Bouw\Etiketten_autoprinter.exe /base `"$env:RUNNER_TEMP\ahk\AutoHotkey32.exe`" /silent verbose" -PassThru -Wait -NoNewWindow
+          if ($p.ExitCode -ne 0 -or !(Test-Path Bouw\Etiketten_autoprinter.exe)) { Write-Error "Compileren mislukt"; exit 1 }
+          $v = (Get-Item Bouw\Etiketten_autoprinter.exe).VersionInfo.FileVersion
+          Write-Host "Gebouwd: versie $v"
+          if (-not $v.StartsWith("${{ steps.versie.outputs.versie }}")) { Write-Error "Versie in de .exe ($v) klopt niet"; exit 1 }
+
+      - name: Niet-ondertekende versie bewaren (voor SignPath)
+        if: env.SIGNPATH_TOKEN != ''
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: onondertekend
+          path: Bouw/Etiketten_autoprinter.exe
+
+      - name: Ondertekenen via SignPath
+        if: env.SIGNPATH_TOKEN != ''
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: Ondertekend
+
+      - name: Ondertekende versie gebruiken
+        if: env.SIGNPATH_TOKEN != ''
+        shell: pwsh
+        run: |
+          $s = Get-ChildItem Ondertekend -Recurse -Filter Etiketten_autoprinter.exe | Select-Object -First 1
+          if (!$s) { Write-Error "Geen ondertekende .exe ontvangen"; exit 1 }
+          Copy-Item $s.FullName Bouw\Etiketten_autoprinter.exe -Force
+          $sig = Get-AuthenticodeSignature Bouw\Etiketten_autoprinter.exe
+          Write-Host "Handtekening: $($sig.Status) $($sig.SignerCertificate.Subject)"
+
+      - name: Controlewaarde
+        shell: pwsh
+        run: |
+          $h = (Get-FileHash Bouw\Etiketten_autoprinter.exe -Algorithm SHA256).Hash.ToLower()
+          [IO.File]::WriteAllText("$PWD\Bouw\Etiketten_autoprinter.exe.sha256", $h, (New-Object Text.UTF8Encoding $false))
+          Write-Host "SHA-256: $h"
+
+      - name: Herkomstbewijs (attestation)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: Bouw/Etiketten_autoprinter.exe
+
+      - name: Release maken
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = "${{ steps.versie.outputs.versie }}"
+          powershell -ExecutionPolicy Bypass -File Hulpmiddelen\release_tekst.ps1 -Versie $v -Uit notes.md
+          gh release create "v$v" Bouw\Etiketten_autoprinter.exe Bouw\Etiketten_autoprinter.exe.sha256 --title "Versie $v" --notes-file notes.md

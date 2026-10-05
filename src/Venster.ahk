@@ -231,10 +231,18 @@ class Venster {
     }
 
     ; --- Feedback en credits -------------------------------------------------
-    static FeedbackKnoppen(Annuleer := "Annuleren") => [{t: Annuleer, v: "0"}, {t: "Teams", v: "teams", i: "message-circle"}, {t: "Outlook", v: "mail", i: "mail", hoofd: 1}]
+    static FeedbackKnoppen(Annuleer := "Annuleren") {
+        K := [{t: Annuleer, v: "0"}]
+        if Update.GitHub != ""
+            K.Push({t: "GitHub", v: "github", i: "bug"})
+        K.Push({t: "Teams", v: "teams", i: "message-circle"}, {t: "Outlook", v: "mail", i: "mail", hoofd: 1})
+        return K
+    }
 
     static Feedback() {
-        Keuze := this.Keuze("Vraag of idee?", "Heb je een vraag, loop je ergens tegenaan of heb je een idee om de app beter te maken? Stuur " AppMaker " een bericht via Outlook of Teams.`n`nDe app vult alleen de versie, de computernaam en de apotheek in, geen pati" Teken.EUml "ntgegevens.", this.FeedbackKnoppen(), "feedback")
+        Keuze := this.Keuze("Vraag of idee?", "Heb je een vraag, loop je ergens tegenaan of heb je een idee om de app beter te maken? Stuur " AppMaker " een bericht via Outlook of Teams"
+            . (Update.GitHub != "" ? ", of maak een melding op GitHub (daar kunnen anderen meelezen; je hebt een GitHub-account nodig)" : "") ".`n`n"
+            . "De app vult alleen de versie en dergelijke in, nooit pati" Teken.EUml "ntgegevens. Op GitHub ook geen computernaam of apotheek: die meldingen zijn openbaar.", this.FeedbackKnoppen(), "feedback")
         this.StuurFeedback(Keuze)
     }
 
@@ -269,6 +277,8 @@ class Venster {
     }
 
     static StuurFeedback(Keuze) {
+        if Keuze = "github"
+            return this.GitHubMelding()
         if Keuze != "mail" && Keuze != "teams"
             return
         Info := "App: " AppTitel " " AppVersie "`nComputer: " A_ComputerName "`nApotheek: " (Ronde.Apotheek != "" ? Ronde.Apotheek : "onbekend") "`nWindows: " A_OSVersion
@@ -289,6 +299,23 @@ class Venster {
             }
             Log("Feedback: Teams-chat geopend")
         }
+    }
+
+    ; Melding op GitHub (issue-formulier .github\ISSUE_TEMPLATE\probleem.yml),
+    ; vooraf ingevuld via de velden in de URL. Openbaar: dus alleen versie,
+    ; Windows, soort installatie en foutcodes; geen computernaam, apotheek,
+    ; Pat.nr's of andere regels uit het log.
+    static GitHubMelding() {
+        Omgeving := "Versie " AppVersie ", Windows " A_OSVersion ", "
+            . (Update.OpNetwerk() ? "gestart vanaf de netwerkmap" : "lokaal ge" Teken.IUml "nstalleerd")
+            . ", Pharmacom " (Ph.Verbonden ? "verbonden" : "niet verbonden")
+        Codes := Opslag.FoutOverzicht(30)
+        Url := "https://github.com/" Update.GitHub "/issues/new?template=probleem.yml"
+            . "&versie=" UriEncode(AppVersie) "&omgeving=" UriEncode(Omgeving) "&foutcodes=" UriEncode(Codes)
+        try Run Url
+        catch
+            return this.Melding("Browser niet gevonden", "De browser kon niet geopend worden. Maak de melding zelf op:`n`nhttps://github.com/" Update.GitHub "/issues", "waarschuwing")
+        Log("Feedback: melding op GitHub geopend")
     }
 
     ; Geluid en knipperen als een ronde klaar of gestopt is

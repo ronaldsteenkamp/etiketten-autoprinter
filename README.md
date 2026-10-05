@@ -25,9 +25,38 @@ de etiketten.
 Nieuwe versies worden bij het starten van de app aangeboden; bijwerken gaat met één
 klik (de download wordt gecontroleerd met de controlewaarde uit de release).
 
+## Problemen en ideeën
+
+Loop je ergens tegenaan of heb je een idee? In de app: **Vraag of idee** (het
+ballonnetje rechtsboven) → **GitHub**. Daarmee open je hier een melding met de
+versie en de foutcodes al ingevuld (nooit patiëntgegevens). Je kunt ook direct een
+[issue](../../issues/new/choose) aanmaken.
+
 ## Meer
 
 Uitleg over gebruik, planning, foutcodes, instellingen en onderhoud staat in
 [LEESMIJ.md](LEESMIJ.md).
 
 Nodig: Windows 10/11, Pharmacom (32-bit Java), de WebView2 Runtime (zit in Windows).
+
+Licentie: [MIT](LICENSE).
+
+## Code signing policy
+
+Releases are built from this repository by GitHub Actions
+([release.yml](.github/workflows/release.yml)), with a build provenance attestation
+(`gh attestation verify Etiketten_autoprinter.exe --repo ronaldsteenkamp/etiketten-autoprinter`).
+Once approved, Windows releases are signed:
+
+*Free code signing provided by [SignPath.io](https://about.signpath.io), certificate
+by [SignPath Foundation](https://signpath.org).*
+
+- Committers and reviewers: [Ronald Steenkamp](https://github.com/ronaldsteenkamp)
+- Approvers: [Ronald Steenkamp](https://github.com/ronaldsteenkamp)
+
+**Privacy policy:** this program will not transfer any information to other
+networked systems unless specifically requested by the user or the person
+installing or operating it. The only automatic network access is reading the latest
+release information from the GitHub API (api.github.com) and, when the user agrees,
+downloading the new version from GitHub. Patient data stays on the local computer
+and the pharmacy's own network folder.

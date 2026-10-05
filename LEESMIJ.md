@@ -350,12 +350,51 @@ download komt in `%TEMP%\Etiketten autoprinter download` en wordt net zo
 gecontroleerd als bij de updatemap. Downloaden gebruikt de proxy-instellingen van
 Windows. Is GitHub niet bereikbaar, dan staat dat alleen in het log.
 
-Een release maken: test de versie in `Bouw\`, en dan
-`powershell -ExecutionPolicy Bypass -File Hulpmiddelen\maak_release.ps1` (met de
-GitHub CLI `gh`, ingelogd met `gh auth login`; zonder `gh` toont het script de
-stappen voor de website). De releasetekst komt uit `src\Wijzigingen.ahk`. Het script
-zet dezelfde .exe met controlewaarde daarna ook in de netwerkmap (reserve, en voor
-computers die vanaf de netwerkmap starten of een versie van voor 6.10 hebben).
+### Een release maken (GitHub bouwt)
+
+1. Verhoog `AppVersie`, zet de wijzigingen in `src\Wijzigingen.ahk`, test (lokaal in
+   `Bouw\`, eventueel met de nep-Pharmacom), commit en push. Bij elke push draait
+   GitHub de tests (`.github\workflows\tests.yml`; zie het tabblad *Actions*).
+2. `powershell -ExecutionPolicy Bypass -File Hulpmiddelen\maak_release.ps1`:
+   zet de tag `v<AppVersie>` en pusht die. GitHub (`.github\workflows\release.yml`)
+   controleert dat tag en versie gelijk zijn, draait de tests, compileert met
+   AutoHotkey 2.0.26 (32-bit) en Ahk2Exe 1.1.37.02, ondertekent (als SignPath is
+   ingesteld, zie hieronder), maakt de controlewaarde en een **herkomstbewijs**
+   (build provenance attestation) en publiceert de release met de tekst uit
+   `src\Wijzigingen.ahk` (`Hulpmiddelen\release_tekst.ps1`).
+3. Het script wacht op die bouw, downloadt de release, controleert controlewaarde,
+   handtekening en herkomstbewijs, en zet de .exe met controlewaarde in de
+   netwerkmap (reserve, en voor computers die vanaf de netwerkmap starten of een
+   versie van voor 6.10 hebben).
+
+Herkomst controleren kan iedereen:
+`gh attestation verify Etiketten_autoprinter.exe --repo ronaldsteenkamp/etiketten-autoprinter`.
+
+Werkt GitHub Actions niet: `maak_release.ps1 -Lokaal` maakt de release van de geteste
+.exe in `Bouw\` (zonder ondertekening en herkomstbewijs). Git en de GitHub CLI staan
+draagbaar in `%LOCALAPPDATA%\Programs\MinGit` en `...\gh`; het script vindt ze zelf.
+
+Tests zonder melding (zoals op GitHub):
+`powershell -ExecutionPolicy Bypass -File tests\alle_tests.ps1 -Ahk "<pad>\AutoHotkey32.exe"`.
+
+### Ondertekenen (SignPath Foundation)
+
+Gratis voor open source; haalt de SmartScreen-waarschuwing ("Windows heeft uw pc
+beschermd") weg. Aanvragen op [signpath.org](https://signpath.org) (nodig: de
+MIT-licentie, een release, de *Code signing policy* in de README en
+tweestapsverificatie op GitHub). Na goedkeuring in de repository instellen
+(Settings → Secrets and variables → Actions): secret `SIGNPATH_API_TOKEN`, en
+variabelen `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`,
+`SIGNPATH_POLICY_SLUG`. Daarna ondertekent `release.yml` elke release; zonder die
+instellingen wordt de stap overgeslagen.
+
+### Meldingen en problemen
+
+Meldingen rechtsonder (bij de klok) zijn aan te klikken: bij een planningsmelding
+opent de planning, anders het venster (`Melder` in `src\Systeem.ahk`). In *Vraag of
+idee* maakt de knop **GitHub** een openbaar issue (`.github\ISSUE_TEMPLATE\
+probleem.yml`) met versie, omgeving en foutcodes al ingevuld; nooit computernaam,
+apotheek of regels uit het log.
 
 Wat nooit in de repository komt (zie `.gitignore`): `Gegevens\` (logs, register),
 `Rapporten\` (namen en geboortedata), de ini (planning, computernamen), `.exe`'s en

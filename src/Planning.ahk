@@ -324,7 +324,7 @@ class Planning {
             }
             Reden := MetCode(Reden)
             Log("Vooraf-controle '" it.naam "' (" it.tijd "): " Reden)
-            TrayTip "Geplande ronde '" it.naam "' om " it.tijd " kan nu niet starten: " Reden, AppTitel, 2
+            Melder.Toon("Geplande ronde '" it.naam "' om " it.tijd " kan nu niet starten: " Reden, , 2, ObjBindMethod(Planning, "Toon"))
             Venster.Status("fout", "Geplande ronde '" it.naam "' om " it.tijd " kan nu niet starten: " Reden ". Los dit op; daarna start hij vanzelf (tot " this.MaxUitstel // 60 " uur na " it.tijd ").")
             Venster.Geluid("gestopt")
         }
@@ -386,7 +386,7 @@ class Planning {
                 Tekst := "niet gestart binnen " this.MaxUitstel // 60 " uur: " u.reden
                 Log("Planning '" it.naam "' " Tekst)
                 this.ZetStatus(it, "mislukt", Tekst, u.moment)
-                TrayTip "Geplande ronde '" it.naam "' is niet uitgevoerd: " u.reden, AppTitel, 2
+                Melder.Toon("Geplande ronde '" it.naam "' is niet uitgevoerd: " u.reden, , 2, ObjBindMethod(Planning, "Toon"))
                 Melding := "De geplande ronde '" it.naam "' van " FormatTime(u.moment, "HH:mm") " is niet uitgevoerd: " u.reden ".`n`nDe app heeft " this.MaxUitstel // 60 " uur gewacht. Print deze groep zo nodig met de hand, of gebruik in de planning het driehoekje (nu uitvoeren)."
                 SetTimer ObjBindMethod(Venster, "Melding", "Planning niet uitgevoerd", Melding, "waarschuwing"), -300
             }
@@ -437,7 +437,7 @@ class Planning {
         }
         if Regels = ""
             return
-        TrayTip "Er zijn geplande rondes niet uitgevoerd. Zie de planning.", AppTitel, 2
+        Melder.Toon("Er zijn geplande rondes niet uitgevoerd. Zie de planning.", , 2, ObjBindMethod(Planning, "Toon"))
         Tekst := "Deze geplande rondes zijn niet uitgevoerd (de app draaide niet, de computer stond uit of sliep, of er liep al een ronde):`n`n" Regels "`nPrint deze groepen zo nodig met de hand, of gebruik in de planning het driehoekje (nu uitvoeren)."
         SetTimer () => Venster.Melding("Planning niet uitgevoerd", Tekst, "waarschuwing"), -300
     }
@@ -492,7 +492,7 @@ class Planning {
                 Log("  groep zoeken mislukt: " Res)
                 Status("mislukt", Res)
                 Venster.Status("fout", "Geplande ronde '" it.naam "' niet gestart: " Res)
-                TrayTip "Geplande ronde '" it.naam "' niet gestart: " Res, AppTitel, 2
+                Melder.Toon("Geplande ronde '" it.naam "' niet gestart: " Res, , 2, ObjBindMethod(Planning, "Toon"))
                 Venster.Geluid("gestopt")
                 return
             }
@@ -530,7 +530,7 @@ class Planning {
             else
                 Status("mislukt", (Ronde.StopReden != "" ? Ronde.StopReden : "de ronde is niet afgerond") " (" Geprint " geprint" Extra ")")
             if NietGelukt != "" && Ok
-                TrayTip "Geplande ronde '" it.naam "' klaar, maar Pat.nr " NietGelukt " is overgeslagen na een fout. Handmatig controleren.", AppTitel, 2
+                Melder.Toon("Geplande ronde '" it.naam "' klaar, maar Pat.nr " NietGelukt " is overgeslagen na een fout. Handmatig controleren.", , 2, ObjBindMethod(Planning, "Toon"))
         } catch as e {
             Log("  fout in geplande ronde: " e.Message " (" e.What ", regel " e.Line ")")
             if !Proef

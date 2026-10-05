@@ -1,0 +1,33 @@
+# Unit-tests bij elke push en pull request (Windows, AutoHotkey v2 32-bit)
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: AutoHotkey v2.0.26 ophalen
+        shell: pwsh
+        run: |
+          Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.26/AutoHotkey_2.0.26.zip" -OutFile ahk.zip
+          Expand-Archive ahk.zip -DestinationPath "$env:RUNNER_TEMP\ahk"
+
+      - name: Script controleren (syntax)
+        shell: pwsh
+        run: |
+          $p = Start-Process "$env:RUNNER_TEMP\ahk\AutoHotkey32.exe" -ArgumentList '/ErrorStdOut /Validate Etiketten_autoprinter.ahk' -PassThru -Wait -NoNewWindow -RedirectStandardError val.txt
+          Get-Content val.txt
+          if ($p.ExitCode -ne 0) { exit 1 }
+
+      - name: Unit-tests
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File tests\alle_tests.ps1 -Ahk "$env:RUNNER_TEMP\ahk\AutoHotkey32.exe"

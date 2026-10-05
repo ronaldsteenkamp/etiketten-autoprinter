@@ -342,7 +342,7 @@ class Ronde {
         if StrLen(OverslaanLijst) > 1500
             OverslaanLijst := SubStr(OverslaanLijst, 1, 1500) Teken.Ellips "`n"
         ; Bij een geplande ronde geen meldingen die op een klik wachten
-        Melden := (Titel, Tekst, Soort := "info") => Auto != "" ? TrayTip(Tekst, AppTitel " - " Titel, Soort = "info" ? 1 : 2) : Venster.Melding(Titel, Tekst, Soort)
+        Melden := (Titel, Tekst, Soort := "info") => Auto != "" ? Melder.Toon(Tekst, AppTitel " - " Titel, Soort = "info" ? 1 : 2) : Venster.Melding(Titel, Tekst, Soort)
 
         if Afgebroken {
             Venster.Voortgang("oranje")
@@ -363,7 +363,7 @@ class Ronde {
         if OverslaanLijst != ""
             Melden(Proef ? "Proefronde klaar" : "Klaar!", Samenvatting ".`n`nOvergeslagen, handmatig controleren:`n" OverslaanLijst)
         else
-            TrayTip (Proef ? "Proefronde klaar: " : "Klaar! ") Samenvatting ".", AppTitel, 1
+            Melder.Toon((Proef ? "Proefronde klaar: " : "Klaar! ") Samenvatting ".", , 1)
         return true
     }
 

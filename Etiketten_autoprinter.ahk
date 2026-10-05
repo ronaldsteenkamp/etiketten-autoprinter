@@ -46,7 +46,7 @@ global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
 global AppGitHub := "ronaldsteenkamp/etiketten-autoprinter"                        ; GitHub-repository voor updates ("eigenaar/naam"); leeg = alleen de updatemap
-global AppVersie := "6.10.3"
+global AppVersie := "6.11.0"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -85,6 +85,7 @@ Opslag.Init()
 Inst.ZetApotheek(Inst.LaatsteApotheek)   ; tot Pharmacom hem laat zien
 Jab.BijAfsluiten := ObjBindMethod(Ph, "JavaAfgesloten")
 MaakTray()
+OnMessage 0x404, MelderBericht   ; klik op een melding (zie Melder)
 Venster.Maak()
 Log("App gestart (v" AppVersie ", AutoHotkey " A_AhkVersion ")")
 Staat.Meld()

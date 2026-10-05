@@ -97,4 +97,7 @@ T("Groep: onbekende instelling", InStr(Planning.GroepFout("T9", "T1HA", B), "ins
 T("Groep: instelling zonder afdelingen = niet afkeuren", Planning.GroepFout("GI", "IETS", B) = "")
 T("Groep: niets opgehaald = niet afkeuren", Planning.GroepFout("T1", "T2HA", {instellingen: Map(), afdelingen: Map()}) = "")
 
+; Zonder melding (bijv. op GitHub): met /ci de uitkomst als exitcode
+if A_Args.Length && A_Args[1] = "/ci"
+    ExitApp Fouten ? 1 : 0
 MsgBox Fouten ? Fouten " test(s) mislukt, zie " Uit : "Alle planningstests geslaagd.", "Planning", Fouten ? "Icon!" : "Iconi"

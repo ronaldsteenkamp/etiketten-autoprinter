@@ -1,0 +1,34 @@
+name: Probleem melden
+description: Er gaat iets mis of anders dan verwacht
+title: "Probleem: "
+labels: ["probleem"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Let op: deze melding is openbaar.** Zet er nooit patiëntgegevens in (namen, Pat.nr's, geboortedata),
+        ook niet in schermafdrukken. Vanuit de app (*Vraag of idee* → *GitHub*) zijn versie, omgeving en
+        foutcodes al ingevuld.
+  - type: textarea
+    id: wat
+    attributes:
+      label: Wat gebeurde er?
+      description: Wat deed je, wat verwachtte je en wat gebeurde er? Noem de foutcode uit de melding als die er was (bijv. [P11]).
+    validations:
+      required: true
+  - type: input
+    id: versie
+    attributes:
+      label: Versie
+      placeholder: "6.10.4"
+  - type: textarea
+    id: omgeving
+    attributes:
+      label: Omgeving
+      description: Windows, lokaal geïnstalleerd of vanaf de netwerkmap.
+  - type: textarea
+    id: foutcodes
+    attributes:
+      label: Foutcodes van de laatste 30 dagen
+      description: Uit Diagnose. Alleen codes en aantallen, geen patiëntgegevens.
+      render: text

@@ -1,4 +1,4 @@
-; Unit-tests voor de updates via GitHub (antwoord van de GitHub-API uitlezen).
+﻿; Unit-tests voor de updates via GitHub (antwoord van de GitHub-API uitlezen).
 ; Draaien met:
 ;   AutoHotkey32.exe tests\Update.ahk
 ; Het resultaat komt in tests\uitvoer_update.txt (en in een melding).
@@ -44,4 +44,7 @@ T("Zonder tag = niet bruikbaar", !IsObject(Update.LeesRelease(StrReplace(J, "tag
 T("Tag zonder v", Update.LeesRelease(StrReplace(J, '"v6.10.0"', '"6.10.0"')).versie = "6.10.0")
 T("Foutmelding van GitHub = niet bruikbaar", !IsObject(Update.LeesRelease('{"message":"Not Found"}')))
 
+; Zonder melding (bijv. op GitHub): met /ci de uitkomst als exitcode
+if A_Args.Length && A_Args[1] = "/ci"
+    ExitApp Fouten ? 1 : 0
 MsgBox Fouten ? Fouten " test(s) mislukt, zie " Uit : "Alle updatetests geslaagd.", "Update", Fouten ? "Icon!" : "Iconi"
