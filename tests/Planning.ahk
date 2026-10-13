@@ -6,6 +6,7 @@
 #Include ..\src\Hulp.ahk
 #Include ..\src\Instellingen.ahk
 #Include ..\src\Planning.ahk
+#Include ..\src\Groepen.ahk
 #Include ..\src\Opslag.ahk
 
 Uit := A_ScriptDir "\uitvoer_planning.txt"

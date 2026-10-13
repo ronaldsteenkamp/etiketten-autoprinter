@@ -1,8 +1,9 @@
 ; =====================================================================
 ; Updates en lokaal installeren
 ;
-; Publiceren zet de .exe met een controlewaarde (.sha256) in de updatemap.
-; Bijwerken kopieert eerst naar de tijdelijke map en installeert alleen als
+; Een nieuwe versie komt van GitHub (release met .exe en .sha256) of, als
+; reserve, uit de updatemap (netwerkmap); die zet Hulpmiddelen\
+; maak_release.ps1 klaar. Bijwerken kopieert eerst naar de tijdelijke map en installeert alleen als
 ; de controlewaarde klopt (vangt half gekopieerde of beschadigde bestanden
 ; af; beperk de schrijfrechten op de updatemap tegen kwaadwillenden).
 ; =====================================================================
@@ -32,38 +33,29 @@ class Opstart {
 class Update {
     static ExeNaam := "Etiketten_autoprinter.exe"
 
-    static Publiceer() {
-        Doel := Inst.UpdateMap
-        if Doel = "" || !InStr(FileExist(Doel), "D")
-            return Venster.Melding("Updates", "Kies eerst een bestaande updatemap.", "waarschuwing")
-        if !A_IsCompiled
-            return Venster.Melding("Updates", "Dit kan alleen vanuit de gecompileerde .exe.", "waarschuwing")
-        Exe := Doel "\" this.ExeNaam
-        ; Eerst de controlewaarde weghalen: zo installeert niemand een half
-        ; gekopieerde .exe terwijl het kopi"eren nog bezig is
-        try FileDelete Exe ".sha256"
-        Hash := ""
-        try {
-            FileCopy A_ScriptFullPath, Exe, 1
-            Hash := Sha256(A_ScriptFullPath)
-            if Hash != "" && Sha256(Exe) = Hash
-                FileAppend Hash, Exe ".sha256", "UTF-8-RAW"
-        }
-        if Hash = "" || !FileExist(Exe ".sha256")
-            return Venster.Melding("Updates", "Kopi" Teken.EUml "ren naar de updatemap is mislukt.", "fout")
-        Log("Versie " AppVersie " in de updatemap gezet")
-        Venster.Melding("Updates", "Versie " AppVersie " staat nu in de updatemap. Andere computers krijgen de update bij de volgende start.")
-    }
-
     ; GitHub-repository met releases ("eigenaar/naam"): AppGitHub in de app,
     ; of [Update] GitHub= in de ini. Leeg = alleen de updatemap.
     static GitHub => Trim(Inst.Lees1("Update", "GitHub", AppGitHub))
+
+    ; Elke 4 uur (zie hoofdbestand): een app die dagenlang openstaat, krijgt
+    ; nieuwe versies ook te zien. Niet tijdens een ronde of geplande ronde, en
+    ; zonder vraagvenster (dat zou blijven wachten als niemand achter de
+    ; computer zit): alleen een klikbare melding, één keer per versie.
+    static Interval := 4 * 3600 * 1000
+    static Gemeld := ""
+
+    static Periodiek() {
+        if Ronde.Bezig || Planning.Bezig
+            return
+        this.Controleer(true, true)
+    }
 
     ; Kijkt of er een nieuwere versie is en installeert die (na bevestiging).
     ; GitHub is de eerste bron: de nieuwste release daar telt. Alleen als
     ; GitHub niet bereikbaar is (of niet ingesteld), kijkt de app in de
     ; updatemap (netwerkmap). Stil = geen melding als er niets nieuws is.
-    static Controleer(Stil) {
+    ; AlleenMelden: niets vragen, alleen een klikbare melding (zie Periodiek)
+    static Controleer(Stil, AlleenMelden := false) {
         if Ronde.Bezig || Inst.Test
             return
         Nieuw := "", NieuweVersie := "", Release := "", GitHubWeg := false
@@ -99,6 +91,14 @@ class Update {
             if !Stil
                 Venster.Melding("Updates", VanafMap ? "De app start vanaf de netwerkmap (" A_ScriptDir "): na een herstart heb je altijd de versie die daar staat (nu " AppVersie ")."
                     : Inst.UpdateMap = "" && this.GitHub = "" ? "Er is geen updatemap of GitHub ingesteld." : "Je hebt de nieuwste versie (" AppVersie ").")
+            return
+        }
+        if AlleenMelden {
+            if this.Gemeld != NieuweVersie {
+                this.Gemeld := NieuweVersie
+                Log("Nieuwe versie " NieuweVersie " gemeld")
+                Melder.Toon("Versie " NieuweVersie " staat klaar (je hebt " AppVersie "). Klik hier om bij te werken.", , 1, () => Update.Controleer(false))
+            }
             return
         }
         if !A_IsCompiled {

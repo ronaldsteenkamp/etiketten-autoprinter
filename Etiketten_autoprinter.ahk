@@ -37,16 +37,19 @@ A_MaxHotkeysPerInterval := 1000
 ; Tijdens het printen zijn toetsenbord en muis geblokkeerd (optie); Esc
 ; stopt direct.
 ;
-; Opbouw: src\Jab.ahk (koppeling), src\Pharmacom.ahk (stappen),
-; src\Ronde.ahk (lijst en printronde), src\Venster.ahk (WebView2-venster),
-; src\Opslag.ahk, src\Instellingen.ahk, src\Invoer.ahk, src\Update.ahk.
+; Opbouw: src\Jab.ahk (koppeling), src\Pharmacom.ahk (verbinding en de
+; stappen per patiënt), src\Zoekvelden.ahk (Instelling/Afdeling, Zoeken,
+; groepen ophalen), src\Ronde.ahk (lijst en printronde), src\Planning.ahk
+; en src\Groepen.ahk (geplande rondes), src\Venster.ahk (WebView2-venster),
+; src\Opslag.ahk, src\Instellingen.ahk, src\Invoer.ahk, src\Update.ahk,
+; src\Systeem.ahk, src\Hulp.ahk, src\Wijzigingen.ahk.
 ; =====================================================================
 
 global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
 global AppGitHub := "ronaldsteenkamp/etiketten-autoprinter"                        ; GitHub-repository voor updates ("eigenaar/naam"); leeg = alleen de updatemap
-global AppVersie := "6.11.1"
+global AppVersie := "6.12.0"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -57,11 +60,13 @@ global AppVersie := "6.11.1"
 #Include src\Opslag.ahk
 #Include src\Jab.ahk
 #Include src\Pharmacom.ahk
+#Include src\Zoekvelden.ahk
 #Include src\Invoer.ahk
 #Include src\Ronde.ahk
 #Include src\Venster.ahk
 #Include src\Update.ahk
 #Include src\Planning.ahk
+#Include src\Groepen.ahk
 #Include src\Wijzigingen.ahk
 #Include src\Systeem.ahk
 #Include src\lib\WebView2
@@ -110,6 +115,7 @@ Bewaking()
 SetTimer Bewaking, 3000
 SetTimer () => Geheugen.LogPharmacom(), 3600000
 SetTimer () => Update.Controleer(true), -1500
+SetTimer () => Update.Periodiek(), Update.Interval
 SetTimer () => Update.ControleerLokaal(), -2500
 SetTimer () => Wijzigingen.BijStart(), -3500
 SetTimer PlanningTik, 20000

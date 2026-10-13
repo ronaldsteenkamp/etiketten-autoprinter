@@ -374,7 +374,11 @@ class Ronde {
     static PrintPatient(p) {
         ; --- 1. Pati"ent in de aanschrijfbuffer opzoeken en selecteren ---
         Venster.Sub("Pati" Teken.EUml "nt opzoeken in de aanschrijfbuffer" Teken.Ellips)
-        t := Ph.WachtOpTabel(Ph.BufferKoppen, Inst.Wt["MaxWachtScherm"])
+        ; De aanschrijfbuffer van de vorige pati"ent hergebruiken als die nog
+        ; zichtbaar is (scheelt opnieuw zoeken en alle kolomkoppen lezen)
+        t := Ph.BufferBewaakt()
+        if !t
+            t := Ph.WachtOpTabel(Ph.BufferKoppen, Inst.Wt["MaxWachtScherm"])
         if !t
             return this.Fout("de aanschrijfbuffer is niet zichtbaar in Pharmacom")
         Rij := Ph.ZoekRij(t, "patnr", p.patnr, p.rij)
@@ -408,7 +412,10 @@ class Ronde {
         Venster.Sub("Medicatiehistorie openen" Teken.Ellips)
         if !Ph.Stap("{F4}", 0, "F4")
             return this.Fout("")
-        h := Ph.WachtOpTabel(Ph.HistorieKoppen, Inst.Wt["MaxWachtScherm"])
+        ; Beide helften in één keer zoeken: rechts (Ap, Herhaal info) en
+        ; links (Etiketnaam, voor de naam en om de selectie te controleren)
+        HE := Ph.WachtOpTabellen([Ph.HistorieKoppen, Ph.EtiketKoppen], Inst.Wt["MaxWachtScherm"])
+        h := HE ? HE[1] : "", e := HE ? HE[2] : "", HE := ""
         if !h {
             Ph.LogZichtbareTabellen()
             return this.Fout("de medicatiehistorie werd niet herkend (zie logbestand)")
@@ -484,8 +491,10 @@ class Ronde {
                 return this.Fout("Pharmacom keerde niet terug naar de aanschrijfbuffer")
             return {tekst: "geen regel met " Omschrijving}
         }
-        ; Linker tabel (Etiketnaam): voor de naam en om de selectie te controleren
-        e := Jab.ZoekTabel(Ph.Pid, Ph.EtiketKoppen)
+        ; Linker tabel (Etiketnaam): al gevonden met de medicatiehistorie; zo
+        ; niet (nog niet zichtbaar toen), nu zoeken
+        if !e
+            e := Jab.ZoekTabel(Ph.Pid, Ph.EtiketKoppen)
         Etiket := e ? e.Cel(AnRij, "etiket") : ""
         ok := Ph.Selecteer(h, AnRij, e)
         if ok {

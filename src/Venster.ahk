@@ -462,9 +462,6 @@ class Venster {
             case "controleer":
                 Update.Controleer(false)
                 this.Instellingen()
-            case "publiceer":
-                Update.Publiceer()
-                this.Instellingen()
         }
     }
 

@@ -235,10 +235,11 @@ De sneltoets leest de app zelf uit Pharmacom.
 | `Etiketten_autoprinter.ahk` | Hoofdbestand (AutoHotkey v2): start de app en voegt de modules samen |
 | `src\Jab.ahk` | Java Access Bridge: Pharmacom uitlezen, tabellen, menu's, regels selecteren |
 | `src\Pharmacom.ahk` | De stappen in Pharmacom (verbinden, selecteren, dossier controleren, printen, terugzetten) |
+| `src\Zoekvelden.ahk` | Instelling en Afdeling invullen, Zoeken, aanschrijfbuffer openen (Ctrl+F11), alle groepen ophalen (klasse `PhZoek`) |
 | `src\Ronde.ahk` | De patiëntenlijst en de printronde |
 | `src\Venster.ahk` | Het venster (WebView2), knoppen, dialogen, instellingen, diagnose |
 | `src\Opslag.ahk`, `src\Instellingen.ahk`, `src\Invoer.ahk`, `src\Update.ahk`, `src\Hulp.ahk` | Log/register/rapporten, ini, toetsenbord blokkeren, updates, hulpfuncties |
-| `src\Planning.ahk`, `src\Wijzigingen.ahk` | Geplande rondes; "Wat is er nieuw" |
+| `src\Planning.ahk`, `src\Groepen.ahk`, `src\Wijzigingen.ahk` | Geplande rondes; bekende groepen per apotheek; "Wat is er nieuw" |
 | `src\Systeem.ahk` | Vergrendeling, geen slaapstand, waakhond, geheugen van Pharmacom |
 | `tests\Eenheid.ahk`, `tests\Planning.ahk` | Unit-tests (hulpfuncties; planning: dagen, weken, tijdvenster) |
 | `src\lib\` | WebView2-bibliotheek van thqby (MIT-licentie) met de 32-bit WebView2Loader.dll |
@@ -412,12 +413,12 @@ vandaan komt. Die is tegelijk de map met de gedeelde planning en instellingen (z
 zie je ook waar de app naar updates kijkt en wanneer het laatst (met de uitkomst),
 en kun je *Nu controleren op updates*.
 
-Een nieuwe versie zet de beheerder in de netwerkmap: kopieer de geteste .exe uit
-`Bouw\` en zet de controlewaarde ernaast (zie *Compileren*). Lokaal geïnstalleerde
-computers krijgen bij het starten de vraag of ze willen bijwerken; computers die
-vanaf de netwerkmap starten hebben hem na een herstart. De knop *Deze versie in de
-updatemap zetten* staat niet meer in Instellingen (voor collega's verwarrend); de
-functie `Update.Publiceer()` bestaat nog.
+Een nieuwe versie zet `Hulpmiddelen\maak_release.ps1` op GitHub én in de
+netwerkmap (zie *Een release maken*). Lokaal geïnstalleerde computers krijgen bij het
+starten (en daarna elke 4 uur een melding) de vraag of ze willen bijwerken;
+computers die vanaf de netwerkmap starten hebben hem na een herstart. De knop *Deze
+versie in de updatemap zetten* is vervallen (`maak_release.ps1 -Lokaal` doet dat
+in noodgevallen).
 
 Een app die vanaf de netwerkmap zelf draait, werkt **niet** bij van GitHub: dat zou
 de gedeelde .exe vervangen zonder controlewaarde, waarna de lokale installaties de

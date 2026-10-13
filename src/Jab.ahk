@@ -218,6 +218,43 @@ class Jab {
         return this.Doorzoek(Pid, Bezoek)
     }
 
+    ; Zoekt in één keer door de boom meerdere tabellen (bijv. de twee helften
+    ; van de medicatiehistorie). Lijst = array van Koppen; geeft een array
+    ; met per Koppen een JabTabel of "". Stopt zodra alles gevonden is.
+    static ZoekTabellen(Pid, Lijst) {
+        Res := [], Open := Lijst.Length
+        Res.Length := Lijst.Length
+        Bezoek(Vm, Ac, Info, Diepte) {
+            if Info.role = "table" {
+                Ti := Jab.TabelInfo(Vm, Ac)
+                if !Ti
+                    return "stop"
+                Kop := Jab.Kolomkoppen(Vm, Ac, Ti.cols)
+                for i, Koppen in Lijst {
+                    if Res.Has(i)
+                        continue
+                    if Kol := JabTabel.PasKoppen(Kop, Koppen) {
+                        Res[i] := JabTabel(Vm, Ac, Ti, Kol, Kop)
+                        ; Bewaren; is alles gevonden, dan klaar ({ac}: niet vrijgeven)
+                        return --Open ? "houd" : {ac: Ac}
+                    }
+                }
+                Jab.Release(Vm, Ti.at)
+                if Ti.ac != Ac
+                    Jab.Release(Vm, Ti.ac)
+                return "stop"
+            }
+            if RegExMatch(Info.role, "^(menu bar|menu|popup menu|list|tree|combo box)$")
+                return "stop"
+            return ""
+        }
+        this.Doorzoek(Pid, Bezoek)
+        loop Res.Length
+            if !Res.Has(A_Index)
+                Res[A_Index] := ""
+        return Res
+    }
+
     static TabelInfo(Vm, Ac) {
         js := this.js, jt := this.jt
         Ti := Buffer(48, 0)
@@ -318,40 +355,51 @@ class Jab {
     }
 
     ; Alle zichtbare teksten (labels, velden, titel) in een venster, zonder
-    ; tabellen en menu's.
-    static VensterTekst(Hwnd) {
+    ; tabellen en menu's. Stop = reguliere expressie: zodra een tekst daarop
+    ; past, stopt het zoeken (de tekst tot dan toe komt terug; sneller als je
+    ; maar één ding zoekt, zoals het Pat.nr in het dossier).
+    static VensterTekst(Hwnd, Stop := "") {
         Tekst := WinGetTitle(Hwnd) "`n"
+        if Stop != "" && RegExMatch(Tekst, Stop)
+            return Tekst
         R := this.VanVenster(Hwnd)
         if !R
             return Tekst
         Teller := 0
-        this._Tekst(R.vm, R.ac, &Tekst, 0, &Teller)
+        this._Tekst(R.vm, R.ac, &Tekst, 0, &Teller, Stop)
         this.Release(R.vm, R.ac)
         return Tekst
     }
 
-    static _Tekst(Vm, Ac, &Tekst, Diepte, &Teller) {
+    ; Geeft true als Stop gevonden is (dan niet verder zoeken)
+    static _Tekst(Vm, Ac, &Tekst, Diepte, &Teller, Stop := "") {
         if ++Teller > 4000
-            return
+            return false
         Info := this.Info(Vm, Ac)
         if !Info || !this.Heeft(Info, "showing")
-            return
+            return false
         if Info.role = "table" || Info.role = "menu bar" || Info.role = "popup menu"
-            return
+            return false
         Naam := Info.name
         if Trim(Naam) = "" && Info.text
             Naam := this.Naam(Vm, Ac)
-        if Trim(Naam) != ""
+        if Trim(Naam) != "" {
             Tekst .= Naam "`n"
+            if Stop != "" && RegExMatch(Naam, Stop)
+                return true
+        }
         if Diepte > 60
-            return
+            return false
         loop Min(Info.children, 2000) {
             Kind := this.Kind(Vm, Ac, A_Index - 1)
             if !Kind
                 continue
-            this._Tekst(Vm, Kind, &Tekst, Diepte + 1, &Teller)
+            Klaar := this._Tekst(Vm, Kind, &Tekst, Diepte + 1, &Teller, Stop)
             this.Release(Vm, Kind)
+            if Klaar
+                return true
         }
+        return false
     }
 }
 
