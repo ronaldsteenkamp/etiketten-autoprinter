@@ -282,7 +282,9 @@ Gebruik altijd de **32-bit** base (`AutoHotkey32.exe`): Pharmacom draait op 32-b
 De pagina, het pictogram en de WebView2Loader.dll worden in de .exe meegenomen.
 De app heeft de WebView2 Runtime nodig; die zit standaard in Windows 10/11.
 
-Het versienummer staat alleen in `AppVersie := "..."`; Ahk2Exe neemt het via de
+Versienummers hebben sinds 6.13 twee delen (`6.13`, `6.14`, ...; daarvoor drie,
+zoals `6.12.0`); de app vergelijkt ze als getal, dus 6.13 is nieuwer dan 6.12.0. De
+.exe krijgt `6.13.0.0`. Het versienummer staat alleen in `AppVersie := "..."`; Ahk2Exe neemt het via de
 `;@Ahk2Exe-Let`-regel daaronder over in de .exe. Controleer na het compileren de
 versie (rechtsklik op de .exe → Eigenschappen → Details): de update-functie
 vergelijkt die versie.

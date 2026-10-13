@@ -58,7 +58,8 @@ jobs:
           if ($p.ExitCode -ne 0 -or !(Test-Path Bouw\Etiketten_autoprinter.exe)) { Write-Error "Compileren mislukt"; exit 1 }
           $v = (Get-Item Bouw\Etiketten_autoprinter.exe).VersionInfo.FileVersion
           Write-Host "Gebouwd: versie $v"
-          if (-not $v.StartsWith("${{ steps.versie.outputs.versie }}")) { Write-Error "Versie in de .exe ($v) klopt niet"; exit 1 }
+          $w = "${{ steps.versie.outputs.versie }}"
+          if ($v -ne $w -and -not $v.StartsWith("$w.")) { Write-Error "Versie in de .exe ($v) klopt niet bij $w"; exit 1 }
 
       - name: Niet-ondertekende versie bewaren (voor SignPath)
         if: env.SIGNPATH_TOKEN != ''

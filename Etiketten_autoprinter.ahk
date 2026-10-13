@@ -49,11 +49,13 @@ global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
 global AppGitHub := "ronaldsteenkamp/etiketten-autoprinter"                        ; GitHub-repository voor updates ("eigenaar/naam"); leeg = alleen de updatemap
-global AppVersie := "6.12.0"
+global AppVersie := "6.13"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
-;@Ahk2Exe-SetVersion %U_Versie%
+;@Ahk2Exe-SetVersion %U_Versie%.0.0
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
 ; moet daar DIRECT onder staan). De .exe-versie wordt gebruikt bij updates.
+; AppVersie heeft twee delen (6.13); Ahk2Exe accepteert dat niet, dus de .exe
+; krijgt 6.13.0.0 (voor de vergelijking is dat hetzelfde).
 
 #Include src\Hulp.ahk
 #Include src\Instellingen.ahk

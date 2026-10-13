@@ -44,7 +44,8 @@ try {
     if ($Lokaal) {
         $Exe = Join-Path $Map "Bouw\Etiketten_autoprinter.exe"
         if (!(Test-Path $Exe)) { throw "Geen $Exe. Compileer eerst naar Bouw\." }
-        if (-not (Get-Item $Exe).VersionInfo.FileVersion.StartsWith($Versie)) { throw "Bouw\ bevat niet versie $Versie" }
+        $Fv = (Get-Item $Exe).VersionInfo.FileVersion
+        if ($Fv -ne $Versie -and -not $Fv.StartsWith("$Versie.")) { throw "Bouw\ bevat niet versie $Versie (maar $Fv)" }
         $Hash = (Get-FileHash $Exe -Algorithm SHA256).Hash.ToLower()
         [IO.File]::WriteAllText("$Exe.sha256", $Hash, (New-Object Text.UTF8Encoding $false))
         & "$PSScriptRoot\release_tekst.ps1" -Versie $Versie -Uit "$env:TEMP\etiketten_notes.md"
