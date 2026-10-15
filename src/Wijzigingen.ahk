@@ -5,7 +5,8 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.13", ["Kortere versienummers: voortaan 6.13, 6.14 enzovoort in plaats van 6.12.0."]]
+        ["6.14", ["Gaat er tijdens een geplande ronde iets onverwachts mis, dan stopt de ronde nu netjes: toetsenbord en muis zijn meteen weer vrij en een al gekozen etiket telt als geprint (eerst bleef de blokkade staan)."]]
+        , ["6.13", ["Kortere versienummers: voortaan 6.13, 6.14 enzovoort in plaats van 6.12.0."]]
         , ["6.12.0", ["Sneller per patiënt: de dossiercontrole stopt zodra het Pat.nr gevonden is, en de aanschrijfbuffer en de medicatiehistorie worden minder vaak opnieuw gezocht."
             , "Staat de app dagenlang open, dan kijkt hij elke 4 uur of er een nieuwe versie is en meldt dat rechtsonder (klik om bij te werken)."]]
         , ["6.11.1", ["Nieuw icoon: een vliegend etiket met barcode in BENU-groen."]]
