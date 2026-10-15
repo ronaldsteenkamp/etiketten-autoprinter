@@ -38,6 +38,51 @@ class Ronde {
         }
     }
 
+    ; Ronde afbreken na een onverwachte fout, zowel via het vangnet als in
+    ; een geplande ronde (Planning.Voer vangt de fout zelf op): blokkade eraf,
+    ; een al gekozen etiket alsnog als geprint registreren, rapportregel X99,
+    ; Pharmacom terug naar de aanschrijfbuffer en de knoppen terug. Elke stap
+    ; apart in try: dit mag zelf niet vastlopen. Geeft true als er een ronde
+    ; liep (anders gaat alleen de blokkade eraf).
+    static Noodstop(e) {
+        try Invoer.Blokkeer(false)
+        try Venster.GeenActivatie(false)
+        if !this.Bezig
+            return false
+        try SetTimer RondeTijd, 0
+        p := this.Huidig
+        try {
+            if IsObject(p) && this.Gekozen && !p.geprintNu {
+                ; Het item in het afdrukmenu was al gekozen: telt als geprint
+                this.VandaagGeprint[p.patnr] := Opslag.Registreer(p.patnr)
+                p.geprintNu := true
+                this.Geprint++
+                Log("  Pat.nr " p.patnr ": etiket was al gekozen, als geprint geregistreerd")
+            }
+            if IsObject(p)
+                Opslag.Rapporteer(p, "", "Gestopt: onverwachte fout [X99] (" e.Message ")", this.Apotheek)
+        }
+        this.StopPatnr := IsObject(p) && !p.geprintNu ? p.patnr : ""
+        this.Bezig := false, this.Stoppen := false, this.Huidig := "", this.Gekozen := false
+        this.Proef := false, this.Auto := ""
+        try Wakker.Zet("ronde", false)
+        try Waakhond.Patient(0)
+        this.StopReden := MetCode("onverwachte fout")
+        this.TerugGezet := false
+        try this.TerugGezet := Ph.TerugNaarBuffer()
+        try {
+            Venster.Ui("bezig", 0)
+            Venster.ZetKnop("start", true)
+            Venster.ZetKnop("proef", true)
+            Venster.ZetKnop("vernieuwen", Ph.Verbonden)
+            Venster.ZetKnop("stop", false)
+            Venster.Voortgang("oranje")
+            Venster.KnopTekst("start", "Doorgaan")
+        }
+        try Venster.ZetBovenop()
+        return true
+    }
+
     static Printbaar(Soort) => Soort = "print" || Soort = "al"
 
     static TelSoort(Soort) {

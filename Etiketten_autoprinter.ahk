@@ -199,37 +199,8 @@ Vangnet(e, Modus) {
         return 1
     BezigMetFout := true
     try Log("ONVERWACHTE FOUT [X99]: " e.Message " | " e.What " | regel " e.Line " | " e.Extra " | " e.File)
-    WasBezig := Ronde.Bezig
-    try Invoer.Blokkeer(false)
-    try Venster.GeenActivatie(false)
-    if WasBezig {
-        try SetTimer RondeTijd, 0
-        p := Ronde.Huidig
-        try {
-            if IsObject(p) && Ronde.Gekozen && !p.geprintNu {
-                ; Het item in het afdrukmenu was al gekozen: telt als geprint
-                Ronde.VandaagGeprint[p.patnr] := Opslag.Registreer(p.patnr)
-                p.geprintNu := true
-                Log("  Pat.nr " p.patnr ": etiket was al gekozen, als geprint geregistreerd")
-            }
-            if IsObject(p)
-                Opslag.Rapporteer(p, "", "Gestopt: onverwachte fout [X99] (" e.Message ")", Ronde.Apotheek)
-        }
-        Ronde.Bezig := false, Ronde.Stoppen := false, Ronde.Huidig := ""
-        try Wakker.Zet("ronde", false)
-        try Waakhond.Patient(0)
-        Ronde.StopReden := MetCode("onverwachte fout")
-        try Ph.TerugNaarBuffer()
-        try {
-            Venster.Ui("bezig", 0)
-            Venster.ZetKnop("start", true)
-            Venster.ZetKnop("proef", true)
-            Venster.ZetKnop("vernieuwen", Ph.Verbonden)
-            Venster.ZetKnop("stop", false)
-            Venster.Voortgang("oranje")
-            Venster.KnopTekst("start", "Doorgaan")
-        }
-    }
+    WasBezig := false
+    try WasBezig := Ronde.Noodstop(e)   ; blokkade eraf, ronde netjes stoppen
     Planning.Bezig := false
     try Venster.ZetBovenop()
     Tekst := "Er ging iets onverwachts mis" (WasBezig ? " tijdens het printen. De ronde is gestopt en toetsenbord en muis zijn weer vrij. Met Doorgaan ga je verder; wie al geprint is, wordt overgeslagen." : ".")
