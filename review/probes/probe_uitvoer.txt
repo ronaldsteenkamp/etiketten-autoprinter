@@ -1,0 +1,45 @@
+﻿'0123' = '123' (ZoekRij) => 0
+'123' = '123.0' => 0
+'1e3' = '1000' => 0
+'0x10' = '16' => 0
+'an' != 'AN' (Ap-vergelijking) => 0
+' AN' != 'AN' => 1
+Map heeft '123' als '0123' geregistreerd => 0
+patroon '123' in 'Pat.nr: 1234' => geen
+patroon '123' in 'Dorpsstraat 123' => MATCH
+patroon '123' in 'Tel. 06-123' => MATCH
+patroon '123' in 'BSN 123456789' => geen
+patroon '123' in 'Pat.nr: 123' => MATCH
+patroon '123' in '123a' => MATCH
+patroon '123' in 'AN - RS - 183' => geen
+patroon '183' in statusbalk 'AN - RS - 183' => MATCH
+InStr('de Jong-Bakker', 'Jong') => 1
+InStr('Jongeneel', 'Jong') => 1
+geb 01-02-1950 matcht '1-2-50' => 1
+geb 01-02-1950 matcht '01.02.1950' => 1
+Deelbaar 'ASB: Deelbaar' => MATCH
+Deelbaar 'ASB: Deelbaar niet' => MATCH
+Deelbaar 'asb:deelbaarheid onbekend' => MATCH
+Deelbaar 'ASB: Niet deelbaar' => geen
+VersieNummer 6.13 > 6.12.0 => 1
+VersieNummer 6.13.1 > 6.13 => 1
+VersieNummer 6.1000 > 7.0 => 0
+VersieNummer 6.13.0.1 > 6.13 => 0
+VersieNummer v6.14 > 6.13 => 0
+VersieNummer 6.14-beta > 6.13 => 0
+Week 2026-12-14 => 51 (oneven)
+Week 2026-12-21 => 52 (even)
+Week 2026-12-28 => 53 (oneven)
+Week 2027-01-04 => 1 (oneven)
+Week 2027-01-11 => 2 (even)
+Format('{:02}{:02}00', '7', '30') => 073000
+NuAan tijd 25:00 => FOUT: Parameter #2 of DateDiff is invalid.
+Momenten tijd 25:00 => 2
+NuAan tijd 8:99 => FOUT: Parameter #2 of DateDiff is invalid.
+NuAan 02:30 om 03:00 (na de sprong) => 0
+Gemist 02:30 op 29-03 => 1
+DateDiff 30 dagen + 23 uur => 30
+CSV-regel => "12:00:00";"900001";"=HYPERLINK(""http://x"";""klik"")";"01-02-1950";"AN";"-2+3";"Geprint"
+Integer('0012345') => 12345
+TitelIsBuffer('Pharmacom') => 1
+TitelIsBuffer('Pharmacom - Patiënt dossier') => 0
