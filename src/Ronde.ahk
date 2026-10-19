@@ -71,9 +71,18 @@ class Ronde {
             Venster.Status("fout", "De aanschrijfbuffer is niet gevonden. Open in Pharmacom het scherm Aanschrijfbuffer en klik op Vernieuwen.")
             return false
         }
+        ; Zonder register weet de app niet wie vandaag al geprint is: dan
+        ; geen lijst en geen ronde (anders zou iedereen opnieuw aangevinkt staan)
+        R := Opslag.LeesRegister()
+        if !IsObject(R) {
+            this.Fout("het register van geprinte pati" Teken.EUml "nten is niet bereikbaar")
+            Venster.Status("fout", "Het register van geprinte pati" Teken.EUml "nten (" Opslag.GeprintMap ") is niet bereikbaar. Zonder register kan de app niet zien wie vandaag al geprint is, dus er wordt niets geprint. Controleer of de netwerkmap bereikbaar is.")
+            Log("Register van geprinte pati" Teken.EUml "nten niet bereikbaar (" Opslag.GeprintMap "): lijst niet bijgewerkt")
+            return false
+        }
         if !Behoud
             this.Uitgevinkt := Map(), this.HerprintOk := Map()
-        this.VandaagGeprint := Opslag.LeesRegister()
+        this.VandaagGeprint := R
 
         Lijst := []
         Handtekening := t.rows ":"
@@ -129,6 +138,8 @@ class Ronde {
     ; geprint) sinds de lijst is ingelezen?
     static RegisterGewijzigd() {
         R := Opslag.LeesRegister()
+        if !IsObject(R)
+            return false   ; niet bereikbaar: de lijst houden zoals hij is (Vernieuw meldt het)
         if R.Count != this.VandaagGeprint.Count
             return true
         for Patnr in R
@@ -185,6 +196,7 @@ class Ronde {
     static StartRun(Proef := false, Auto := "") {
         if this.Bezig
             return false
+        this.StopReden := ""   ; Vernieuw kan hieronder een reden zetten (register)
         if Venster.Verbind() != "ok" {
             Venster.Toon()
             return false
@@ -259,13 +271,18 @@ class Ronde {
         Afgebroken := false
         for i, r in Doelen {
             p := this.Patienten[r]
-            p.geprintNu := false
+            p.geprintNu := false, p.geregistreerd := false
             this.Huidig := p, this.Gekozen := false
             Waakhond.Patient(p.patnr)
             Venster.Rij(r, "bezig", "Bezig" Teken.Ellips)
             Venster.Status("bezig", (Proef ? "Proef " Teken.Mid " " : "") "Pati" Teken.EUml "nt " i " van " n ": " p.naam "  " Teken.Mid "  Esc = stoppen")
             Log("Pat.nr " p.patnr ":")
             Res := this.PrintPatient(p)
+            ; Claim vrijgeven (alleen een eigen claim). Geprint maar niet in het
+            ; register gekomen: claim laten staan, dan slaan andere computers
+            ; hem ook over.
+            if !Proef && (!p.geprintNu || p.geregistreerd)
+                Opslag.GeefVrij(p.patnr)
 
             if Res.HasProp("stop") {
                 if this.StopReden = ""
@@ -372,6 +389,23 @@ class Ronde {
     ;   {tekst: reden}                  overgeslagen
     ;   {stop: true}                    afbreken (reden staat in StopReden)
     static PrintPatient(p) {
+        ; --- 0. Register: intussen (op een andere computer) al geprint? ---
+        ; Eerst de patiënt "claimen" (Opslag.Claim), daarna het register
+        ; lezen: een andere computer schrijft het register vóór hij zijn claim
+        ; weer vrijgeeft, dus wie de claim krijgt, ziet ook zijn registratie.
+        if !this.Proef {
+            c := Opslag.Claim(p.patnr)
+            if c.HasProp("fout")
+                return this.Fout("het register van geprinte pati" Teken.EUml "nten is niet bereikbaar (" c.fout ")")
+            if c.HasProp("bezet")
+                return {tekst: "staat op 'bezig' bij " c.bezet " (een andere ronde, of daar vastgelopen): controleer of er een etiket is"}
+        }
+        R := Opslag.LeesRegister()
+        if !IsObject(R)
+            return this.Fout("het register van geprinte pati" Teken.EUml "nten is niet bereikbaar")
+        if R.Has(p.patnr) && !this.HerprintOk.Has(p.patnr)
+            return {tekst: "intussen al geprint om " R[p.patnr]}
+
         ; --- 1. Pati"ent in de aanschrijfbuffer opzoeken en selecteren ---
         Venster.Sub("Pati" Teken.EUml "nt opzoeken in de aanschrijfbuffer" Teken.Ellips)
         ; De aanschrijfbuffer van de vorige pati"ent hergebruiken als die nog
@@ -410,20 +444,23 @@ class Ronde {
         Ph.Wacht(Inst.Wt["SleepNaCtrlB"])
 
         Venster.Sub("Medicatiehistorie openen" Teken.Ellips)
-        if !Ph.Stap("{F4}", 0, "F4")
+        ; Vanaf hier gaan alle toetsen alleen naar het dossiervenster
+        if !Ph.Stap("{F4}", 0, "F4", Dossier)
             return this.Fout("")
         ; Beide helften in één keer zoeken: rechts (Ap, Herhaal info) en
-        ; links (Etiketnaam, voor de naam en om de selectie te controleren)
-        HE := Ph.WachtOpTabellen([Ph.HistorieKoppen, Ph.EtiketKoppen], Inst.Wt["MaxWachtScherm"])
+        ; links (Etiketnaam, voor de naam en om de selectie te controleren).
+        ; Alleen in het dossiervenster: nooit een tabel uit een ander venster.
+        HE := Ph.WachtOpTabellen([Ph.HistorieKoppen, Ph.EtiketKoppen], Inst.Wt["MaxWachtScherm"], Dossier)
         h := HE ? HE[1] : "", e := HE ? HE[2] : "", HE := ""
         if !h {
+            Log("  medicatiehistorie niet gevonden in het dossiervenster")
             Ph.LogZichtbareTabellen()
-            return this.Fout("de medicatiehistorie werd niet herkend (zie logbestand)")
+            return this.Fout("de medicatiehistorie werd niet herkend in het dossier (zie logbestand)")
         }
         Log("  medicatiehistorie zichtbaar")
         Ph.Wacht(Inst.Wt["SleepNaF4"])
         ; Pijl omhoog: zet de focus in de tabel (zoals altijd)
-        if !Ph.Stap("{Up}", Inst.Wt["SleepNaOmhoog"], "Pijl omhoog")
+        if !Ph.Stap("{Up}", Inst.Wt["SleepNaOmhoog"], "Pijl omhoog", Dossier)
             return this.Fout("")
 
         ; Wachten tot de inhoud geladen en stabiel is. Een lege tabel telt als
@@ -454,19 +491,19 @@ class Ronde {
         if h.Rijen() = 0 {
             h := ""
             Log("  medicatiehistorie bleef leeg")
-            if !Ph.Stap("{Escape}", Inst.Wt["SleepNaEscape"], "Escape (lege historie)")
+            if !Ph.Stap("{Escape}", Inst.Wt["SleepNaEscape"], "Escape (lege historie)", Dossier)
                 return this.Fout("")
             if !Ph.WachtTerug(Dossier)
                 return this.Fout("Pharmacom keerde niet terug naar de aanschrijfbuffer")
             return {tekst: "medicatiehistorie is leeg"}
         }
 
-        ; --- Controle: is dit dossier van de juiste pati"ent? ---
-        if Inst.Optie("controle") {
-            Venster.Sub("Controleren of het dossier van " p.naam " is" Teken.Ellips)
-            if !Ph.BevestigDossier(p, Dossier)
-                return this.Fout("kon niet bevestigen dat het geopende dossier van " p.naam " (" p.patnr ") is")
-        }
+        ; --- Controle: is dit dossier van de juiste pati"ent? (altijd) ---
+        ; (Geen naam in de reden: die komt in het log, het rapport en de
+        ; planningstatus; het Pat.nr is genoeg.)
+        Venster.Sub("Controleren of het dossier van " p.naam " is" Teken.Ellips)
+        if !Ph.BevestigDossier(p, Dossier)
+            return this.Fout("kon niet bevestigen dat het geopende dossier van Pat.nr " p.patnr " is")
 
         ; --- 3. Bovenste regel van de eigen apotheek (en evt. ASB: Deelbaar) ---
         Omschrijving := "Ap = " this.Apotheek (Inst.Optie("deelbaar") ? " en ASB: Deelbaar" : "")
@@ -485,7 +522,7 @@ class Ronde {
         if AnRij < 0 {
             h := ""
             Log("  geen regel met " Omschrijving " (" Rijen " regels)")
-            if !Ph.Stap("{Escape}", Inst.Wt["SleepNaEscape"], "Escape (geen passende regel)")
+            if !Ph.Stap("{Escape}", Inst.Wt["SleepNaEscape"], "Escape (geen passende regel)", Dossier)
                 return this.Fout("")
             if !Ph.WachtTerug(Dossier)
                 return this.Fout("Pharmacom keerde niet terug naar de aanschrijfbuffer")
@@ -494,22 +531,27 @@ class Ronde {
         ; Linker tabel (Etiketnaam): al gevonden met de medicatiehistorie; zo
         ; niet (nog niet zichtbaar toen), nu zoeken
         if !e
-            e := Jab.ZoekTabel(Ph.Pid, Ph.EtiketKoppen)
+            e := Jab.ZoekTabel(Ph.Pid, Ph.EtiketKoppen, "", Dossier)
         Etiket := e ? e.Cel(AnRij, "etiket") : ""
         ok := Ph.Selecteer(h, AnRij, e)
-        if ok {
-            ; Laatste controle vlak voor het printen: staat de selectie nog goed?
-            Ph.Wacht(Inst.Wt["SleepNavigatie"])
-            ok := h.Geselecteerd() = AnRij || (e && e.Geselecteerd() = AnRij)
-        }
-        h := "", e := ""
-        if !ok
+        if !ok {
+            h := "", e := ""
             return this.Fout("de regel met " Omschrijving " kon niet geselecteerd worden")
-        Log("  regel met " Omschrijving " geselecteerd (regel " (AnRij + 1) ")")
+        }
+        ; Laatste controle vlak voor het printen: staat de selectie nog goed
+        ; en staat op die regel nog wat er gekozen is?
+        Ph.Wacht(Inst.Wt["SleepNavigatie"])
+        Reden := this.RegelKlopt(h, e, AnRij, Etiket, Vorige)
+        h := "", e := ""
+        if Reden != "" {
+            Log("  regel klopt niet meer vlak voor het printen: " Reden)
+            return this.Fout("de regel met " Omschrijving " klopte vlak voor het printen niet meer (" Reden ")")
+        }
+        Log("  regel met " Omschrijving " geselecteerd en gecontroleerd (regel " (AnRij + 1) ")")
 
         ; --- Proefronde: hier stoppen, niet printen ---
         if this.Proef {
-            if !Ph.Stap("{Escape}", Inst.Wt["SleepNaEscape"], "Escape (proef, niet geprint)")
+            if !Ph.Stap("{Escape}", Inst.Wt["SleepNaEscape"], "Escape (proef, niet geprint)", Dossier)
                 return this.Fout("")
             if !Ph.WachtTerug(Dossier)
                 return this.Fout("Pharmacom keerde niet terug naar de aanschrijfbuffer")
@@ -519,12 +561,16 @@ class Ronde {
         ; --- 4. Printen ---
         Venster.Sub("Etiket printen" Teken.Ellips)
         this.Gekozen := false
-        ok := Ph.PrintEtiket()
+        ok := Ph.PrintEtiket(Dossier)
         if this.Gekozen {
             ; Vanaf het kiezen in het afdrukmenu telt het etiket als geprint
             ; (ook als er daarna iets misgaat), zodat het bij Doorgaan niet nog
-            ; eens geprint wordt.
-            this.VandaagGeprint[p.patnr] := Opslag.Registreer(p.patnr)
+            ; eens geprint wordt. Lukt het register niet, dan blijft het in het
+            ; geheugen (Opslag.Wachtend) en blijft de claim staan, zodat ook
+            ; andere computers hem niet printen.
+            Tijd := Opslag.Registreer(p.patnr)
+            p.geregistreerd := Tijd != ""
+            this.VandaagGeprint[p.patnr] := Tijd != "" ? Tijd : "?"
             if this.HerprintOk.Has(p.patnr)
                 this.HerprintOk.Delete(p.patnr)
             p.geprintNu := true
@@ -534,7 +580,30 @@ class Ronde {
             return this.Fout("")
         if !Ph.WachtTerug(Dossier)
             return this.Fout("Pharmacom keerde na het printen niet terug naar de aanschrijfbuffer")
+        if !p.geregistreerd
+            return this.Fout("het register van geprinte pati" Teken.EUml "nten kon niet bijgewerkt worden (het etiket is wel geprint)")
         return {ok: true, tekst: Etiket}
+    }
+
+    ; Controle vlak voor het printen: "" als alles klopt, anders de reden.
+    ; - de selectie staat op Rij (en geen van beide helften staat ergens anders);
+    ; - de bovenste regels zijn niet veranderd sinds de historie stabiel was (Snap);
+    ; - op Rij staan nog Ap = de apotheek, evt. ASB: Deelbaar, en dezelfde etiketnaam.
+    static RegelKlopt(h, e, Rij, Etiket, Snap) {
+        Sh := h.Geselecteerd(), Se := e ? e.Geselecteerd() : -1
+        if Sh != Rij && Se != Rij
+            return "de selectie staat niet op regel " (Rij + 1)
+        if (Sh >= 0 && Sh != Rij) || (Se >= 0 && Se != Rij)
+            return "de twee helften van de medicatiehistorie hebben een andere selectie"
+        if h.Momentopname("ap", "einddatum") != Snap
+            return "de medicatiehistorie is veranderd"
+        if h.Cel(Rij, "ap") != this.Apotheek
+            return "Ap is niet meer " this.Apotheek
+        if Inst.Optie("deelbaar") && !RegExMatch(h.Cel(Rij, "herhaal"), Ph.DeelbaarPatroon)
+            return "Herhaal info is niet meer ASB: Deelbaar"
+        if e && e.Cel(Rij, "etiket") != Etiket
+            return "de etiketnaam is veranderd"
+        return ""
     }
 }
 

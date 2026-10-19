@@ -144,11 +144,12 @@ class Jab {
     ;   "stop"    niet in de kinderen van dit element zoeken
     ;   "houd"    dit element bewaren (niet vrijgeven) en niet verder in de kinderen
     ;   object    klaar: dit wordt teruggegeven (element is dan eigendom van het object)
-    ; Max = maximaal aantal bezochte elementen per venster.
-    static Doorzoek(Pid, Bezoek, Max := 5000) {
+    ; Max = maximaal aantal bezochte elementen per venster. Alleen = alleen
+    ; in dit venster zoeken (bijv. het dossier), niet in alle vensters.
+    static Doorzoek(Pid, Bezoek, Max := 5000, Alleen := 0) {
         if !this.f || !Pid
             return ""
-        for Hwnd in WinGetList("ahk_pid " Pid) {
+        for Hwnd in (Alleen ? [Alleen] : WinGetList("ahk_pid " Pid)) {
             R := this.VanVenster(Hwnd)
             if !R
                 continue
@@ -198,8 +199,8 @@ class Jab {
     ; --- Tabellen ----------------------------------------------------------
     ; Zoekt een zichtbare tabel waarvan de kolomkoppen passen bij Koppen (Map
     ; sleutel -> reguliere expressie). Met Alle (een array) worden alle
-    ; zichtbare tabellen verzameld (voor de diagnose).
-    static ZoekTabel(Pid, Koppen, Alle := "") {
+    ; zichtbare tabellen verzameld (voor de diagnose). Alleen = zie Doorzoek.
+    static ZoekTabel(Pid, Koppen, Alle := "", Alleen := 0) {
         Bezoek(Vm, Ac, Info, Diepte) {
             if Info.role = "table" {
                 t := JabTabel.Maak(Vm, Ac, Koppen)
@@ -215,13 +216,14 @@ class Jab {
                 return "stop"
             return ""
         }
-        return this.Doorzoek(Pid, Bezoek)
+        return this.Doorzoek(Pid, Bezoek, , Alleen)
     }
 
     ; Zoekt in één keer door de boom meerdere tabellen (bijv. de twee helften
     ; van de medicatiehistorie). Lijst = array van Koppen; geeft een array
     ; met per Koppen een JabTabel of "". Stopt zodra alles gevonden is.
-    static ZoekTabellen(Pid, Lijst) {
+    ; Alleen = zie Doorzoek.
+    static ZoekTabellen(Pid, Lijst, Alleen := 0) {
         Res := [], Open := Lijst.Length
         Res.Length := Lijst.Length
         Bezoek(Vm, Ac, Info, Diepte) {
@@ -248,7 +250,7 @@ class Jab {
                 return "stop"
             return ""
         }
-        this.Doorzoek(Pid, Bezoek)
+        this.Doorzoek(Pid, Bezoek, , Alleen)
         loop Res.Length
             if !Res.Has(A_Index)
                 Res[A_Index] := ""

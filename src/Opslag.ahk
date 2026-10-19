@@ -22,8 +22,9 @@ class Opslag {
         this.GeprintMap := DataMap "\Gegevens\Geprint"
         this.RapportMap := DataMap "\Rapporten"
         this.LogMap := DataMap "\Gegevens\Log"
+        this.ClaimMap := this.GeprintMap "\Bezig"
         Staat.Dir := DataMap "\Gegevens\Computers"
-        for m in [this.GeprintMap, this.RapportMap, this.LogMap, Staat.Dir]
+        for m in [this.GeprintMap, this.ClaimMap, this.RapportMap, this.LogMap, Staat.Dir]
             try DirCreate m
         ; Bewaartermijnen: rapporten bevatten naam en geboortedatum (AVG), het
         ; register alleen Pat.nr's en is na de dag zelf niet meer nodig.
@@ -31,6 +32,7 @@ class Opslag {
         Opruimen(this.RapportMap "\Rapport *.csv", Inst.RapportDagen)
         Opruimen(this.RapportMap "\Proefronde *.csv", Inst.RapportDagen)
         Opruimen(this.GeprintMap "\*.txt", Inst.RegisterDagen)
+        Opruimen(this.ClaimMap "\*.txt", 2)
         try FileDelete A_ScriptDir "\Gegevens\Etiketten_autoprinter_log.txt"   ; oud log (v5.3-5.6)
     }
 
@@ -62,26 +64,127 @@ class Opslag {
     }
 
     ; --- Register van vandaag geprinte pati"enten (dubbel printen voorkomen)
+    ; Faalt nooit stil: niet te lezen = "" (de app print dan niet), niet te
+    ; schrijven = de registratie blijft in Wachtend en wordt bij elke keer
+    ; lezen opnieuw weggeschreven (en telt intussen gewoon mee).
     static RegisterBestand => this.GeprintMap "\" FormatTime(, "yyyy-MM-dd") ".txt"
+    static Wachtend := []    ; [{dag, tijd, patnr}] nog niet in het register gekomen
 
-    ; Map Pat.nr -> tijd (uu:mm)
+    ; Map Pat.nr -> tijd (uu:mm), of "" als het register niet te lezen is
+    ; (map niet bereikbaar, bestand niet te openen). Geen bestand in een
+    ; bereikbare map = vandaag nog niemand geprint.
     static LeesRegister() {
+        if !InStr(FileExist(this.GeprintMap), "D")
+            return ""
         Geprint := Map()
-        try {
-            loop read this.RegisterBestand {
-                Delen := StrSplit(A_LoopReadLine, ";")
-                if Delen.Length >= 2 && Delen[2] != ""
-                    Geprint[Delen[2]] := SubStr(Delen[1], 1, 5)
-            }
+        if FileExist(this.RegisterBestand) {
+            try {
+                loop read this.RegisterBestand {
+                    Delen := StrSplit(A_LoopReadLine, ";")
+                    if Delen.Length >= 2 && Delen[2] != ""
+                        Geprint[Delen[2]] := SubStr(Delen[1], 1, 5)
+                }
+            } catch
+                return ""
         }
+        this.Inhalen(Geprint)
         return Geprint
     }
 
-    ; Geeft de tijd (uu:mm) terug
+    ; Geeft de tijd (uu:mm) terug, of "" als het register niet bijgewerkt kon
+    ; worden (dan staat hij in Wachtend)
     static Registreer(Patnr) {
-        Tijd := FormatTime(, "HH:mm:ss")
-        try FileAppend Tijd ";" Patnr "`n", this.RegisterBestand, "UTF-8-RAW"
+        Tijd := FormatTime(, "HH:mm:ss"), Dag := FormatTime(, "yyyy-MM-dd")
+        if !this.SchrijfRegistratie(Dag, Tijd, Patnr) {
+            this.Wachtend.Push({dag: Dag, tijd: Tijd, patnr: Patnr})
+            Log("  LET OP: Pat.nr " Patnr " kon niet in het register gezet worden (" this.GeprintMap "); wordt later opnieuw geprobeerd")
+            return ""
+        }
         return SubStr(Tijd, 1, 5)
+    }
+
+    static SchrijfRegistratie(Dag, Tijd, Patnr) {
+        loop 3 {
+            try {
+                FileAppend Tijd ";" Patnr "`n", this.GeprintMap "\" Dag ".txt", "UTF-8-RAW"
+                return true
+            }
+            Sleep 200
+        }
+        return false
+    }
+
+    ; Registraties die nog niet weggeschreven konden worden: meetellen (als
+    ; ze van vandaag zijn) en opnieuw proberen weg te schrijven
+    static Inhalen(Geprint) {
+        Vandaag := FormatTime(, "yyyy-MM-dd")
+        i := this.Wachtend.Length
+        while i >= 1 {
+            w := this.Wachtend[i]
+            if w.dag = Vandaag && !Geprint.Has(w.patnr)
+                Geprint[w.patnr] := SubStr(w.tijd, 1, 5)
+            if this.SchrijfRegistratie(w.dag, w.tijd, w.patnr) {
+                this.Wachtend.RemoveAt(i)
+                Log("Pat.nr " w.patnr " alsnog in het register gezet")
+            }
+            i--
+        }
+    }
+
+    ; --- Claim: "deze patiënt wordt nu door mij verwerkt" -------------------
+    ; Een bestand per patiënt per dag in Gegevens\Geprint\Bezig, exclusief
+    ; aangemaakt (CREATE_NEW): zo kunnen twee computers (of twee rondes) nooit
+    ; tegelijk dezelfde patiënt printen. Na afloop weer weg (GeefVrij). Blijft
+    ; hij staan (app vastgelopen, of geprint maar niet in het register), dan
+    ; slaan andere rondes deze patiënt die dag over.
+    ; Geeft {ok}, {bezet: wie} of {fout: reden}.
+    static ClaimMap := ""
+    static Eigenaar => A_ComputerName " " A_UserName " " DllCall("GetCurrentProcessId")
+
+    static ClaimBestand(Patnr) => this.ClaimMap "\" FormatTime(, "yyyy-MM-dd") " " Patnr ".txt"
+
+    static Claim(Patnr) {
+        if !InStr(FileExist(this.ClaimMap), "D") {
+            try DirCreate this.ClaimMap
+            if !InStr(FileExist(this.ClaimMap), "D")
+                return {fout: "map " this.ClaimMap " niet bereikbaar"}
+        }
+        Bestand := this.ClaimBestand(Patnr)
+        ; GENERIC_WRITE, geen delen, CREATE_NEW
+        h := DllCall("CreateFileW", "Str", Bestand, "UInt", 0x40000000, "UInt", 0, "Ptr", 0, "UInt", 1, "UInt", 0x80, "Ptr", 0, "Ptr")
+        if h != -1 {
+            Tekst := this.Eigenaar " " A_Now
+            Buf := Buffer(StrPut(Tekst, "UTF-8"))
+            n := StrPut(Tekst, Buf, "UTF-8") - 1
+            Geschreven := 0
+            Ok := DllCall("WriteFile", "Ptr", h, "Ptr", Buf, "UInt", n, "UInt*", &Geschreven, "Ptr", 0)
+            DllCall("CloseHandle", "Ptr", h)
+            if Ok && Geschreven = n
+                return {ok: true}
+            try FileDelete Bestand
+            return {fout: "claim kon niet geschreven worden"}
+        }
+        Fout := A_LastError
+        if Fout != 80 && Fout != 32   ; ERROR_FILE_EXISTS, ERROR_SHARING_VIOLATION (wordt net aangemaakt)
+            return {fout: "Windows-fout " Fout}
+        try Wie := Trim(FileRead(Bestand, "UTF-8"))
+        catch
+            Wie := ""
+        ; Van deze app zelf (bijv. Doorgaan nadat vrijgeven mislukte): overnemen
+        if Wie != "" && InStr(Wie, this.Eigenaar " ") = 1
+            return {ok: true}
+        Log("  claim van Pat.nr " Patnr " bestaat al: " Bestand " (" (Wie != "" ? Wie : "inhoud onbekend") ")")
+        return {bezet: Wie != "" ? StrSplit(Wie, " ")[1] : "een andere computer"}
+    }
+
+    ; Alleen een eigen claim weghalen
+    static GeefVrij(Patnr) {
+        Bestand := this.ClaimBestand(Patnr)
+        try Wie := FileRead(Bestand, "UTF-8")
+        catch
+            return
+        if InStr(Trim(Wie), this.Eigenaar " ") = 1
+            try FileDelete Bestand
     }
 
     ; --- Rapport per ronde (CSV, opent in Excel)

@@ -68,6 +68,12 @@ UriDecode(S) {
 ; Aanschrijfbuffer"). Zonder schermnaam in de titel: aannemen van wel.
 TitelIsBuffer(Titel) => !RegExMatch(Titel, "^Pharmacom\s+-\s+\S") || InStr(Titel, "Aanschrijfbuffer") > 0
 
+; Venstertitel voor het log of een melding, zonder pati"entgegevens: een
+; titel met cijfers (Pat.nr, datum) of een komma ("Achternaam, V"), of een
+; lange titel, wordt "(titel verborgen)". Schermnamen als "Pharmacom -
+; Aanschrijfbuffer" blijven leesbaar.
+VeiligeTitel(Titel) => Titel = "" || (StrLen(Titel) <= 40 && !RegExMatch(Titel, "[\d,]")) ? Titel : "(titel verborgen)"
+
 ; --- Foutcodes ------------------------------------------------------------
 ; Vaste code per soort fout, zodat een melding, het log, het rapport en de
 ; planningstatus makkelijk terug te vinden en te tellen zijn (lijst ook in
@@ -83,9 +89,10 @@ FoutCode(Tekst) {
         , ["i)ntdossier verscheen niet", "P06"]
         , ["i)medicatiehistorie (werd niet herkend|bleef veranderen)", "P07"]
         , ["i)kon niet bevestigen dat het geopende dossier", "P08"]
-        , ["i)^de regel met .* kon niet geselecteerd", "P09"]
+        , ["i)^de regel met .* (kon niet geselecteerd|klopte vlak voor het printen niet)", "P09"]
         , ["i)afdrukmenu|kon niet gekozen worden", "P10"]
         , ["i)keerde (na het printen )?niet terug naar de aanschrijfbuffer", "P11"]
+        , ["i)register van geprinte", "P12"]
         , ["i)^(het veld|de velden|Pharmacom (kent|accepteerde))", "L01"]
         , ["i)knop Zoeken|zoeken in Pharmacom duurde", "L02"]
         , ["i)lijst bevat ook", "L03"]
@@ -98,6 +105,7 @@ FoutCode(Tekst) {
         , ["i)^niet gestart binnen", "L10"]
         , ["i)er loopt (nog|al) een ronde", "L11"]
         , ["i)hoort bij instelling|is niet bekend bij instelling|^instelling .* is niet bekend", "L12"]
+        , ["i)kolom Afd", "L13"]
         , ["i)onverwachte fout|onbekende fout", "X99"]]
     for f in Lijst
         if RegExMatch(Tekst, f[1])
@@ -110,7 +118,8 @@ FoutOmschrijving(Code) {
     static M := Map("G01", "gestopt door gebruiker", "P01", "Pharmacom afgesloten", "P02", "Pharmacom niet actief"
         , "P03", "dossier niet actief", "P04", "aanschrijfbuffer niet zichtbaar", "P05", "patiënt niet te selecteren"
         , "P06", "dossier verscheen niet", "P07", "medicatiehistorie", "P08", "dossier niet bevestigd"
-        , "P09", "regel niet te selecteren", "P10", "afdrukmenu", "P11", "niet terug naar de aanschrijfbuffer"
+        , "P09", "regel niet te selecteren of klopte niet meer", "P10", "afdrukmenu", "P11", "niet terug naar de aanschrijfbuffer"
+        , "P12", "register niet bereikbaar", "L13", "afdeling in de lijst niet te controleren"
         , "L01", "veld Instelling/Afdeling", "L02", "zoeken", "L03", "andere afdeling in de lijst"
         , "L04", "computer vergrendeld", "L05", "Pharmacom niet open", "L06", "melding open in Pharmacom"
         , "L07", "niemand ingelogd", "L08", "andere apotheek ingelogd", "L09", "Pharmacom niet te controleren"

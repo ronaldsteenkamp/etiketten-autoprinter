@@ -79,7 +79,9 @@ dagen, tijd en elke week / even weken / oneven weken (ISO-weeknummer).
   die overgeslagen (status en melding noemen het Pat.nr: handmatig controleren).
 - **Planning controleren:** een combinatie van instelling en afdeling die volgens
   *Alle groepen ophalen* niet bestaat, kan niet opgeslagen worden; een bestaande
-  foute planning staat in de lijst als "Klopt niet" (code `[L12]`).
+  foute planning staat in de lijst als "Klopt niet" (code `[L12]`). Na het zoeken
+  controleert de app dat de lijst (kolom Afd) alleen de gekozen afdeling bevat
+  (`[L03]`). Is de kolom Afd niet te vinden, dan print hij niet (`[L13]`).
 - **Lege groep:** de melding "Geen patiënten gevonden" van Pharmacom sluit de app
   zelf (anders bleef die openstaan en wachtte de volgende planning).
 - **Vooraf-controle:** een minuut vóór een geplande tijd kijkt de app, zonder iets
@@ -125,9 +127,10 @@ om te zien of Pharmacom in de loop van de dag zwaarder wordt.
 
 ## Instellingen per apotheek
 
-"Alleen ASB: Deelbaar", "Dossier controleren", "Dossier alleen op Pat.nr" en het
-item in het afdrukmenu gelden per ingelogde apotheek (ini-sectie `[Opties AN]`;
-in Instellingen gemarkeerd met de apotheekcode). Staat daar niets, dan geldt de
+"Alleen ASB: Deelbaar" en het item in het afdrukmenu gelden per ingelogde
+apotheek (ini-sectie `[Opties AN]`; in Instellingen gemarkeerd met de
+apotheekcode). De dossiercontrole op Pat.nr staat altijd aan en is niet uit te
+zetten (`DossierControleren` en `DossierAlleenPatnr` in de ini worden genegeerd). Staat daar niets, dan geldt de
 algemene waarde. Wachttijden, geluid, venster bovenop (*tijdens het printen*,
 standaard aan; *altijd*, standaard uit), bevestigen en toetsenbord
 blokkeren horen bij de computer.
@@ -137,18 +140,29 @@ Na een update toont de app één keer **Wat is er nieuw** (lijst in
 
 ## Wat de app per patiënt doet
 
+0. Zet een **claim** op de patiënt (`Gegevens\Geprint\Bezig\<datum> <Pat.nr>.txt`,
+   exclusief aangemaakt) en leest daarna het register van vandaag opnieuw. Is de
+   patiënt intussen geprint (bijv. op een andere computer), dan wordt hij
+   overgeslagen. Heeft een andere ronde de claim, dan ook (zie *Register en claim*).
 1. Zoekt de patiënt op Pat.nr in de aanschrijfbuffer en selecteert hem direct via de
    koppeling (zoals een klik; lukt dat niet, dan met pijltjestoetsen) en controleert
    de selectie.
-2. Ctrl+B (dossier) → F4 (medicatiehistorie) → pijl omhoog.
+2. Ctrl+B (dossier) → F4 (medicatiehistorie) → pijl omhoog. Vanaf het dossier gaan
+   alle toetsen alleen naar het dossiervenster; staat er een ander venster voor
+   (ook een melding van Pharmacom zelf), dan stopt de app (`[P03]`). De
+   medicatiehistorie wordt alleen in het dossiervenster gezocht.
 3. Controleert dat het dossier van de juiste patiënt is (Pat.nr in het dossiervenster).
+   Deze controle staat altijd aan.
 4. Selecteert de **bovenste** regel met Ap = de ingelogde apotheek (rechtsonder in
    Pharmacom, bijv. `AN - RS - 183`) en, als die optie aan staat, Herhaal info
-   `ASB: Deelbaar`. Ook die regel wordt direct via de koppeling geselecteerd en in
-   beide helften van de medicatiehistorie gecontroleerd.
+   `ASB: Deelbaar`. Ook die regel wordt direct via de koppeling geselecteerd.
+   Vlak voor het printen controleert de app opnieuw: de selectie staat in beide
+   helften op die regel, de bovenste regels zijn niet veranderd, en op de regel
+   staan nog dezelfde Ap, Herhaal info en etiketnaam. Zo niet: stoppen (`[P09]`).
 5. Ctrl+P → wacht tot het afdrukmenu in het dossier zichtbaar is → kiest
-   **Barcode etiket** (Alt+B) → wacht tot het menu dicht is → Escape, en wacht tot
-   de aanschrijfbuffer terug is.
+   **Barcode etiket** (Alt+B) → wacht tot het menu dicht is → Escape → zet de
+   patiënt in het register (vanaf Alt+B telt hij als geprint) en wacht tot de
+   aanschrijfbuffer terug is. Daarna gaat de claim weer weg.
 
 Klopt iets niet (selectie, scherm, dossier, actief venster), dan stopt de app.
 Hij gokt nooit. Verschijnt het afdrukmenu met het juiste item niet binnen
@@ -167,6 +181,17 @@ zet Pharmacom terug op de aanschrijfbuffer, schrijft de fout in het log
 die patiënt als geprint. De app blijft draaien; met **Doorgaan** ga je verder.
 Testen kan alleen in een proefronde: zet in de ini `[Test]` `Fout=dossier`
 (daarna weer weghalen).
+
+**Register en claim:** het register van vandaag (`Gegevens\Geprint\<datum>.txt`)
+faalt nooit stil. Is de map niet bereikbaar, dan werkt de app de lijst niet bij en
+start er geen ronde (`[P12]`); halverwege een ronde stopt hij. Kan een geprint
+etiket niet in het register gezet worden, dan stopt de ronde (`[P12]`). De
+registratie blijft dan in het geheugen en wordt weggeschreven zodra de map weer
+bereikbaar is; de claim van die patiënt blijft staan, zodat andere computers hem
+ook overslaan. Een claim die blijft staan (de app liep vast, of het register lukte
+niet) betekent: die dag wordt deze patiënt overgeslagen met de melding *staat op
+'bezig' bij <computer>*. Controleer dan of er een etiket is; daarna kan de
+beheerder het claimbestand weghalen. Claims worden na 2 dagen opgeruimd.
 
 **Pharmacom terughalen** (optie, standaard uit): springt er tijdens het printen een
 venster van een ander programma voor Pharmacom (bijv. een Teams-melding), dan haalt
@@ -199,9 +224,10 @@ log, het rapport en de planningstatus. De lijst staat in `FoutCode()` in
 | P06 | Patiëntdossier verscheen niet |
 | P07 | Medicatiehistorie niet herkend of bleef veranderen |
 | P08 | Dossier niet bevestigd (Pat.nr) |
-| P09 | Regel in de medicatiehistorie kon niet geselecteerd worden |
+| P09 | Regel in de medicatiehistorie kon niet geselecteerd worden, of klopte vlak voor het printen niet meer |
 | P10 | Afdrukmenu: verscheen niet, item niet te kiezen of sloot niet |
 | P11 | Pharmacom keerde niet terug naar de aanschrijfbuffer |
+| P12 | Register van geprinte patiënten niet bereikbaar of niet bij te werken |
 | L01 | Planning: veld Instelling/Afdeling niet gevonden of code niet geaccepteerd |
 | L02 | Planning: knop Zoeken niet gevonden of zoeken duurde te lang |
 | L03 | Planning: lijst bevat patiënten van een andere afdeling |
@@ -214,15 +240,16 @@ log, het rapport en de planningstatus. De lijst staat in `FoutCode()` in
 | L10 | Planning: niet gestart binnen 2 uur |
 | L11 | Planning: er liep al een ronde |
 | L12 | Planning klopt niet: afdeling hoort niet bij de instelling |
+| L13 | Planning: kolom Afd niet gevonden, dus niet te controleren dat de lijst alleen die afdeling bevat |
 | X99 | Onverwachte fout in de app (vangnet) |
 
 Of er echt een etiket uit de printer kwam, kan de app niet controleren: de
 etikettenprinters (STAR/Zebra) worden via de Pharmacom-server aangestuurd, niet
 via Windows. Het etiket zelf is de bevestiging.
 
-Het dossier telt standaard alleen als juist als het **Pat.nr** erin staat (optie
-*Dossier alleen op Pat.nr controleren*). Zet je die uit, dan mag achternaam +
-geboortedatum ook.
+Het dossier telt alleen als juist als het **Pat.nr** erin staat. Dat is niet uit te
+zetten (de vroegere opties *Dossier controleren* en *Dossier alleen op Pat.nr
+controleren* zijn vervallen).
 
 Welk item uit het afdrukmenu gekozen wordt, staat in de ini onder `[Opties]` als
 `PrintMenu=Barcode etiket` (exact de tekst uit het menu, bijv. `Afleveretiket`).
@@ -247,7 +274,7 @@ De sneltoets leest de app zelf uit Pharmacom.
 | `Etiketten_autoprinter.ico` | Pictogram |
 | `ui\venster.html`, `ui\icoon.png` | De interface (HTML/CSS in WebView2, de Edge-browser van Windows); wordt in de .exe meegenomen, dus na een wijziging opnieuw compileren |
 | `Etiketten_autoprinter.ini` | Instellingen (opties, wachttijden, updatemap) |
-| `Gegevens\` | Logbestand (alleen Pat.nr's) en `Geprint\<datum>.txt` (wie vandaag geprint is) |
+| `Gegevens\` | Logbestand (Pat.nr's, geen namen; venstertitels met cijfers of een komma worden "(titel verborgen)"), `Geprint\<datum>.txt` (wie vandaag geprint is) en `Geprint\Bezig\` (claims van patiënten die nu verwerkt worden) |
 | `Rapporten\` | Een CSV-rapport per ronde (opent in Excel) |
 | `Hulpmiddelen\icoon.svg`, `icoon-klein.svg` | Ontwerp van het app-icoon (groot en vereenvoudigd voor 16-24 px) |
 | `Hulpmiddelen\maak_icoon.ps1` | Maakt `Etiketten_autoprinter.ico` en `ui\icoon.png` uit de SVG's (rendert met Microsoft Edge) |
@@ -263,6 +290,7 @@ Bij het starten ruimt de app oude bestanden op (op basis van de wijzigingsdatum)
 | Logbestanden | 30 dagen | — |
 | Rapporten (bevatten naam en geboortedatum) | 90 dagen | `RapportDagen=90` |
 | Register `Geprint\<datum>.txt` | 7 dagen | `RegisterDagen=7` |
+| Claims `Geprint\Bezig\*.txt` | 2 dagen | — |
 
 ## Compileren
 

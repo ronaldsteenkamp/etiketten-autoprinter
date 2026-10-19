@@ -25,8 +25,10 @@ class Inst {
         , ["MaxWachtLeeg", 4000, "Maximaal wachten op een lege medicatiehistorie"]]
 
     ; Ondergrenzen: te kort wachten op het afdrukmenu is onveilig (te vroeg
-    ; opgeven = niet geprint). Het wachten stopt zodra het menu er is.
-    static Minimum := Map("MaxWachtPrint", 1000)
+    ; opgeven = niet geprint). Het wachten stopt zodra het menu er is. Ook
+    ; het wachten op een scherm en op een lege medicatiehistorie mag niet te
+    ; kort (een historie die nog laadt zou dan als leeg tellen).
+    static Minimum := Map("MaxWachtPrint", 1000, "MaxWachtScherm", 2000, "MaxWachtLeeg", 1000)
 
     ; Opties: naam in de pagina -> sleutel in de ini (standaard aan, behalve
     ; die in UitStandaard)
@@ -34,6 +36,9 @@ class Inst {
         , "patnr", "DossierAlleenPatnr", "blokkeer", "InvoerBlokkeren", "bevestigen", "Bevestigen"
         , "bovenop", "Bovenop", "altijdbovenop", "AltijdBovenop", "geluid", "Geluid", "focusterug", "FocusTerugpakken")
     static UitStandaard := Map("focusterug", 1, "altijdbovenop", 1)
+    ; Veiligheidscontroles die altijd aan staan, wat er ook in de ini staat:
+    ; het dossier wordt altijd op Pat.nr gecontroleerd voordat er geprint wordt
+    static Vast := Map("controle", 1, "patnr", 1)
 
     static Wt := Map()
     static Opties := Map()
@@ -163,10 +168,10 @@ class Inst {
         }
     }
 
-    static Optie(Naam) => this.ApOpties.Has(Naam) ? this.ApOpties[Naam] : this.Opties.Has(Naam) ? this.Opties[Naam] : 1
+    static Optie(Naam) => this.Vast.Has(Naam) ? this.Vast[Naam] : this.ApOpties.Has(Naam) ? this.ApOpties[Naam] : this.Opties.Has(Naam) ? this.Opties[Naam] : 1
 
     static ZetOptie(Naam, Aan) {
-        if !this.OptieSleutels.Has(Naam)
+        if !this.OptieSleutels.Has(Naam) || this.Vast.Has(Naam)
             return
         Aan := Aan ? 1 : 0
         if this.Apotheek != "" && this.IsPerApotheek(Naam) {

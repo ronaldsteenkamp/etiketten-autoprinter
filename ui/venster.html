@@ -540,10 +540,7 @@ var OptieTekst = [
     { k: "deelbaar", ap: 1, titel: "Alleen regels met ‘ASB: Deelbaar’",
       uitleg: "<b>Aan:</b> de app print de bovenste regel in de medicatiehistorie van jouw apotheek waarbij bij Herhaal info <b>ASB: Deelbaar</b> staat. Heeft een patiënt zo’n regel niet, dan wordt hij overgeslagen (en staat hij in het overzicht na afloop).<br><b>Uit:</b> gewoon de bovenste regel van jouw apotheek, wat er ook bij Herhaal info staat." },
     { sectie: "Veiligheid" },
-    { k: "controle", ap: 1, titel: "Dossier controleren",
-      uitleg: "<b>Aan:</b> voordat er geprint wordt, kijkt de app of het geopende dossier echt van de juiste patiënt is (Pat.nr, of achternaam + geboortedatum). Klopt dat niet, dan stopt de app.<br>Alleen uitzetten als deze controle steeds onterecht stopt." },
-    { k: "patnr", ap: 1, titel: "Dossier alleen op Pat.nr controleren",
-      uitleg: "<b>Aan:</b> het dossier telt alleen als juist als het <b>Pat.nr</b> erin staat. Het strengst: twee patiënten met dezelfde achternaam en geboortedatum kunnen niet verwisseld worden.<br><b>Uit:</b> achternaam + geboortedatum mag ook (als het Pat.nr niet in het dossier te zien is)." },
+    { tekst: "Voordat er geprint wordt, controleert de app altijd of het geopende dossier het <b>Pat.nr</b> van de juiste patiënt heeft, en vlak voor het printen of de gekozen regel nog klopt. Klopt iets niet, dan stopt de app. Deze controles staan altijd aan." },
     { k: "blokkeer", titel: "Toetsenbord en muis blokkeren tijdens het printen",
       uitleg: "<b>Aan:</b> zolang de app print, doen toetsenbord en muis niets. Zo kun je niet per ongeluk in Pharmacom klikken terwijl de app bezig is. Met <b>Esc</b> stop je altijd direct.<br><b>Uit:</b> je kunt de computer blijven gebruiken, maar klik je in een ander venster, dan stopt de app de ronde." },
     { k: "focusterug", titel: "Pharmacom terughalen als een ander venster ervoor springt",
@@ -570,6 +567,7 @@ function toonInstellingen(d) {
     for (var i = 0; i < OptieTekst.length; i++) {
         var o = OptieTekst[i];
         if (o.sectie) { h += '<div class="sectie"' + (i == 0 ? ' style="margin-top:6px"' : "") + ">" + o.sectie + "</div>"; continue; }
+        if (o.tekst) { h += '<div class="uitleg">' + o.tekst + "</div>"; continue; }
         h += '<div class="optie' + (Opties[o.k] == "1" ? " aan" : "") + '" id="o-' + o.k + '" onclick="optie(\'' + o.k + '\')">' +
              '<div class="otekst"><div class="otitel">' + o.titel + (o.ap && d.apotheek ? '<span class="aptag" title="Geldt alleen voor apotheek ' + esc(d.apotheek) + '">' + esc(d.apotheek) + '</span>' : '') + '</div><div class="ouitleg">' + o.uitleg + "</div></div>" +
              '<span class="schakel"></span></div>';

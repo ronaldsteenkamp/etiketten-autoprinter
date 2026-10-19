@@ -7,7 +7,7 @@ param([Parameter(Mandatory = $true)][string]$Ahk)
 $ErrorActionPreference = "Stop"
 $Map = $PSScriptRoot
 $Mislukt = 0
-foreach ($Test in "Eenheid", "Planning", "Update") {
+foreach ($Test in "Eenheid", "Planning", "Update", "Register") {
     $Fout = Join-Path $env:TEMP "test_$Test.err"
     $p = Start-Process $Ahk -ArgumentList "/ErrorStdOut `"$Map\$Test.ahk`" /ci" -PassThru -Wait -NoNewWindow -RedirectStandardError $Fout
     $Uitvoer = Get-ChildItem $Map -Filter "uitvoer*.txt" | Where-Object { $_.Name -eq "uitvoer.txt" -and $Test -eq "Eenheid" -or $_.Name -eq "uitvoer_$($Test.ToLower()).txt" }

@@ -446,9 +446,9 @@ class Planning {
     static MaxHerstart := 3
 
     ; Mag een gestopte geplande ronde zelf verder? Alleen na een hapering
-    ; (niet als iemand stopte of Pharmacom dicht/niet actief was) en als
-    ; Pharmacom weer op de aanschrijfbuffer staat.
-    static Herstartbaar() => Ronde.TerugGezet && !RegExMatch(FoutCode(Ronde.StopReden), "^(G01|P01|P02|X99)$")
+    ; (niet als iemand stopte, Pharmacom dicht/niet actief was of het register
+    ; niet bereikbaar is) en als Pharmacom weer op de aanschrijfbuffer staat.
+    static Herstartbaar() => Ronde.TerugGezet && !RegExMatch(FoutCode(Ronde.StopReden), "^(G01|P01|P02|P12|X99)$")
 
     static Voer(it, Handmatig := false, Proef := false) {
         this.Bezig := true

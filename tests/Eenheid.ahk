@@ -59,6 +59,21 @@ T("MetCode niet dubbel", MetCode("gestopt door gebruiker [G01]") = "gestopt door
 T("MetCode leeg", MetCode("") = "")
 T("Foutcode groep klopt niet", FoutCode("afdeling T2HA hoort bij instelling T2, niet bij T1") = "L12")
 T("FoutOmschrijving", FoutOmschrijving("P11") != "" && FoutOmschrijving("Z00") = "")
+T("Foutcode dossier zonder naam", FoutCode("kon niet bevestigen dat het geopende dossier van Pat.nr 123 is") = "P08")
+T("Foutcode regel klopte niet meer", FoutCode("de regel met Ap = AN en ASB: Deelbaar klopte vlak voor het printen niet meer (Ap is niet meer AN)") = "P09")
+T("Foutcode regel klopte niet: historie veranderd", FoutCode("de regel met Ap = AN klopte vlak voor het printen niet meer (de medicatiehistorie is veranderd)") = "P09")
+T("Foutcode regel niet te selecteren", FoutCode("de regel met Ap = AN kon niet geselecteerd worden") = "P09")
+T("Foutcode historie niet in dossier", FoutCode("de medicatiehistorie werd niet herkend in het dossier (zie logbestand)") = "P07")
+T("Foutcode register niet bereikbaar", FoutCode("het register van geprinte pati" Chr(235) "nten is niet bereikbaar") = "P12")
+T("Foutcode register met claimfout", FoutCode("het register van geprinte pati" Chr(235) "nten is niet bereikbaar (map X niet bereikbaar)") = "P12")
+T("Foutcode register niet bijgewerkt", FoutCode("het register van geprinte pati" Chr(235) "nten kon niet bijgewerkt worden (het etiket is wel geprint)") = "P12")
+T("Foutcode kolom Afd", FoutCode("de kolom Afd is niet gevonden: kan niet controleren dat de lijst alleen afdeling T1GUA bevat") = "L13")
+T("FoutOmschrijving P12 en L13", FoutOmschrijving("P12") != "" && FoutOmschrijving("L13") != "")
+T("VeiligeTitel schermnaam", VeiligeTitel("Pharmacom - Aanschrijfbuffer") = "Pharmacom - Aanschrijfbuffer")
+T("VeiligeTitel leeg", VeiligeTitel("") = "")
+T("VeiligeTitel met naam", VeiligeTitel("Dossier Jansen, J") = "(titel verborgen)")
+T("VeiligeTitel met Pat.nr", VeiligeTitel("Dossier 123456") = "(titel verborgen)")
+T("VeiligeTitel te lang", VeiligeTitel("Een heel lange titel van meer dan veertig tekens lang") = "(titel verborgen)")
 L := TelLogregels(["10:00:00.1 - Ronde klaar: 3 geprint, 0 overgeslagen in 0:10"
     , "10:01:00.1 - Geplande ronde 'T1 GUA' klaar: 2 geprint"
     , "10:02:00.1 - Proefronde gestopt: Pharmacom keerde niet terug naar de aanschrijfbuffer [P11] (0 ...)"

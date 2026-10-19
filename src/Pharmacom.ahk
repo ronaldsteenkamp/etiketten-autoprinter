@@ -134,7 +134,7 @@ class Ph {
                 Titels := ""
                 for h in WinGetList("ahk_pid " this.Pid)
                     if h != this.Hwnd && (WinGetStyle(h) & 0x10000000) && (t := Trim(WinGetTitle(h))) != ""
-                        Titels .= (Titels != "" ? ", " : "") "'" t "'"
+                        Titels .= (Titels != "" ? ", " : "") "'" VeiligeTitel(t) "'"
                 return "in Pharmacom staat een melding of venster open" (Titels != "" ? " (" Titels ")" : "")
             }
             if BufferNodig && !this.OpBufferScherm()
@@ -194,7 +194,9 @@ class Ph {
         a := WinExist("A")
         try {
             Apid := a ? WinGetPID(a) : 0
-            Wie := a ? "'" WinGetTitle(a) "' (" WinGetProcessName(a) ")" : "geen venster"
+            ; Alleen de programmanaam: de titel van een ander programma kan van
+            ; alles bevatten (onderwerp van een e-mail, naam in een chat)
+            Wie := a ? WinGetProcessName(a) : "geen venster"
         } catch
             Apid := 0, Wie := "onbekend venster"
         if Apid = this.Pid || Apid = ProcessExist() || (Venster.Hwnd && a = Venster.Hwnd)
@@ -210,15 +212,21 @@ class Ph {
     }
 
     ; Verstuurt een toets, maar alleen als er niet gestopt is en Pharmacom
-    ; (of een venster van Pharmacom zelf) actief is.
-    static Stap(Toets, Ms, Label) {
+    ; (of een venster van Pharmacom zelf) actief is. Doel = het venster dat
+    ; actief moet zijn (bijv. het dossier): is een ander venster actief, ook
+    ; een venster van Pharmacom zelf (een melding), dan geen toets.
+    static Stap(Toets, Ms, Label, Doel := 0) {
         if Ronde.Stoppen
             return Ronde.Fout("gestopt door gebruiker", false)
-        if !WinActive("ahk_pid " this.Pid) && !this.HaalFocusTerug() {
+        if !WinActive("ahk_pid " this.Pid) && !this.HaalFocusTerug(Doel) {
             ; Op het venster van de app geklikt (bijv. Stop) = stoppen
             if Venster.Hwnd && WinActive("ahk_id " Venster.Hwnd)
                 return Ronde.Fout("gestopt door gebruiker", false)
             return Ronde.Fout("Pharmacom was niet meer het actieve venster", false)
+        }
+        if Doel && !WinActive("ahk_id " Doel) {
+            this.LogToestand("ander venster dan het dossier")
+            return Ronde.Fout("het dossier was niet meer het actieve venster", false)
         }
         Send Toets
         Log("  " Label)
@@ -227,13 +235,14 @@ class Ph {
     }
 
     ; Wacht tot de eerste tabel van Lijst er is; geeft dan alle gevonden
-    ; tabellen (array, zie Jab.ZoekTabellen), of "" na Timeout
-    static WachtOpTabellen(Lijst, Timeout) {
+    ; tabellen (array, zie Jab.ZoekTabellen), of "" na Timeout. Alleen =
+    ; alleen in dit venster zoeken (zie Jab.Doorzoek).
+    static WachtOpTabellen(Lijst, Timeout, Alleen := 0) {
         Eind := A_TickCount + Timeout
         loop {
             if Ronde.Stoppen
                 return Ronde.Fout("gestopt door gebruiker", "")
-            T := Jab.ZoekTabellen(this.Pid, Lijst)
+            T := Jab.ZoekTabellen(this.Pid, Lijst, Alleen)
             if T[1]
                 return T
             if A_TickCount > Eind
@@ -387,10 +396,11 @@ class Ph {
     ; sneltoets die Pharmacom opgeeft, wacht tot het menu dicht is, Escape.
     ; Zet Ronde.Gekozen zodra het item gekozen is (vanaf dan telt het etiket
     ; als geprint).
-    static PrintEtiket() {
+    ; Dossier = het dossiervenster: alle toetsen gaan alleen daarheen.
+    static PrintEtiket(Dossier) {
         Item := Inst.PrintItem
-        Voor := WinExist("A")
-        if !this.Stap("^p", Inst.Wt["SleepNaCtrlP"], "Ctrl+P")
+        Voor := Dossier
+        if !this.Stap("^p", Inst.Wt["SleepNaCtrlP"], "Ctrl+P", Dossier)
             return false
         Gevonden := ""
         Eind := A_TickCount + Inst.Wt["MaxWachtPrint"]
@@ -416,7 +426,7 @@ class Ph {
         if !WinActive("ahk_id " Voor) && !this.HaalFocusTerug(Voor)
             return Ronde.Fout("het dossier was niet meer het actieve venster", false)
         Toets := StrLower(Gevonden.toets)
-        if !this.Stap("!" Toets, 0, "Alt+" StrUpper(Toets) " - " Item)
+        if !this.Stap("!" Toets, 0, "Alt+" StrUpper(Toets) " - " Item, Dossier)
             return false
         Ronde.Gekozen := true
         ; Wachten tot het menu dicht is (anders zou Escape het printen annuleren)
@@ -429,7 +439,7 @@ class Ph {
             this.Wacht(50)
         }
         this.Wacht(Inst.Wt["SleepNaAltB"])
-        return this.Stap("{Escape}", Inst.Wt["SleepNaEscape"], "Escape")
+        return this.Stap("{Escape}", Inst.Wt["SleepNaEscape"], "Escape", Dossier)
     }
 
     ; Wacht tot de medicatiehistorie weg is en de aanschrijfbuffer weer
@@ -463,15 +473,16 @@ class Ph {
     }
 
     ; Voor het onderzoeken van een stop: welk venster actief is en wat er van
-    ; Pharmacom zichtbaar is (geen patiëntgegevens)
+    ; Pharmacom zichtbaar is (geen patiëntgegevens: titels via VeiligeTitel,
+    ; van andere programma's alleen de programmanaam)
     static LogToestand(Wanneer) {
         a := WinExist("A")
-        try Wie := a ? "'" WinGetTitle(a) "' (" WinGetProcessName(a) (WinGetPID(a) = this.Pid ? ", Pharmacom" : "") ")" : "geen"
+        try Wie := !a ? "geen" : WinGetPID(a) = this.Pid ? "'" VeiligeTitel(WinGetTitle(a)) "' (Pharmacom)" : WinGetProcessName(a)
         catch
             Wie := "onbekend"
         Vensters := ""
         for h in WinGetList("ahk_pid " this.Pid)
-            try Vensters .= (Vensters = "" ? "" : ", ") "'" WinGetTitle(h) "'" (h = this.Hwnd ? " (hoofd)" : "")
+            try Vensters .= (Vensters = "" ? "" : ", ") "'" VeiligeTitel(WinGetTitle(h)) "'" (h = this.Hwnd ? " (hoofd)" : "")
         Log("  toestand (" Wanneer "): actief venster " Wie "; vensters van Pharmacom: " Vensters
             . "; medicatiehistorie " (Jab.ZoekTabel(this.Pid, this.HistorieKoppen) ? "zichtbaar" : "weg")
             . ", aanschrijfbuffer " (this.Buffer() ? "zichtbaar" : "niet zichtbaar"))

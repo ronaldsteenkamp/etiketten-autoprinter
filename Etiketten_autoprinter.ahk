@@ -208,10 +208,16 @@ Vangnet(e, Modus) {
         try {
             if IsObject(p) && Ronde.Gekozen && !p.geprintNu {
                 ; Het item in het afdrukmenu was al gekozen: telt als geprint
-                Ronde.VandaagGeprint[p.patnr] := Opslag.Registreer(p.patnr)
+                Tijd := Opslag.Registreer(p.patnr)
+                p.geregistreerd := Tijd != ""
+                Ronde.VandaagGeprint[p.patnr] := Tijd != "" ? Tijd : "?"
                 p.geprintNu := true
                 Log("  Pat.nr " p.patnr ": etiket was al gekozen, als geprint geregistreerd")
             }
+            ; Claim vrijgeven, behalve als het etiket geprint is maar niet in
+            ; het register kwam (zie Ronde.StartRun)
+            if IsObject(p) && !Ronde.Proef && (!p.geprintNu || (p.HasProp("geregistreerd") && p.geregistreerd))
+                Opslag.GeefVrij(p.patnr)
             if IsObject(p)
                 Opslag.Rapporteer(p, "", "Gestopt: onverwachte fout [X99] (" e.Message ")", Ronde.Apotheek)
         }

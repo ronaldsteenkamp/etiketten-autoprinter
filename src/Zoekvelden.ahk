@@ -329,9 +329,14 @@ class PhZoek {
                 return "het zoeken in Pharmacom duurde te lang"
             Sleep 400
         }
-        ; Controle: staat de gekozen afdeling in de lijst?
+        ; Controle: staat alleen de gekozen afdeling in de lijst? Is de kolom
+        ; Afd niet te vinden, dan niet printen (niet gokken).
         t := Jab.ZoekTabel(Ph.Pid, Map("afd", "i)^Afd$"))
-        if t && t.Rijen() > 0 {
+        if !t {
+            Ph.LogZichtbareTabellen()
+            return "de kolom Afd is niet gevonden: kan niet controleren dat de lijst alleen afdeling " Afdeling " bevat"
+        }
+        if t.Rijen() > 0 {
             Andere := 0
             loop t.Rijen()
                 if t.Cel(A_Index - 1, "afd") != Afdeling
