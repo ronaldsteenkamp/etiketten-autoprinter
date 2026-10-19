@@ -32,13 +32,11 @@ class Inst {
 
     ; Opties: naam in de pagina -> sleutel in de ini (standaard aan, behalve
     ; die in UitStandaard)
-    static OptieSleutels := Map("deelbaar", "AlleenDeelbaar", "controle", "DossierControleren"
-        , "patnr", "DossierAlleenPatnr", "blokkeer", "InvoerBlokkeren", "bevestigen", "Bevestigen"
+    ; (DossierControleren en DossierAlleenPatnr zijn vervallen: het dossier
+    ; wordt altijd op Pat.nr gecontroleerd; oude waarden in de ini doen niets.)
+    static OptieSleutels := Map("deelbaar", "AlleenDeelbaar", "blokkeer", "InvoerBlokkeren", "bevestigen", "Bevestigen"
         , "bovenop", "Bovenop", "altijdbovenop", "AltijdBovenop", "geluid", "Geluid", "focusterug", "FocusTerugpakken")
     static UitStandaard := Map("focusterug", 1, "altijdbovenop", 1)
-    ; Veiligheidscontroles die altijd aan staan, wat er ook in de ini staat:
-    ; het dossier wordt altijd op Pat.nr gecontroleerd voordat er geprint wordt
-    static Vast := Map("controle", 1, "patnr", 1)
 
     static Wt := Map()
     static Opties := Map()
@@ -119,7 +117,7 @@ class Inst {
     ; ini-sectie [Opties <code>], bijv. [Opties AN]. Staat daar niets, dan
     ; geldt de algemene waarde uit [Opties]. De overige opties horen bij de
     ; computer (geluid, venster bovenop, toetsenbord blokkeren, bevestigen).
-    static PerApotheek := ["deelbaar", "controle", "patnr"]
+    static PerApotheek := ["deelbaar"]
     static Apotheek := ""
     static ApotheekBevestigd := false   ; in deze sessie echt uit Pharmacom gelezen
     static ApOpties := Map()
@@ -168,10 +166,10 @@ class Inst {
         }
     }
 
-    static Optie(Naam) => this.Vast.Has(Naam) ? this.Vast[Naam] : this.ApOpties.Has(Naam) ? this.ApOpties[Naam] : this.Opties.Has(Naam) ? this.Opties[Naam] : 1
+    static Optie(Naam) => this.ApOpties.Has(Naam) ? this.ApOpties[Naam] : this.Opties.Has(Naam) ? this.Opties[Naam] : 1
 
     static ZetOptie(Naam, Aan) {
-        if !this.OptieSleutels.Has(Naam) || this.Vast.Has(Naam)
+        if !this.OptieSleutels.Has(Naam)
             return
         Aan := Aan ? 1 : 0
         if this.Apotheek != "" && this.IsPerApotheek(Naam) {

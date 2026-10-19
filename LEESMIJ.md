@@ -192,6 +192,23 @@ ook overslaan. Een claim die blijft staan (de app liep vast, of het register luk
 niet) betekent: die dag wordt deze patiënt overgeslagen met de melding *staat op
 'bezig' bij <computer>*. Controleer dan of er een etiket is; daarna kan de
 beheerder het claimbestand weghalen. Claims worden na 2 dagen opgeruimd.
+Zo'n patiënt staat in de lijst al als *Controleren* ("Staat op 'bezig' bij
+<computer>") en wordt niet aangevinkt. Ook als de waakhond de app afsloot tijdens
+het printen, blijft de claim staan: dan is het etiket misschien wel geprint maar niet
+geregistreerd, en print geen enkele ronde hem die dag nog eens.
+
+**Schaduwmodus (nog geen stop, alleen in het log):** twee strengere controles
+draaien mee en schrijven alleen in het log wat ze vinden. Zodra de logs laten zien
+dat ze in de echte Pharmacom altijd kloppen, worden het echte controles:
+- `SCHADUW Pat.nr-veld: gevonden / NIET gevonden`: staat het Pat.nr in het
+  Pat.nr-veld van het dossier ("Pat.nr: 123", of label "Pat.nr" met de waarde
+  erachter), en niet alleen ergens anders in het dossier?
+- `SCHADUW sortering Laatste V/A: aflopend / NIET aflopend`: staat de
+  medicatiehistorie op Laatste V/A, nieuwste bovenaan (bovenste 15 regels)? Zo niet,
+  dan is "de bovenste regel" niet de nieuwste.
+
+Tellen in de logs van alle computers (PowerShell, in `Gegevens\Log`):
+`Select-String -Path *.txt -Pattern 'SCHADUW' | Group-Object { $_.Line -replace '^.*SCHADUW ([^:]+): (\S+( \S+)?).*$','$1: $2' } | Select Count, Name`
 
 **Pharmacom terughalen** (optie, standaard uit): springt er tijdens het printen een
 venster van een ander programma voor Pharmacom (bijv. een Teams-melding), dan haalt
@@ -210,8 +227,11 @@ afpakken en een planning dubbel kunnen uitvoeren.
 
 Elke stop of mislukte planning krijgt een vaste code achter de tekst, bijv.
 "Pharmacom keerde niet terug naar de aanschrijfbuffer [P11]", in de melding, het
-log, het rapport en de planningstatus. De lijst staat in `FoutCode()` in
-`src\Hulp.ahk`; codes worden nooit hergebruikt.
+log, het rapport en de planningstatus. Een stop in de ronde krijgt zijn code
+expliciet mee (`Ronde.Fout("P11", "tekst")`); het gedrag (zelf verder, terugzetten)
+hangt alleen van die code af, niet van de tekst. Voor de planning en voor oude logs
+herkent `FoutCode()` in `src\Hulp.ahk` de code nog aan de tekst; codes worden nooit
+hergebruikt.
 
 | Code | Betekenis |
 |---|---|
@@ -268,7 +288,8 @@ De sneltoets leest de app zelf uit Pharmacom.
 | `src\Opslag.ahk`, `src\Instellingen.ahk`, `src\Invoer.ahk`, `src\Update.ahk`, `src\Hulp.ahk` | Log/register/rapporten, ini, toetsenbord blokkeren, updates, hulpfuncties |
 | `src\Planning.ahk`, `src\Groepen.ahk`, `src\Wijzigingen.ahk` | Geplande rondes; bekende groepen per apotheek; "Wat is er nieuw" |
 | `src\Systeem.ahk` | Vergrendeling, geen slaapstand, waakhond, geheugen van Pharmacom |
-| `tests\Eenheid.ahk`, `tests\Planning.ahk` | Unit-tests (hulpfuncties; planning: dagen, weken, tijdvenster) |
+| `src\Regels.ahk` | Beslisregels zonder Pharmacom: soort in de lijst, regel kiezen, Pat.nr in het dossier, sortering (los getest) |
+| `tests\*.ahk`, `tests\alle_tests.ps1` | Unit-tests: hulpfuncties (`Eenheid`), planning, updates, register en claims (`Register`), beslisregels (`Regels`) |
 | `src\lib\` | WebView2-bibliotheek van thqby (MIT-licentie) met de 32-bit WebView2Loader.dll |
 | `Etiketten_autoprinter.exe` | De app (32-bit, moet 32-bit blijven: Pharmacom draait op 32-bit Java) |
 | `Etiketten_autoprinter.ico` | Pictogram |
@@ -283,7 +304,8 @@ De sneltoets leest de app zelf uit Pharmacom.
 
 ## Bewaartermijnen
 
-Bij het starten ruimt de app oude bestanden op (op basis van de wijzigingsdatum):
+Bij het starten en daarna elke 6 uur (niet tijdens een ronde) ruimt de app oude
+bestanden op (op basis van de wijzigingsdatum); hoeveel staat in het log:
 
 | Wat | Termijn | Instelling in de ini (`[Opslag]`) |
 |---|---|---|
@@ -349,6 +371,24 @@ zonder regel van AN, met een lege historie, met een ontslagdatum en zonder
 
 Met een argument start de app meteen een ronde, zoals een planning:
 `"Test met nep-Pharmacom.cmd" T1/T1GUA/proef` of `.../print`.
+
+**Foutscenario's (groep T3 / T3FOUT).** Per patiënt één ding dat mis kan gaan. Vink
+alleen de patiënt aan die je wilt testen (de ronde stopt bij een fout) en kijk of de
+uitkomst klopt; na een stop moet Pharmacom weer op de aanschrijfbuffer staan en mag
+er niets in `nep_geprint.txt` bij gekomen zijn.
+
+| Pat.nr | Scenario | Verwacht |
+|---|---|---|
+| 900031 | Dossier toont een ander Pat.nr | Stop `[P08]`, niets geprint |
+| 900032 | Ctrl+B opent een melding in plaats van het dossier | Stop `[P07]` (geen historie in dat venster), niets geprint |
+| 900033 | Historie ververst bij het selecteren (nieuwe bovenste regel) | Stop `[P09]`, niets geprint |
+| 900034 | Ctrl+P doet niets | Stop `[P10]`, niets geprint |
+| 900035 | Historie oudste bovenaan | Geprint (SIMVASTATINE); log: `SCHADUW sortering Laatste V/A: NIET aflopend` |
+| 900036 | Pat.nr niet in een Pat.nr-veld | Geprint; log: `SCHADUW Pat.nr-veld: NIET gevonden` |
+| 900037 | Historie verschijnt pas na 2,5 s | Geprint (METFORMINE) |
+
+Bij alle gewone patiënten (T1, T2) moet het log `SCHADUW Pat.nr-veld: gevonden` en
+`SCHADUW sortering Laatste V/A: aflopend` geven.
 
 ## Op deze computer installeren
 
@@ -459,3 +499,11 @@ Bij het publiceren komt naast de .exe een controlewaarde
 gekopieerde .exe precies die controlewaarde heeft; een half gekopieerde of
 beschadigde versie wordt geweigerd. Dit beschermt niet tegen iemand die beide
 bestanden vervangt: geef daarom alleen beheerders schrijfrechten op de updatemap.
+
+**Handtekening:** vóór het installeren kijkt de app naar de digitale handtekening
+(Authenticode, via PowerShell `Get-AuthenticodeSignature`) en zet die in het log. Is
+de draaiende versie zelf geldig ondertekend (zodra SignPath actief is), dan moet de
+nieuwe versie geldig ondertekend zijn door dezelfde uitgever, anders weigert de app
+de update. Zolang de app niet ondertekend is, wordt alleen gelogd. Let op: kan
+PowerShell op een computer niet starten, dan kan een ondertekende app daar niet meer
+bijwerken (status "onbekend").

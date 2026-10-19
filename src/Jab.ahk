@@ -360,21 +360,26 @@ class Jab {
     ; tabellen en menu's. Stop = reguliere expressie: zodra een tekst daarop
     ; past, stopt het zoeken (de tekst tot dan toe komt terug; sneller als je
     ; maar één ding zoekt, zoals het Pat.nr in het dossier).
-    static VensterTekst(Hwnd, Stop := "") {
-        Tekst := WinGetTitle(Hwnd) "`n"
+    ; Lijst = optioneel een array: daarin komen de teksten los, in volgorde
+    ; (de titel eerst), voor Regels.DossierPatnr.
+    static VensterTekst(Hwnd, Stop := "", Lijst := "") {
+        Titel := WinGetTitle(Hwnd)
+        Tekst := Titel "`n"
+        if IsObject(Lijst)
+            Lijst.Push(Titel)
         if Stop != "" && RegExMatch(Tekst, Stop)
             return Tekst
         R := this.VanVenster(Hwnd)
         if !R
             return Tekst
         Teller := 0
-        this._Tekst(R.vm, R.ac, &Tekst, 0, &Teller, Stop)
+        this._Tekst(R.vm, R.ac, &Tekst, 0, &Teller, Stop, Lijst)
         this.Release(R.vm, R.ac)
         return Tekst
     }
 
     ; Geeft true als Stop gevonden is (dan niet verder zoeken)
-    static _Tekst(Vm, Ac, &Tekst, Diepte, &Teller, Stop := "") {
+    static _Tekst(Vm, Ac, &Tekst, Diepte, &Teller, Stop := "", Lijst := "") {
         if ++Teller > 4000
             return false
         Info := this.Info(Vm, Ac)
@@ -387,6 +392,8 @@ class Jab {
             Naam := this.Naam(Vm, Ac)
         if Trim(Naam) != "" {
             Tekst .= Naam "`n"
+            if IsObject(Lijst)
+                Lijst.Push(Naam)
             if Stop != "" && RegExMatch(Naam, Stop)
                 return true
         }
@@ -396,7 +403,7 @@ class Jab {
             Kind := this.Kind(Vm, Ac, A_Index - 1)
             if !Kind
                 continue
-            Klaar := this._Tekst(Vm, Kind, &Tekst, Diepte + 1, &Teller, Stop)
+            Klaar := this._Tekst(Vm, Kind, &Tekst, Diepte + 1, &Teller, Stop, Lijst)
             this.Release(Vm, Kind)
             if Klaar
                 return true
@@ -463,10 +470,22 @@ class JabTabel {
     }
 
     ; Tekst in een cel, zonder HTML-opmaak en witruimte
-    Cel(R, Sleutel) {
-        v := Jab.CelTekst(this.vm, this.at, R, this.kol[Sleutel])
+    Cel(R, Sleutel) => this.CelKol(R, this.kol[Sleutel])
+
+    ; Idem, op kolomnummer (0-based)
+    CelKol(R, C) {
+        v := Jab.CelTekst(this.vm, this.at, R, C)
         v := RegExReplace(v, "<[^>]*>")
         return Trim(v, " `t`r`n" Chr(160))
+    }
+
+    ; Kolomnummer (0-based) van de eerste kolomkop die past bij Patroon, of -1
+    ; (voor kolommen die de tabel niet hoeven te hebben om herkend te worden)
+    Kolom(Patroon) {
+        for c, k in this.koppen
+            if RegExMatch(k, Patroon)
+                return c - 1
+        return -1
     }
 
     ; Actueel aantal regels (de tabel kan intussen veranderd zijn)

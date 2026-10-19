@@ -58,6 +58,7 @@ global AppVersie := "6.13"
 ; krijgt 6.13.0.0 (voor de vergelijking is dat hetzelfde).
 
 #Include src\Hulp.ahk
+#Include src\Regels.ahk
 #Include src\Instellingen.ahk
 #Include src\Opslag.ahk
 #Include src\Jab.ahk
@@ -116,6 +117,7 @@ Waakhond.Start()
 Bewaking()
 SetTimer Bewaking, 3000
 SetTimer () => Geheugen.LogPharmacom(), 3600000
+SetTimer () => (Ronde.Bezig || Ronde.Gereserveerd || Planning.Bezig) ? 0 : Opslag.Opruim(), 6 * 3600000
 SetTimer () => Update.Controleer(true), -1500
 SetTimer () => Update.Periodiek(), Update.Interval
 SetTimer () => Update.ControleerLokaal(), -2500
@@ -133,7 +135,9 @@ SetTimer PlanningTik, 20000
 ; "tabel veranderd" en wel ± 100 meldingen per seconde van een knop.)
 Bewaking() {
     static Bezig := false, Teller := 0, Gepauzeerd := ""
-    if Ronde.Bezig || Bezig || Planning.Bezig
+    ; Ook niet als er een ronde op het punt staat te beginnen (een vraag
+    ; staat open): dan mag de lijst niet veranderen
+    if Ronde.Bezig || Ronde.Gereserveerd || Bezig || Planning.Bezig
         return
     Bezig := true
     try {

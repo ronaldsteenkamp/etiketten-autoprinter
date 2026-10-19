@@ -26,14 +26,22 @@ class Opslag {
         Staat.Dir := DataMap "\Gegevens\Computers"
         for m in [this.GeprintMap, this.ClaimMap, this.RapportMap, this.LogMap, Staat.Dir]
             try DirCreate m
-        ; Bewaartermijnen: rapporten bevatten naam en geboortedatum (AVG), het
-        ; register alleen Pat.nr's en is na de dag zelf niet meer nodig.
-        Opruimen(this.LogMap "\*.txt", 30)
-        Opruimen(this.RapportMap "\Rapport *.csv", Inst.RapportDagen)
-        Opruimen(this.RapportMap "\Proefronde *.csv", Inst.RapportDagen)
-        Opruimen(this.GeprintMap "\*.txt", Inst.RegisterDagen)
-        Opruimen(this.ClaimMap "\*.txt", 2)
+        this.Opruim()
         try FileDelete A_ScriptDir "\Gegevens\Etiketten_autoprinter_log.txt"   ; oud log (v5.3-5.6)
+    }
+
+    ; Bewaartermijnen: rapporten bevatten naam en geboortedatum (AVG), het
+    ; register alleen Pat.nr's en is na de dag zelf niet meer nodig. Bij het
+    ; starten en elke 6 uur (zie hoofdbestand, niet tijdens een ronde), zodat
+    ; een app die dagen openstaat ook opruimt.
+    static Opruim() {
+        n := Opruimen(this.LogMap "\*.txt", 30)
+            + Opruimen(this.RapportMap "\Rapport *.csv", Inst.RapportDagen)
+            + Opruimen(this.RapportMap "\Proefronde *.csv", Inst.RapportDagen)
+            + Opruimen(this.GeprintMap "\*.txt", Inst.RegisterDagen)
+            + Opruimen(this.ClaimMap "\*.txt", 2)
+        if n
+            this.Log("Opgeruimd: " n " oude bestanden (logs, rapporten, register, claims)")
     }
 
     static LogBestand => this.LogMap "\" FormatTime(, "yyyy-MM-dd") " " A_ComputerName ".txt"
@@ -175,6 +183,24 @@ class Opslag {
             return {ok: true}
         Log("  claim van Pat.nr " Patnr " bestaat al: " Bestand " (" (Wie != "" ? Wie : "inhoud onbekend") ")")
         return {bezet: Wie != "" ? StrSplit(Wie, " ")[1] : "een andere computer"}
+    }
+
+    ; Claims van vandaag die niet van deze app zijn: Map Pat.nr -> computer.
+    ; Een andere ronde is daar nu mee bezig, of de app liep daar vast (dan is
+    ; het etiket misschien geprint maar niet geregistreerd). Niet bereikbaar =
+    ; lege Map (het register zelf faalt dan al, zie LeesRegister).
+    static Bezig() {
+        Res := Map(), Mijn := this.Eigenaar " "
+        try loop files this.ClaimMap "\" FormatTime(, "yyyy-MM-dd") " *.txt" {
+            Patnr := RegExReplace(SubStr(A_LoopFileName, 12), "\.txt$")
+            try Wie := Trim(FileRead(A_LoopFileFullPath, "UTF-8"))
+            catch
+                Wie := ""
+            if Wie != "" && InStr(Wie, Mijn) = 1
+                continue
+            Res[Patnr] := Wie != "" ? StrSplit(Wie, " ")[1] : "een andere computer"
+        }
+        return Res
     }
 
     ; Alleen een eigen claim weghalen

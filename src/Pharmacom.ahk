@@ -20,8 +20,7 @@ class Ph {
     ; Receptverwerking, die ook Ap, Th. einddatum en Herhaal info heeft.)
     static HistorieKoppen := Map("labeler", "i)^Labeler", "ap", "i)^Ap\W*$", "einddatum", "i)^Th\.?\s*einddatum", "herhaal", "i)^Herhaal")
     static EtiketKoppen := Map("etiket", "i)^Etiket")
-    ; Waarde in Herhaal info waarop gefilterd wordt (als die optie aan staat)
-    static DeelbaarPatroon := "i)^ASB:\s*Deelbaar"
+    ; (Het patroon voor "ASB: Deelbaar" staat in Regels.DeelbaarPatroon.)
     ; Label rechtsonder, bijv. "AN - RS - 183": eerste deel = ingelogde apotheek
     static ApotheekPatroon := "^\s*([A-Za-z0-9]{1,4})\s*-\s*\S+\s*-\s*\S+\s*$"
 
@@ -71,7 +70,7 @@ class Ph {
         this.VergeetBuffer()
         Inst.ApotheekBevestigd := false
         if Ronde.Bezig {
-            Ronde.Fout("Pharmacom is afgesloten")
+            Ronde.Fout("P01", "Pharmacom is afgesloten")
             Ronde.Stoppen := true
         }
     }
@@ -217,16 +216,16 @@ class Ph {
     ; een venster van Pharmacom zelf (een melding), dan geen toets.
     static Stap(Toets, Ms, Label, Doel := 0) {
         if Ronde.Stoppen
-            return Ronde.Fout("gestopt door gebruiker", false)
+            return Ronde.Fout("G01", "gestopt door gebruiker", false)
         if !WinActive("ahk_pid " this.Pid) && !this.HaalFocusTerug(Doel) {
             ; Op het venster van de app geklikt (bijv. Stop) = stoppen
             if Venster.Hwnd && WinActive("ahk_id " Venster.Hwnd)
-                return Ronde.Fout("gestopt door gebruiker", false)
-            return Ronde.Fout("Pharmacom was niet meer het actieve venster", false)
+                return Ronde.Fout("G01", "gestopt door gebruiker", false)
+            return Ronde.Fout("P02", "Pharmacom was niet meer het actieve venster", false)
         }
         if Doel && !WinActive("ahk_id " Doel) {
             this.LogToestand("ander venster dan het dossier")
-            return Ronde.Fout("het dossier was niet meer het actieve venster", false)
+            return Ronde.Fout("P03", "het dossier was niet meer het actieve venster", false)
         }
         Send Toets
         Log("  " Label)
@@ -241,7 +240,7 @@ class Ph {
         Eind := A_TickCount + Timeout
         loop {
             if Ronde.Stoppen
-                return Ronde.Fout("gestopt door gebruiker", "")
+                return Ronde.Fout("G01", "gestopt door gebruiker", "")
             T := Jab.ZoekTabellen(this.Pid, Lijst, Alleen)
             if T[1]
                 return T
@@ -255,7 +254,7 @@ class Ph {
         Eind := A_TickCount + Timeout
         loop {
             if Ronde.Stoppen
-                return Ronde.Fout("gestopt door gebruiker", 0)
+                return Ronde.Fout("G01", "gestopt door gebruiker", 0)
             if t := Jab.ZoekTabel(this.Pid, Koppen)
                 return t
             if A_TickCount > Eind
@@ -269,7 +268,7 @@ class Ph {
         Eind := A_TickCount + Timeout
         loop {
             if Ronde.Stoppen
-                return Ronde.Fout("gestopt door gebruiker", 0)
+                return Ronde.Fout("G01", "gestopt door gebruiker", 0)
             a := WinExist("A")
             try {
                 Apid := a ? WinGetPID(a) : 0
@@ -348,32 +347,39 @@ class Ph {
     }
 
     ; --- Controles -------------------------------------------------------------
-    ; Zoekt in het dossiervenster naar het Pat.nr, of (als de optie "alleen
-    ; Pat.nr" uit staat) naar achternaam + geboortedatum. Probeert het een
-    ; paar seconden (het dossier kan nog laden).
+    ; Zoekt in het dossiervenster naar het Pat.nr (alleen het Pat.nr telt;
+    ; naam + geboortedatum niet meer). Probeert het een paar seconden (het
+    ; dossier kan nog laden).
+    ; SCHADUWMODUS: daarnaast wordt gekeken of het Pat.nr in het Pat.nr-veld
+    ; staat (Regels.DossierPatnr, "veld") en niet alleen ergens in het dossier.
+    ; Dat gaat alleen naar het log ("SCHADUW Pat.nr-veld"); zodra de logs laten
+    ; zien dat het in de praktijk altijd gevonden wordt, wordt dit de controle.
     static BevestigDossier(p, Hwnd) {
-        Achternaam := Trim(StrSplit(p.naam, ",")[1])
-        GebPatroon := ""
-        if RegExMatch(p.gebdatum, "^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$", &G)
-            GebPatroon := "(?<!\d)0?" Integer(G[1]) "[-/.]0?" Integer(G[2]) "[-/.](" G[3] "|" SubStr(G[3], -2) ")(?!\d)"
-        PatnrPatroon := p.patnr != "" ? "(?<!\d)\Q" p.patnr "\E(?!\d)" : ""
+        if p.patnr = ""
+            return false
+        Patroon := "(?<!\d)\Q" p.patnr "\E(?!\d)"
         Eind := A_TickCount + 3000
         loop {
-            ; Stopt met lezen zodra het Pat.nr gevonden is (anders de hele
-            ; tekst, voor achternaam + geboortedatum)
-            Tekst := Jab.VensterTekst(Hwnd, PatnrPatroon)
-            HeeftPatnr := PatnrPatroon != "" && RegExMatch(Tekst, PatnrPatroon)
-            HeeftNaam := Achternaam != "" && InStr(Tekst, Achternaam)
-            HeeftGeb := GebPatroon != "" && RegExMatch(Tekst, GebPatroon)
-            if HeeftPatnr || (!Inst.Optie("patnr") && HeeftNaam && HeeftGeb) {
-                Log("  dossier bevestigd (" (HeeftPatnr ? "Pat.nr" : "naam + geboortedatum") ")")
+            ; Stopt met lezen zodra het Pat.nr gevonden is
+            Teksten := []
+            Jab.VensterTekst(Hwnd, Patroon, Teksten)
+            D := Regels.DossierPatnr(Teksten, p.patnr)
+            if D.los {
+                Log("  dossier bevestigd (Pat.nr)")
+                if !D.veld {
+                    ; Misschien staat het veld verderop: dan de hele tekst lezen
+                    Teksten := []
+                    Jab.VensterTekst(Hwnd, "", Teksten)
+                    D := Regels.DossierPatnr(Teksten, p.patnr)
+                }
+                Log("  SCHADUW Pat.nr-veld: " (D.veld ? "gevonden" : "NIET gevonden (Pat.nr stond elders in het dossier)"))
                 return true
             }
             if A_TickCount > Eind || Ronde.Stoppen
                 break
             this.Wacht(200)
         }
-        Log("  dossier NIET bevestigd: Pat.nr " (HeeftPatnr ? "ja" : "nee") ", naam " (HeeftNaam ? "ja" : "nee") ", geboortedatum " (HeeftGeb ? "ja" : "nee") " (" StrLen(Tekst) " tekens tekst in dossier)")
+        Log("  dossier NIET bevestigd: Pat.nr niet gevonden (" Teksten.Length " teksten in het dossier)")
         return false
     }
 
@@ -406,7 +412,7 @@ class Ph {
         Eind := A_TickCount + Inst.Wt["MaxWachtPrint"]
         loop {
             if Ronde.Stoppen
-                return Ronde.Fout("gestopt door gebruiker", false)
+                return Ronde.Fout("G01", "gestopt door gebruiker", false)
             Gevonden := Jab.ZoekMenuItem(this.Pid, Item)
             if Gevonden || A_TickCount > Eind
                 break
@@ -416,15 +422,15 @@ class Ph {
         ; en de Escape hierna zou een te laat geopend menu weer sluiten.
         if !Gevonden {
             Log("  afdrukmenu met '" Item "' verscheen niet binnen " Inst.Wt["MaxWachtPrint"] " ms")
-            return Ronde.Fout("het afdrukmenu met '" Item "' verscheen niet (er is niets geprint)", false)
+            return Ronde.Fout("P10", "het afdrukmenu met '" Item "' verscheen niet (er is niets geprint)", false)
         }
         if !Gevonden.aan || Gevonden.toets = "" {
             Log("  '" Item "' staat uit of heeft geen sneltoets")
-            return Ronde.Fout("'" Item "' kon niet gekozen worden in het afdrukmenu (er is niets geprint)", false)
+            return Ronde.Fout("P10", "'" Item "' kon niet gekozen worden in het afdrukmenu (er is niets geprint)", false)
         }
         Log("  afdrukmenu verschenen")
         if !WinActive("ahk_id " Voor) && !this.HaalFocusTerug(Voor)
-            return Ronde.Fout("het dossier was niet meer het actieve venster", false)
+            return Ronde.Fout("P03", "het dossier was niet meer het actieve venster", false)
         Toets := StrLower(Gevonden.toets)
         if !this.Stap("!" Toets, 0, "Alt+" StrUpper(Toets) " - " Item, Dossier)
             return false
@@ -433,9 +439,9 @@ class Ph {
         Eind := A_TickCount + 10000
         while Jab.ZoekMenuItem(this.Pid, Item) {
             if Ronde.Stoppen
-                return Ronde.Fout("gestopt door gebruiker", false)
+                return Ronde.Fout("G01", "gestopt door gebruiker", false)
             if A_TickCount > Eind
-                return Ronde.Fout("het afdrukmenu sloot niet", false)
+                return Ronde.Fout("P10", "het afdrukmenu sloot niet", false)
             this.Wacht(50)
         }
         this.Wacht(Inst.Wt["SleepNaAltB"])
@@ -450,7 +456,7 @@ class Ph {
         Opnieuw := A_TickCount + 3000
         loop {
             if Ronde.Stoppen
-                return Ronde.Fout("gestopt door gebruiker", false)
+                return Ronde.Fout("G01", "gestopt door gebruiker", false)
             if Jab.ZoekTabel(this.Pid, this.HistorieKoppen) {
                 if Dossier && Opnieuw && A_TickCount > Opnieuw && !WinActive("ahk_id " Dossier)
                     this.HaalFocusTerug(Dossier)

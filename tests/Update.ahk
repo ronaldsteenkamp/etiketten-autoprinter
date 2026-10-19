@@ -44,6 +44,16 @@ T("Zonder tag = niet bruikbaar", !IsObject(Update.LeesRelease(StrReplace(J, "tag
 T("Tag zonder v", Update.LeesRelease(StrReplace(J, '"v6.10.0"', '"6.10.0"')).versie = "6.10.0")
 T("Foutmelding van GitHub = niet bruikbaar", !IsObject(Update.LeesRelease('{"message":"Not Found"}')))
 
+; Handtekening (via PowerShell): een Windows-bestand is ondertekend, een
+; zelfgemaakt bestand niet
+H := Update.Handtekening(A_WinDir "\System32\cmd.exe")
+T("Handtekening cmd.exe = Valid (Microsoft)", H.status = "Valid" && InStr(H.wie, "Microsoft"))
+Leeg := A_Temp "\etiketten_niet_ondertekend.exe"
+FileOpen(Leeg, "w").Close()
+H := Update.Handtekening(Leeg)
+T("Handtekening zelfgemaakt bestand != Valid", H.status != "Valid" && H.status != "onbekend")
+try FileDelete Leeg
+
 ; Zonder melding (bijv. op GitHub): met /ci de uitkomst als exitcode
 if A_Args.Length && A_Args[1] = "/ci"
     ExitApp Fouten ? 1 : 0

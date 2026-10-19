@@ -346,6 +346,8 @@ class Planning {
             return Test
         if Sessie.Vergrendeld()
             return "de computer is vergrendeld"
+        if Ronde.Gereserveerd || Ronde.Bezig
+            return "er staat een vraag van de app open of er loopt al een ronde"
         St := Venster.Verbind()
         if St != "ok"
             return St = "geen" ? "Pharmacom is niet open" : "geen verbinding met Pharmacom"

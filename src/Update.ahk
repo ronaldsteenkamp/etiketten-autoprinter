@@ -45,7 +45,7 @@ class Update {
     static Gemeld := ""
 
     static Periodiek() {
-        if Ronde.Bezig || Planning.Bezig
+        if Ronde.Bezig || Ronde.Gereserveerd || Planning.Bezig
             return
         this.Controleer(true, true)
     }
@@ -56,7 +56,7 @@ class Update {
     ; updatemap (netwerkmap). Stil = geen melding als er niets nieuws is.
     ; AlleenMelden: niets vragen, alleen een klikbare melding (zie Periodiek)
     static Controleer(Stil, AlleenMelden := false) {
-        if Ronde.Bezig || Inst.Test
+        if Ronde.Bezig || Ronde.Gereserveerd || Inst.Test
             return
         Nieuw := "", NieuweVersie := "", Release := "", GitHubWeg := false
         ; Draait de app vanaf de netwerkmap zelf, dan niet van GitHub bijwerken:
@@ -222,7 +222,52 @@ class Update {
             Venster.Melding("Bijwerken niet mogelijk", "De nieuwe versie in de updatemap is onvolledig of beschadigd (de controlewaarde klopt niet). Er is niets gewijzigd.`n`nProbeer het later opnieuw, of zet de versie opnieuw in de updatemap.", "fout")
             return ""
         }
+        if (Reden := this.HandtekeningFout(Kopie)) != "" {
+            try FileDelete Kopie
+            Log("Update geweigerd: " Reden)
+            Venster.Melding("Bijwerken niet mogelijk", "De nieuwe versie is niet vertrouwd: " Reden ". Er is niets gewijzigd.`n`nMeld dit bij " AppMaker ".", "fout")
+            return ""
+        }
         return Kopie
+    }
+
+    ; Digitale handtekening (Authenticode). Is deze app zelf ondertekend, dan
+    ; moet de nieuwe versie geldig ondertekend zijn door dezelfde uitgever: zo
+    ; kan iemand die alleen de .exe en de controlewaarde vervangt (updatemap,
+    ; GitHub) geen eigen programma laten installeren. Is deze app (nog) niet
+    ; ondertekend, dan wordt alleen gelogd wat de nieuwe versie heeft. Geeft ""
+    ; of de reden om te weigeren.
+    static HandtekeningFout(Nieuw) {
+        if !A_IsCompiled
+            return ""
+        Nu := this.Handtekening(A_ScriptFullPath)
+        Na := this.Handtekening(Nieuw)
+        Log("Handtekening: deze versie " Nu.status (Nu.wie != "" ? " (" Nu.wie ")" : "") ", nieuwe versie " Na.status (Na.wie != "" ? " (" Na.wie ")" : ""))
+        if Nu.status != "Valid"
+            return ""
+        if Na.status != "Valid"
+            return "de nieuwe versie is niet (geldig) ondertekend (" Na.status ")"
+        if Na.wie != Nu.wie
+            return "de nieuwe versie is ondertekend door een andere uitgever (" Na.wie ")"
+        return ""
+    }
+
+    ; {status, wie} via PowerShell (Get-AuthenticodeSignature); status
+    ; "onbekend" als dat niet lukt
+    static Handtekening(Pad) {
+        Uit := A_Temp "\Etiketten_autoprinter_handtekening.txt"
+        try FileDelete Uit
+        Q := (s) => "'" StrReplace(s, "'", "''") "'"
+        Cmd := 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "'
+            . '$s = Get-AuthenticodeSignature -LiteralPath ' Q(Pad) '; '
+            . '[IO.File]::WriteAllText(' Q(Uit) ', [string]$s.Status + [char]124 + [string]$s.SignerCertificate.Subject)"'
+        try {
+            RunWait Cmd, , "Hide"
+            d := StrSplit(Trim(FileRead(Uit, "UTF-8")), "|", , 2)
+            try FileDelete Uit
+            return {status: d[1] != "" ? d[1] : "onbekend", wie: d.Length > 1 ? Trim(d[2]) : ""}
+        }
+        return {status: "onbekend", wie: ""}
     }
 
     ; --- Lokaal installeren ----------------------------------------------------

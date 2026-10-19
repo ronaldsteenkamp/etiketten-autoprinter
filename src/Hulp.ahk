@@ -103,10 +103,14 @@ FoutCode(Tekst) {
         , ["i)apotheek .* ingelogd", "L08"]
         , ["i)kon niet gecontroleerd worden", "L09"]
         , ["i)^niet gestart binnen", "L10"]
-        , ["i)er loopt (nog|al) een ronde", "L11"]
+        , ["i)er loopt (nog|al) een ronde|vraag van de app open", "L11"]
         , ["i)hoort bij instelling|is niet bekend bij instelling|^instelling .* is niet bekend", "L12"]
         , ["i)kolom Afd", "L13"]
         , ["i)onverwachte fout|onbekende fout", "X99"]]
+    ; Staat de code er al expliciet in (Ronde.Fout), dan telt die. De lijst
+    ; hierboven is voor teksten zonder code (planning, oude logs).
+    if RegExMatch(Tekst, "\[([GPLX]\d\d)\]", &M)
+        return M[1]
     for f in Lijst
         if RegExMatch(Tekst, f[1])
             return f[2]
@@ -176,13 +180,20 @@ Base64(Buf) {
 
 ; Verwijdert bestanden (Patroon, bijv. "map\*.txt") die langer dan Dagen
 ; dagen niet gewijzigd zijn. Een ongeldige of te kleine waarde doet niets.
+; Geeft het aantal verwijderde bestanden.
 Opruimen(Patroon, Dagen) {
+    n := 0
     if !IsInteger(Dagen) || Dagen < 1
-        return
+        return n
     loop files Patroon {
-        if DateDiff(A_Now, A_LoopFileTimeModified, "Days") > Dagen
-            try FileDelete A_LoopFileFullPath
+        if DateDiff(A_Now, A_LoopFileTimeModified, "Days") > Dagen {
+            try {
+                FileDelete A_LoopFileFullPath
+                n++
+            }
+        }
     }
+    return n
 }
 
 ; SHA-256 van een bestand (kleine letters), of "" bij een fout.

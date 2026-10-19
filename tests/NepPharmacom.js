@@ -50,14 +50,24 @@ var MAP = (typeof __DIR__ !== "undefined") ? __DIR__ : ".";
 var LOG = MAP + "nep_geprint.txt";
 
 // --- Gegevens ------------------------------------------------------------
-var Instellingen = { "T1": "2 WEKELIJKS 1", "T2": "2 WEKELIJKS 2" };
+var Instellingen = { "T1": "2 WEKELIJKS 1", "T2": "2 WEKELIJKS 2", "T3": "FOUTSCENARIO'S" };
 var Afdelingen = {
     "T1": { "T1GUA": "T1 GUA", "T1HA": "T1 Halers" },
-    "T2": { "T2GUA": "T2 GUA", "T2HA": "T2 Halers" }
+    "T2": { "T2GUA": "T2 GUA", "T2HA": "T2 Halers" },
+    "T3": { "T3FOUT": "T3 Foutscenario's" }
 };
 // Per patiënt: soort bepaalt de medicatiehistorie:
 //   ok = bovenste AN-regel met ASB: Deelbaar; geenAN = alleen andere apotheek;
 //   leeg = lege historie; geenDeelbaar = AN zonder ASB: Deelbaar
+// Foutscenario's (groep T3 / T3FOUT; verwachte uitkomst in de LEESMIJ):
+//   anderDossier = dossier toont een ander Pat.nr            -> stop [P08]
+//   popup        = Ctrl+B opent een melding i.p.v. dossier    -> stop [P07]
+//   hersorteer   = historie krijgt bij het selecteren een
+//                  nieuwe bovenste regel (ververst)           -> stop [P09]
+//   geenMenu     = Ctrl+P doet niets                          -> stop [P10]
+//   ongesorteerd = historie oudste bovenaan                   -> geprint, log "SCHADUW sortering ... NIET aflopend"
+//   patnrElders  = Pat.nr niet in een Pat.nr-veld             -> geprint, log "SCHADUW Pat.nr-veld: NIET gevonden"
+//   traag        = historie verschijnt pas na 2,5 s           -> geprint
 var Patienten = [
     { inst: "T1", afd: "T1GUA", naam: "Testpersoon, A", patnr: "900001", geb: "01-02-1950", ontslag: "", soort: "ok" },
     { inst: "T1", afd: "T1GUA", naam: "Proefmans, B", patnr: "900002", geb: "12-03-1944", ontslag: "", soort: "ok" },
@@ -68,18 +78,30 @@ var Patienten = [
     { inst: "T1", afd: "T1GUA", naam: "Probeer, G", patnr: "900007", geb: "08-08-1958", ontslag: "", soort: "ok" },
     { inst: "T1", afd: "T1HA", naam: "Haler, H", patnr: "900011", geb: "19-09-1947", ontslag: "", soort: "ok" },
     { inst: "T1", afd: "T1HA", naam: "Haler, I", patnr: "900012", geb: "30-10-1952", ontslag: "", soort: "ok" },
-    { inst: "T2", afd: "T2HA", naam: "Tweede, J", patnr: "900021", geb: "11-11-1941", ontslag: "", soort: "ok" }
+    { inst: "T2", afd: "T2HA", naam: "Tweede, J", patnr: "900021", geb: "11-11-1941", ontslag: "", soort: "ok" },
     // T2 / T2GUA: geen patiënten (test "Geen patiënten gevonden")
+    { inst: "T3", afd: "T3FOUT", naam: "Verwisseld, K", patnr: "900031", geb: "01-01-1951", ontslag: "", soort: "anderDossier" },
+    { inst: "T3", afd: "T3FOUT", naam: "Melding, L", patnr: "900032", geb: "02-02-1952", ontslag: "", soort: "popup" },
+    { inst: "T3", afd: "T3FOUT", naam: "Ververs, M", patnr: "900033", geb: "03-03-1953", ontslag: "", soort: "hersorteer" },
+    { inst: "T3", afd: "T3FOUT", naam: "Zondermenu, N", patnr: "900034", geb: "04-04-1954", ontslag: "", soort: "geenMenu" },
+    { inst: "T3", afd: "T3FOUT", naam: "Omgekeerd, O", patnr: "900035", geb: "05-05-1955", ontslag: "", soort: "ongesorteerd" },
+    { inst: "T3", afd: "T3FOUT", naam: "Elders, P", patnr: "900036", geb: "06-06-1956", ontslag: "", soort: "patnrElders" },
+    { inst: "T3", afd: "T3FOUT", naam: "Langzaam, Q", patnr: "900037", geb: "07-07-1957", ontslag: "", soort: "traag" }
 ];
+// Soorten met een gewone historie (bovenste AN-regel met ASB: Deelbaar)
+var GewoneHistorie = ["ok", "anderDossier", "patnrElders", "popup", "hersorteer", "geenMenu", "traag"];
 function historie(p) {
     // [Laatste V/A, Etiketnaam, Labeler, CF, Ap, Th. einddatum, Herhaal info]
+    // Zoals Pharmacom: nieuwste (Laatste V/A) bovenaan
     if (p.soort === "leeg") return [];
-    var r = [["01-09-2026", "PARACETAMOL 500MG TABLET", "AB", "12", "BG", "", "ASB: Deelbaar"]];
-    if (p.soort === "ok") r.push(["02-09-2026", "METFORMINE 850MG TABLET", "CD", "34", "AN", "", "ASB: Deelbaar"]);
-    if (p.soort === "geenDeelbaar") r.push(["03-09-2026", "OMEPRAZOL 20MG CAPSULE", "EF", "56", "AN", "", ""]);
+    var bg = ["05-09-2026", "PARACETAMOL 500MG TABLET", "AB", "12", "BG", "", "ASB: Deelbaar"];
+    var an1 = ["04-09-2026", "METFORMINE 850MG TABLET", "CD", "34", "AN", "", "ASB: Deelbaar"];
     // Nog een AN-regel eronder (de app moet de BOVENSTE nemen)
-    if (p.soort === "ok") r.push(["04-09-2026", "SIMVASTATINE 40MG TABLET", "GH", "78", "AN", "", "ASB: Deelbaar"]);
-    return r;
+    var an2 = ["01-09-2026", "SIMVASTATINE 40MG TABLET", "GH", "78", "AN", "", "ASB: Deelbaar"];
+    if (GewoneHistorie.indexOf(p.soort) >= 0) return [bg, an1, an2];
+    if (p.soort === "ongesorteerd") return [an2, an1, bg];   // oudste bovenaan
+    if (p.soort === "geenDeelbaar") return [bg, ["04-09-2026", "OMEPRAZOL 20MG CAPSULE", "EF", "56", "AN", "", ""]];
+    return [bg];   // geenAN
 }
 
 // --- Hulpjes ---------------------------------------------------------------
@@ -197,7 +219,9 @@ function openDossier(p) {
     dossier = new Swing.JDialog(frame, "Pati" + E + "nt dossier", false);
     dossier.setSize(820, 480); dossier.setLocationRelativeTo(frame);
     var kop = new Swing.JPanel(new AWT.FlowLayout(AWT.FlowLayout.LEFT));
-    kop.add(new Swing.JLabel("Pat.nr: " + p.patnr));
+    if (p.soort === "anderDossier") kop.add(new Swing.JLabel("Pat.nr: 900099"));
+    else if (p.soort === "patnrElders") kop.add(new Swing.JLabel("Relatie " + p.patnr));
+    else kop.add(new Swing.JLabel("Pat.nr: " + p.patnr));
     kop.add(new Swing.JLabel(p.naam));
     kop.add(new Swing.JLabel("Geboren: " + p.geb));
     histKaarten = new AWT.CardLayout();
@@ -223,9 +247,33 @@ function openDossier(p) {
     print("Dossier " + p.patnr + " geopend");
 }
 function toonHistorie() {
-    var lm = links.getModel(), rm = rechts.getModel();
-    historie(dossierPat).forEach(function (r) { regel(lm, [r[0], r[1]]); regel(rm, [r[2], r[3], r[4], r[5], r[6]]); });
+    var lm = links.getModel(), rm = rechts.getModel(), p = dossierPat;
+    var vul = function () {
+        if (!dossier || dossierPat !== p) return;
+        historie(p).forEach(function (r) { regel(lm, [r[0], r[1]]); regel(rm, [r[2], r[3], r[4], r[5], r[6]]); });
+    };
     histKaarten.show(histMidden, "historie");
+    if (p.soort === "traag") later(2500, vul); else vul();
+    if (p.soort === "hersorteer") {
+        // Bij de eerste selectie ververst de historie: een nieuwe bovenste regel
+        var gedaan = false;
+        rechts.getSelectionModel().addListSelectionListener(function (e) {
+            if (gedaan || e.getValueIsAdjusting() || rechts.getSelectedRow() < 0) return;
+            gedaan = true;
+            later(10, function () {
+                lm.insertRow(0, Java.to(["06-09-2026", "AMLODIPINE 5MG TABLET"], "java.lang.Object[]"));
+                rm.insertRow(0, Java.to(["IJ", "90", "AN", "", "ASB: Deelbaar"], "java.lang.Object[]"));
+                print("Historie ververst (hersorteer)");
+            });
+        });
+    }
+}
+function openMelding(p) {
+    var d = new Swing.JDialog(frame, "Let op", false);
+    d.add(new Swing.JLabel("  Er is een notitie bij deze pati" + E + "nt. (Escape = sluiten)"));
+    d.setSize(380, 120); d.setLocationRelativeTo(frame);
+    d.setVisible(true);
+    print("Melding i.p.v. dossier voor " + p.patnr);
 }
 function kies(item) {
     menu.setVisible(false);
@@ -258,13 +306,17 @@ AWT.KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(
         if (ctrl && k === KE.VK_F11) { later(300, openBuffer); return true; }
         if (ctrl && k === KE.VK_B) {
             var r = bufferTabel.getSelectedRow();
-            if (r >= 0 && r < gevonden.length) { var p = gevonden[r]; later(400, function () { openDossier(p); }); }
+            if (r >= 0 && r < gevonden.length) {
+                var p = gevonden[r];
+                later(400, function () { if (p.soort === "popup") openMelding(p); else openDossier(p); });
+            }
             return true;
         }
     }
     if (dossier && actief === dossier) {
         if (k === KE.VK_F4) { later(300, toonHistorie); return true; }
         if (ctrl && k === KE.VK_P) {
+            if (dossierPat && dossierPat.soort === "geenMenu") { print("Ctrl+P genegeerd (geenMenu)"); return true; }
             later(250, function () { if (dossier) menu.show(dossier.getContentPane(), 300, 120); });
             return true;
         }
