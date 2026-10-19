@@ -1,5 +1,5 @@
 ﻿# Toont alle zichtbare Java-tabellen in Pharmacom met hun kolomkoppen (geen patientgegevens;
-# venstertitels met cijfers of een komma worden "(titel verborgen)").
+# van venstertitels alleen programma en scherm, de rest "(verborgen)").
 # Uitvoeren met 32-bit PowerShell:
 #   C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File jab_tabellen_tonen.ps1
 # De Java-map (en dus de bridge-DLL) wordt afgeleid van het lopende Pharmacom-proces.
@@ -51,7 +51,10 @@ public static class J {
   public static void Run(uint pid){
     var hs=new List<IntPtr>(); EnumWindows((h,l)=>{uint p; GetWindowThreadProcessId(h,out p); if(p==pid&&IsWindowVisible(h)) hs.Add(h); return true;},IntPtr.Zero);
     foreach(var h in hs){ var sb=new StringBuilder(256); GetWindowText(h,sb,256);
-      string titel=sb.ToString(); if(titel.Length>40||System.Text.RegularExpressions.Regex.IsMatch(titel,"[0-9,]")) titel="(titel verborgen)";
+      // Alleen programma en scherm: bij een dossier staat de patientnaam als derde deel in de titel
+      string[] delen=sb.ToString().Split(new string[]{" - "}, StringSplitOptions.None);
+      string titel=delen[0]+(delen.Length>1?" - "+delen[1]:"")+(delen.Length>2?" - (verborgen)":"");
+      if(titel.Length>50||System.Text.RegularExpressions.Regex.IsMatch(titel,"[0-9,]")) titel="(titel verborgen)";
       o.AppendLine("WINDOW "+h+" '"+titel+"' java="+isJavaWindow(h));
       if(isJavaWindow(h)==0) continue; int vm; long ac; if(getAccessibleContextFromHWND(h,out vm,out ac)==0) continue;
       nodes=0; roles=new Dictionary<string,int>(); Walk(vm,ac,0,""); releaseJavaObject(vm,ac);

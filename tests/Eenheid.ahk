@@ -77,6 +77,9 @@ T("VeiligeTitel schermnaam", VeiligeTitel("Pharmacom - Aanschrijfbuffer") = "Pha
 T("VeiligeTitel leeg", VeiligeTitel("") = "")
 T("VeiligeTitel met naam", VeiligeTitel("Dossier Jansen, J") = "(titel verborgen)")
 T("VeiligeTitel met Pat.nr", VeiligeTitel("Dossier 123456") = "(titel verborgen)")
+T("VeiligeTitel dossier met naam", VeiligeTitel("Pharmacom - Dossier - AB Achternaam") = "Pharmacom - Dossier - (verborgen)")
+T("VeiligeTitel dossier met naam en streepje", VeiligeTitel("Pharmacom - Dossier - de Vries - Jansen") = "Pharmacom - Dossier - (verborgen)")
+T("VeiligeTitel alleen programma", VeiligeTitel("Pharmacom") = "Pharmacom")
 T("VeiligeTitel te lang", VeiligeTitel("Een heel lange titel van meer dan veertig tekens lang") = "(titel verborgen)")
 L := TelLogregels(["10:00:00.1 - Ronde klaar: 3 geprint, 0 overgeslagen in 0:10"
     , "10:01:00.1 - Geplande ronde 'T1 GUA' klaar: 2 geprint"

@@ -68,11 +68,19 @@ UriDecode(S) {
 ; Aanschrijfbuffer"). Zonder schermnaam in de titel: aannemen van wel.
 TitelIsBuffer(Titel) => !RegExMatch(Titel, "^Pharmacom\s+-\s+\S") || InStr(Titel, "Aanschrijfbuffer") > 0
 
-; Venstertitel voor het log of een melding, zonder pati"entgegevens: een
-; titel met cijfers (Pat.nr, datum) of een komma ("Achternaam, V"), of een
-; lange titel, wordt "(titel verborgen)". Schermnamen als "Pharmacom -
-; Aanschrijfbuffer" blijven leesbaar.
-VeiligeTitel(Titel) => Titel = "" || (StrLen(Titel) <= 40 && !RegExMatch(Titel, "[\d,]")) ? Titel : "(titel verborgen)"
+; Venstertitel voor het log of een melding, zonder pati"entgegevens. Alleen
+; de eerste twee delen (programma en scherm, gescheiden door " - ") blijven
+; staan: Pharmacom zet bij een open dossier de naam van de patiënt als derde
+; deel in de titel ("Pharmacom - Dossier - <naam>"). Bevat wat overblijft
+; cijfers (Pat.nr, datum) of een komma ("Achternaam, V"), of is het lang, dan
+; "(titel verborgen)".
+VeiligeTitel(Titel) {
+    if Titel = ""
+        return ""
+    Delen := StrSplit(Titel, " - ")
+    T := Delen[1] (Delen.Length > 1 ? " - " Delen[2] : "") (Delen.Length > 2 ? " - (verborgen)" : "")
+    return StrLen(T) <= 50 && !RegExMatch(T, "[\d,]") ? T : "(titel verborgen)"
+}
 
 ; --- Foutcodes ------------------------------------------------------------
 ; Vaste code per soort fout, zodat een melding, het log, het rapport en de
