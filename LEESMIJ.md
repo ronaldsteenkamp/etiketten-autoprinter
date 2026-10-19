@@ -372,20 +372,22 @@ zonder regel van AN, met een lege historie, met een ontslagdatum en zonder
 Met een argument start de app meteen een ronde, zoals een planning:
 `"Test met nep-Pharmacom.cmd" T1/T1GUA/proef` of `.../print`.
 
-**Foutscenario's (groep T3 / T3FOUT).** Per patiënt één ding dat mis kan gaan. Vink
-alleen de patiënt aan die je wilt testen (de ronde stopt bij een fout) en kijk of de
-uitkomst klopt; na een stop moet Pharmacom weer op de aanschrijfbuffer staan en mag
-er niets in `nep_geprint.txt` bij gekomen zijn.
+**Foutscenario's (instelling T3, één afdeling per scenario).** Elke afdeling heeft
+één patiënt met één ding dat mis kan gaan; start ze apart, bijv.
+`"Test met nep-Pharmacom.cmd" T3/T3DOS/print`. Na een stop moet Pharmacom weer op de
+aanschrijfbuffer staan en mag er niets in `nep_geprint.txt` bij gekomen zijn. (Bij
+een geplande ronde gaat de app na een hapering zelf verder; stopt hij twee keer bij
+dezelfde patiënt, dan wordt die overgeslagen.)
 
-| Pat.nr | Scenario | Verwacht |
-|---|---|---|
-| 900031 | Dossier toont een ander Pat.nr | Stop `[P08]`, niets geprint |
-| 900032 | Ctrl+B opent een melding in plaats van het dossier | Stop `[P07]` (geen historie in dat venster), niets geprint |
-| 900033 | Historie ververst bij het selecteren (nieuwe bovenste regel) | Stop `[P09]`, niets geprint |
-| 900034 | Ctrl+P doet niets | Stop `[P10]`, niets geprint |
-| 900035 | Historie oudste bovenaan | Geprint (SIMVASTATINE); log: `SCHADUW sortering Laatste V/A: NIET aflopend` |
-| 900036 | Pat.nr niet in een Pat.nr-veld | Geprint; log: `SCHADUW Pat.nr-veld: NIET gevonden` |
-| 900037 | Historie verschijnt pas na 2,5 s | Geprint (METFORMINE) |
+| Groep | Pat.nr | Scenario | Verwacht |
+|---|---|---|---|
+| T3/T3DOS | 900031 | Dossier toont een ander Pat.nr | Stop `[P08]`, niets geprint |
+| T3/T3POP | 900032 | Ctrl+B opent een melding in plaats van het dossier | Stop `[P07]` (geen historie in dat venster), niets geprint |
+| T3/T3VER | 900033 | Historie ververst bij het selecteren (nieuwe bovenste regel) | Stop `[P09]`, niets geprint |
+| T3/T3MEN | 900034 | Ctrl+P doet niets | Stop `[P10]`, niets geprint |
+| T3/T3SRT | 900035 | Historie oudste bovenaan | Geprint (SIMVASTATINE); log: `SCHADUW sortering Laatste V/A: NIET aflopend` |
+| T3/T3VLD | 900036 | Pat.nr niet in een Pat.nr-veld | Geprint; log: `SCHADUW Pat.nr-veld: NIET gevonden` |
+| T3/T3TRG | 900037 | Historie verschijnt pas na 2,5 s | Geprint (METFORMINE) |
 
 Bij alle gewone patiënten (T1, T2) moet het log `SCHADUW Pat.nr-veld: gevonden` en
 `SCHADUW sortering Laatste V/A: aflopend` geven.

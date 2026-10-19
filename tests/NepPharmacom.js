@@ -54,12 +54,12 @@ var Instellingen = { "T1": "2 WEKELIJKS 1", "T2": "2 WEKELIJKS 2", "T3": "FOUTSC
 var Afdelingen = {
     "T1": { "T1GUA": "T1 GUA", "T1HA": "T1 Halers" },
     "T2": { "T2GUA": "T2 GUA", "T2HA": "T2 Halers" },
-    "T3": { "T3FOUT": "T3 Foutscenario's" }
+    "T3": { "T3DOS": "Fout: ander dossier", "T3POP": "Fout: melding", "T3VER": "Fout: ververst", "T3MEN": "Fout: geen menu", "T3SRT": "Fout: oudste boven", "T3VLD": "Fout: Pat.nr elders", "T3TRG": "Fout: traag" }
 };
 // Per patiënt: soort bepaalt de medicatiehistorie:
 //   ok = bovenste AN-regel met ASB: Deelbaar; geenAN = alleen andere apotheek;
 //   leeg = lege historie; geenDeelbaar = AN zonder ASB: Deelbaar
-// Foutscenario's (groep T3 / T3FOUT; verwachte uitkomst in de LEESMIJ):
+// Foutscenario's (instelling T3, elk een eigen afdeling; verwachte uitkomst in de LEESMIJ):
 //   anderDossier = dossier toont een ander Pat.nr            -> stop [P08]
 //   popup        = Ctrl+B opent een melding i.p.v. dossier    -> stop [P07]
 //   hersorteer   = historie krijgt bij het selecteren een
@@ -80,13 +80,13 @@ var Patienten = [
     { inst: "T1", afd: "T1HA", naam: "Haler, I", patnr: "900012", geb: "30-10-1952", ontslag: "", soort: "ok" },
     { inst: "T2", afd: "T2HA", naam: "Tweede, J", patnr: "900021", geb: "11-11-1941", ontslag: "", soort: "ok" },
     // T2 / T2GUA: geen patiënten (test "Geen patiënten gevonden")
-    { inst: "T3", afd: "T3FOUT", naam: "Verwisseld, K", patnr: "900031", geb: "01-01-1951", ontslag: "", soort: "anderDossier" },
-    { inst: "T3", afd: "T3FOUT", naam: "Melding, L", patnr: "900032", geb: "02-02-1952", ontslag: "", soort: "popup" },
-    { inst: "T3", afd: "T3FOUT", naam: "Ververs, M", patnr: "900033", geb: "03-03-1953", ontslag: "", soort: "hersorteer" },
-    { inst: "T3", afd: "T3FOUT", naam: "Zondermenu, N", patnr: "900034", geb: "04-04-1954", ontslag: "", soort: "geenMenu" },
-    { inst: "T3", afd: "T3FOUT", naam: "Omgekeerd, O", patnr: "900035", geb: "05-05-1955", ontslag: "", soort: "ongesorteerd" },
-    { inst: "T3", afd: "T3FOUT", naam: "Elders, P", patnr: "900036", geb: "06-06-1956", ontslag: "", soort: "patnrElders" },
-    { inst: "T3", afd: "T3FOUT", naam: "Langzaam, Q", patnr: "900037", geb: "07-07-1957", ontslag: "", soort: "traag" }
+    { inst: "T3", afd: "T3DOS", naam: "Verwisseld, K", patnr: "900031", geb: "01-01-1951", ontslag: "", soort: "anderDossier" },
+    { inst: "T3", afd: "T3POP", naam: "Melding, L", patnr: "900032", geb: "02-02-1952", ontslag: "", soort: "popup" },
+    { inst: "T3", afd: "T3VER", naam: "Ververs, M", patnr: "900033", geb: "03-03-1953", ontslag: "", soort: "hersorteer" },
+    { inst: "T3", afd: "T3MEN", naam: "Zondermenu, N", patnr: "900034", geb: "04-04-1954", ontslag: "", soort: "geenMenu" },
+    { inst: "T3", afd: "T3SRT", naam: "Omgekeerd, O", patnr: "900035", geb: "05-05-1955", ontslag: "", soort: "ongesorteerd" },
+    { inst: "T3", afd: "T3VLD", naam: "Elders, P", patnr: "900036", geb: "06-06-1956", ontslag: "", soort: "patnrElders" },
+    { inst: "T3", afd: "T3TRG", naam: "Langzaam, Q", patnr: "900037", geb: "07-07-1957", ontslag: "", soort: "traag" }
 ];
 // Soorten met een gewone historie (bovenste AN-regel met ASB: Deelbaar)
 var GewoneHistorie = ["ok", "anderDossier", "patnrElders", "popup", "hersorteer", "geenMenu", "traag"];
