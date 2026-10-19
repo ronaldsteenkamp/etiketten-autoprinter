@@ -1,0 +1,149 @@
+# =====================================================================
+# VOORSTEL (review 15-10-2026) - niet in .github/ zetten zonder beoordeling.
+#
+# Verschillen met .github/workflows/tests.yml:
+#  1. Actions vastgepind op commit-SHA (een tag kan verplaatst worden).
+#     SHA's opgehaald met `git ls-remote` op 15-10-2026; Dependabot
+#     (.github/dependabot.yml, package-ecosystem: github-actions) houdt ze bij.
+#  2. AutoHotkey-download met SHA-256-controle. De waarde hieronder is een
+#     PLAATSHOUDER: eenmalig zelf bepalen met
+#       Get-FileHash AutoHotkey_2.0.26.zip -Algorithm SHA256
+#     en vergelijken met een tweede bron (bijv. een tweede download op een
+#     andere computer), daarna invullen.
+#  3. persist-credentials: false (de tests hebben geen schrijfrechten op de
+#     repository nodig; in release.yml draaien ze nu met contents: write).
+#  4. Python-ports van de pure logica (review/tests_voorstel) met pytest.
+#  5. Proefballon: end-to-end-ronde tegen de nep-Pharmacom (Java 8 x86 met
+#     jjs en de Java Access Bridge). continue-on-error tot bewezen is dat een
+#     GitHub-runner dit betrouwbaar kan (interactief bureaublad, focus).
+#
+# Zelfde stappen horen in release.yml vóór het compileren; daar ook:
+#  - de AHK- en Ahk2Exe-zip met hash controleren (Ahk2Exe 1.1.37.02a2 is
+#    een alpha-uitgave: liever een definitieve versie);
+#  - de release-job in een `environment: release` met verplichte goedkeuring
+#    (Settings -> Environments), en tag-bescherming voor v*.
+# =====================================================================
+name: Tests (voorstel)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  AHK_VERSIE: "2.0.26"
+  AHK_SHA256: "VUL-IN-NA-EENMALIGE-CONTROLE"   # zie kop
+
+jobs:
+  eenheid:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683   # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: AutoHotkey ophalen en controleren
+        shell: pwsh
+        run: |
+          Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v$env:AHK_VERSIE/AutoHotkey_$env:AHK_VERSIE.zip" -OutFile ahk.zip
+          $h = (Get-FileHash ahk.zip -Algorithm SHA256).Hash.ToLower()
+          if ($h -ne $env:AHK_SHA256.ToLower()) { Write-Error "AutoHotkey-zip heeft SHA-256 $h, verwacht $env:AHK_SHA256"; exit 1 }
+          Expand-Archive ahk.zip -DestinationPath "$env:RUNNER_TEMP\ahk"
+
+      - name: Script controleren (syntax)
+        shell: pwsh
+        run: |
+          $p = Start-Process "$env:RUNNER_TEMP\ahk\AutoHotkey32.exe" -ArgumentList '/ErrorStdOut /Validate Etiketten_autoprinter.ahk' -PassThru -Wait -NoNewWindow -RedirectStandardError val.txt
+          Get-Content val.txt
+          if ($p.ExitCode -ne 0) { exit 1 }
+
+      - name: Unit-tests (AutoHotkey)
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File tests\alle_tests.ps1 -Ahk "$env:RUNNER_TEMP\ahk\AutoHotkey32.exe"
+
+      - name: Unit-tests (Python-ports van de pure logica)
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check pytest==8.3.3
+          python -m pytest review/tests_voorstel -q
+
+  nep-pharmacom:
+    # Proefballon: een echte ronde (proef en print) tegen de nep-Pharmacom.
+    runs-on: windows-latest
+    needs: eenheid
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683   # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Java 8 (32-bit, met jjs en de Access Bridge)
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00   # v4.7.1
+        with:
+          distribution: temurin
+          java-version: "8"
+          architecture: x86
+
+      - name: AutoHotkey ophalen en controleren
+        shell: pwsh
+        run: |
+          Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v$env:AHK_VERSIE/AutoHotkey_$env:AHK_VERSIE.zip" -OutFile ahk.zip
+          $h = (Get-FileHash ahk.zip -Algorithm SHA256).Hash.ToLower()
+          if ($h -ne $env:AHK_SHA256.ToLower()) { Write-Error "AutoHotkey-zip klopt niet"; exit 1 }
+          Expand-Archive ahk.zip -DestinationPath "$env:RUNNER_TEMP\ahk"
+
+      - name: Access Bridge aanzetten
+        shell: pwsh
+        run: |
+          & "$env:JAVA_HOME\bin\jabswitch.exe" -enable
+          Get-Content "$env:USERPROFILE\.accessibility.properties"
+
+      - name: Ronde tegen de nep-Pharmacom (T1/T1GUA/print)
+        shell: pwsh
+        env:
+          ETIKETTEN_TEST: "1"
+          ETIKETTEN_TEST_START: "T1/T1GUA/print"
+        run: |
+          Remove-Item tests\nep_geprint.txt -ErrorAction SilentlyContinue
+          $nep = Start-Process "$env:JAVA_HOME\bin\jjs.exe" -ArgumentList "`"$PWD\tests\NepPharmacom.js`"" -PassThru
+          Start-Sleep 5
+          $app = Start-Process "$env:RUNNER_TEMP\ahk\AutoHotkey32.exe" -ArgumentList "`"$PWD\Etiketten_autoprinter.ahk`"" -PassThru
+          # Verwacht (zie NepPharmacom.js): 900001, 900002 en 900007 krijgen
+          # "Barcode etiket" met de bovenste AN-regel (METFORMINE); 900003-900006
+          # worden overgeslagen (geen AN, leeg, ontslag, niet deelbaar).
+          $eind = (Get-Date).AddMinutes(5)
+          do {
+            Start-Sleep 5
+            $regels = @(Get-Content tests\nep_geprint.txt -ErrorAction SilentlyContinue)
+          } while ($regels.Count -lt 3 -and (Get-Date) -lt $eind)
+          Start-Sleep 10   # niets extra's meer?
+          $regels = @(Get-Content tests\nep_geprint.txt -ErrorAction SilentlyContinue)
+          Stop-Process $app.Id, $nep.Id -Force -ErrorAction SilentlyContinue
+          $regels | ForEach-Object { Write-Host $_ }
+          $nrs = $regels | ForEach-Object { ($_ -split ";")[2] }
+          if (($nrs -join ",") -ne "900001,900002,900007") { Write-Error "Geprint: $($nrs -join ',') (verwacht 900001,900002,900007)"; exit 1 }
+          if ($regels | Where-Object { $_ -notmatch ";Barcode etiket;METFORMINE 850MG TABLET$" }) { Write-Error "Verkeerd item of etiket"; exit 1 }
+
+      - name: Log kopiëren (testmodus schrijft naar %TEMP%\Etiketten autoprinter test)
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force logs | Out-Null
+          Copy-Item "$env:TEMP\Etiketten autoprinter test\Gegevens\Log\*.txt" logs -ErrorAction SilentlyContinue
+          Copy-Item tests\nep_geprint.txt logs -ErrorAction SilentlyContinue
+
+      - name: Log bewaren
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02   # v4.6.2
+        with:
+          name: log-nep-pharmacom
+          path: logs/
+          if-no-files-found: ignore
+
+# Voor release.yml (ter vergelijking, ook vastgepind):
+#   actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be   # v2.4.0
+#   signpath/github-action-submit-signing-request@3c306158facd969ebdb385c6845dee38afc2ebf9   # v1.1

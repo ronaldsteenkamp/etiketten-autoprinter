@@ -1,0 +1,7 @@
+﻿--- geplande ronde (via Voer) ---
+Planning.Voer catch: testfout
+Planning.Voer finally
+Na Voer: Ronde.Bezig=1, blokkade=1
+--- handmatige ronde (StartRun via timer, zonder try) ---
+Vangnet aangeroepen: testfout
+Na handmatig: Ronde.Bezig=0, blokkade=0

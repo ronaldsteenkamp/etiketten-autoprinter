@@ -1,0 +1,9 @@
+﻿Cel '0123' = Cel '123' => 0
+Cel '123' = Cel '123.0' => 0
+Cel '1e3' = Cel '1000' => 0
+Cel '0x10' = Cel '16' => 0
+Cel ' 123 ' = Cel '123' => 1
+Cel 'an' != Cel 'AN' => 0
+Cel '0183' != Cel '183' (Ap als getal) => 1
+Map: '0123' geregistreerd, Has('123') => 0
+Register-sleutel '0123' Has(Cel '123') => 0

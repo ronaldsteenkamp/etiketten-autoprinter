@@ -535,6 +535,13 @@ class Planning {
                 Melder.Toon("Geplande ronde '" it.naam "' klaar, maar Pat.nr " NietGelukt " is overgeslagen na een fout. Handmatig controleren.", , 2, ObjBindMethod(Planning, "Toon"))
         } catch as e {
             Log("  fout in geplande ronde: " e.Message " (" e.What ", regel " e.Line ")")
+            ; Het vangnet gaat hier niet af: zelf de ronde netjes stoppen
+            if Ronde.Noodstop(e) {
+                Log("Geplande ronde '" it.naam "' gestopt: " Ronde.StopReden)
+                try Venster.Status("fout", "Geplande ronde '" it.naam "' gestopt: onverwachte fout [X99]: " e.Message)
+                try Venster.Geluid("gestopt")
+                try Melder.Toon("Geplande ronde '" it.naam "' gestopt door een onverwachte fout [X99]. Toetsenbord en muis zijn weer vrij. Met Doorgaan ga je verder.", , 2, ObjBindMethod(Planning, "Toon"))
+            }
             if !Proef
                 this.ZetStatus(it, "mislukt", "onverwachte fout: " e.Message)
         } finally {

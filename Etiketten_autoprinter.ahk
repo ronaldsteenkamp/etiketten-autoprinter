@@ -49,7 +49,7 @@ global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
 global AppGitHub := "ronaldsteenkamp/etiketten-autoprinter"                        ; GitHub-repository voor updates ("eigenaar/naam"); leeg = alleen de updatemap
-global AppVersie := "6.13"
+global AppVersie := "6.14"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%.0.0
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -203,43 +203,8 @@ Vangnet(e, Modus) {
         return 1
     BezigMetFout := true
     try Log("ONVERWACHTE FOUT [X99]: " e.Message " | " e.What " | regel " e.Line " | " e.Extra " | " e.File)
-    WasBezig := Ronde.Bezig
-    try Invoer.Blokkeer(false)
-    try Venster.GeenActivatie(false)
-    if WasBezig {
-        try SetTimer RondeTijd, 0
-        p := Ronde.Huidig
-        try {
-            if IsObject(p) && Ronde.Gekozen && !p.geprintNu {
-                ; Het item in het afdrukmenu was al gekozen: telt als geprint
-                Tijd := Opslag.Registreer(p.patnr)
-                p.geregistreerd := Tijd != ""
-                Ronde.VandaagGeprint[p.patnr] := Tijd != "" ? Tijd : "?"
-                p.geprintNu := true
-                Log("  Pat.nr " p.patnr ": etiket was al gekozen, als geprint geregistreerd")
-            }
-            ; Claim vrijgeven, behalve als het etiket geprint is maar niet in
-            ; het register kwam (zie Ronde.StartRun)
-            if IsObject(p) && !Ronde.Proef && (!p.geprintNu || (p.HasProp("geregistreerd") && p.geregistreerd))
-                Opslag.GeefVrij(p.patnr)
-            if IsObject(p)
-                Opslag.Rapporteer(p, "", "Gestopt: onverwachte fout [X99] (" e.Message ")", Ronde.Apotheek)
-        }
-        Ronde.Bezig := false, Ronde.Stoppen := false, Ronde.Huidig := ""
-        try Wakker.Zet("ronde", false)
-        try Waakhond.Patient(0)
-        Ronde.StopReden := MetCode("onverwachte fout")
-        try Ph.TerugNaarBuffer()
-        try {
-            Venster.Ui("bezig", 0)
-            Venster.ZetKnop("start", true)
-            Venster.ZetKnop("proef", true)
-            Venster.ZetKnop("vernieuwen", Ph.Verbonden)
-            Venster.ZetKnop("stop", false)
-            Venster.Voortgang("oranje")
-            Venster.KnopTekst("start", "Doorgaan")
-        }
-    }
+    WasBezig := false
+    try WasBezig := Ronde.Noodstop(e)   ; blokkade eraf, ronde netjes stoppen
     Planning.Bezig := false
     try Venster.ZetBovenop()
     Tekst := "Er ging iets onverwachts mis" (WasBezig ? " tijdens het printen. De ronde is gestopt en toetsenbord en muis zijn weer vrij. Met Doorgaan ga je verder; wie al geprint is, wordt overgeslagen." : ".")
