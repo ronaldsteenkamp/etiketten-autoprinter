@@ -5,7 +5,13 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.14", ["Gaat er tijdens een geplande ronde iets onverwachts mis, dan stopt de ronde nu netjes: toetsenbord en muis zijn meteen weer vrij en een al gekozen etiket telt als geprint (eerst bleef de blokkade staan)."]]
+        ["6.15", ["Veiliger: het dossier wordt altijd op Pat.nr gecontroleerd, en vlak voor het printen kijkt de app nog een keer of de gekozen regel klopt. Klopt iets niet, dan stopt hij."
+            , "Geen dubbele etiketten: is de netwerkmap even weg, dan print de app niet; en twee computers kunnen nooit tegelijk dezelfde patiënt printen."
+            , "Staat een patiënt op 'bezig' bij een andere computer (of liep de app daar vast), dan staat hij in de lijst als Controleren: kijk of er een etiket is."
+            , "Een geplande ronde wacht als er in de app nog een vraag openstaat."
+            , "Minder privégegevens in het logbestand: geen namen en geen titels van vensters van andere programma's."
+            , "Instellingen: 'Dossier controleren' en 'Dossier alleen op Pat.nr' zijn vervallen; die controle staat nu altijd aan."]]
+        , ["6.14", ["Gaat er tijdens een geplande ronde iets onverwachts mis, dan stopt de ronde nu netjes: toetsenbord en muis zijn meteen weer vrij en een al gekozen etiket telt als geprint (eerst bleef de blokkade staan)."]]
         , ["6.13", ["Kortere versienummers: voortaan 6.13, 6.14 enzovoort in plaats van 6.12.0."]]
         , ["6.12.0", ["Sneller per patiënt: de dossiercontrole stopt zodra het Pat.nr gevonden is, en de aanschrijfbuffer en de medicatiehistorie worden minder vaak opnieuw gezocht."
             , "Staat de app dagenlang open, dan kijkt hij elke 4 uur of er een nieuwe versie is en meldt dat rechtsonder (klik om bij te werken)."]]

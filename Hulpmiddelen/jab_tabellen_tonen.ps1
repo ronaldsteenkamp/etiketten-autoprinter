@@ -1,10 +1,16 @@
-﻿# Toont alle zichtbare Java-tabellen in Pharmacom met hun kolomkoppen (geen patientgegevens).
+﻿# Toont alle zichtbare Java-tabellen in Pharmacom met hun kolomkoppen (geen patientgegevens;
+# venstertitels met cijfers of een komma worden "(titel verborgen)").
 # Uitvoeren met 32-bit PowerShell:
 #   C:\Windows\SysWOW64\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File jab_tabellen_tonen.ps1
+# De Java-map (en dus de bridge-DLL) wordt afgeleid van het lopende Pharmacom-proces.
+$p = Get-Process javaw | ? { $_.MainWindowTitle -like 'Pharmacom*' } | Select -First 1
+if (!$p) { throw "Pharmacom (javaw.exe) is niet open" }
+$JreBin = Split-Path $p.Path
 Add-Type -ReferencedAssemblies System.Windows.Forms @"
 using System; using System.Text; using System.Runtime.InteropServices; using System.Collections.Generic;
 public static class J {
-  const string D = @"C:\PharmaPartners\jres\oracle\1.8.0_491\bin\WindowsAccessBridge-32.dll";
+  const string D = "WindowsAccessBridge-32.dll";   // gevonden via SetDllDirectory (Java-map van Pharmacom)
+  [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern bool SetDllDirectory(string p);
   [DllImport(D, CallingConvention=CallingConvention.Cdecl)] public static extern void Windows_run();
   [DllImport(D, CallingConvention=CallingConvention.Cdecl)] public static extern int isJavaWindow(IntPtr h);
   [DllImport(D, CallingConvention=CallingConvention.Cdecl)] public static extern int getAccessibleContextFromHWND(IntPtr h, out int vm, out long ac);
@@ -45,16 +51,17 @@ public static class J {
   public static void Run(uint pid){
     var hs=new List<IntPtr>(); EnumWindows((h,l)=>{uint p; GetWindowThreadProcessId(h,out p); if(p==pid&&IsWindowVisible(h)) hs.Add(h); return true;},IntPtr.Zero);
     foreach(var h in hs){ var sb=new StringBuilder(256); GetWindowText(h,sb,256);
-      o.AppendLine("WINDOW "+h+" '"+sb+"' java="+isJavaWindow(h));
+      string titel=sb.ToString(); if(titel.Length>40||System.Text.RegularExpressions.Regex.IsMatch(titel,"[0-9,]")) titel="(titel verborgen)";
+      o.AppendLine("WINDOW "+h+" '"+titel+"' java="+isJavaWindow(h));
       if(isJavaWindow(h)==0) continue; int vm; long ac; if(getAccessibleContextFromHWND(h,out vm,out ac)==0) continue;
       nodes=0; roles=new Dictionary<string,int>(); Walk(vm,ac,0,""); releaseJavaObject(vm,ac);
       o.AppendLine("  nodes visited: "+nodes); foreach(var kv in roles) o.Append("  ["+kv.Key+"="+kv.Value+"]"); o.AppendLine(); }
   }
 }
 "@
+[void][J]::SetDllDirectory($JreBin)
 [J]::Windows_run()
 $t=[DateTime]::Now; while(([DateTime]::Now-$t).TotalMilliseconds -lt 1500){ [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 20 }
-$p = Get-Process javaw | ? { $_.MainWindowTitle -like 'Pharmacom*' } | Select -First 1
 [J]::Run([uint32]$p.Id)
 [J]::o.ToString()
 
