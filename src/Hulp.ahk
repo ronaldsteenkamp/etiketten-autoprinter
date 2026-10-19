@@ -196,6 +196,26 @@ Opruimen(Patroon, Dagen) {
     return n
 }
 
+; Maakt Pad alleen aan als het nog niet bestaat (in één stap, ook op een
+; netwerkschijf: CREATE_NEW) en zet Tekst erin (UTF-8). Geeft 0 als het gelukt
+; is, anders de Windows-foutcode (80 = bestaat al, 32 = wordt net gebruikt).
+; Gebruikt voor claims (Opslag.Claim) en het slot op de gedeelde ini.
+NieuwBestand(Pad, Tekst) {
+    ; GENERIC_WRITE, niet delen, CREATE_NEW, FILE_ATTRIBUTE_NORMAL
+    h := DllCall("CreateFileW", "Str", Pad, "UInt", 0x40000000, "UInt", 0, "Ptr", 0, "UInt", 1, "UInt", 0x80, "Ptr", 0, "Ptr")
+    if h = -1
+        return A_LastError ? A_LastError : -1
+    Buf := Buffer(StrPut(Tekst, "UTF-8"))
+    n := StrPut(Tekst, Buf, "UTF-8") - 1
+    Geschreven := 0
+    Ok := DllCall("WriteFile", "Ptr", h, "Ptr", Buf, "UInt", n, "UInt*", &Geschreven, "Ptr", 0)
+    DllCall("CloseHandle", "Ptr", h)
+    if Ok && Geschreven = n
+        return 0
+    try FileDelete Pad
+    return -1
+}
+
 ; SHA-256 van een bestand (kleine letters), of "" bij een fout.
 Sha256(Bestand) {
     static PROV_RSA_AES := 24, CALG_SHA_256 := 0x800C, CRYPT_VERIFYCONTEXT := 0xF0000000

@@ -2,13 +2,18 @@
 Gegevens/
 Rapporten/
 
-# Lokale instellingen per computer (planning, computernamen)
+# Lokale instellingen per computer (planning, computernamen), en het slot
+# dat de app er tijdens het schrijven naast zet
 Etiketten_autoprinter.ini
+*.slot
 
 # Gecompileerde versies en controlewaarden (die gaan in een GitHub-release)
 *.exe
 *.exe.sha256
 Bouw/
+
+# Oude versies (staan in de git-tag archief)
+Archief/
 
 # Testuitvoer
 tests/uitvoer*.txt

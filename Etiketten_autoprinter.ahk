@@ -106,6 +106,8 @@ if Inst.Test {
         SetTimer () => Planning.Voer({id: "test", aan: 1, naam: "Test " T[1] "/" T[2], instelling: T[1], afdeling: T[2]
             , dagen: "1234567", tijd: "00:00", weken: "alle", computer: A_ComputerName, opmerking: ""}, true, T[3] = "proef"), -12000
 }
+if !Inst.Test && (W := Opslag.MapWaarschuwing()) != ""
+    Log("LET OP: " W)
 if Inst.Bestand != Inst.Eigen && !Inst.Test
     Log("Instellingen uit de gedeelde map: " Inst.Bestand)
 else if Inst.GedeeldWeg {

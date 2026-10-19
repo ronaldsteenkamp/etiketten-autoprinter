@@ -13,12 +13,15 @@ jobs:
   tests:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      # Actions vastgepind op een commit (niet op een tag die kan verschuiven)
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: AutoHotkey v2.0.26 ophalen
+      - name: AutoHotkey v2.0.26 ophalen (met controlewaarde)
         shell: pwsh
         run: |
           Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.26/AutoHotkey_2.0.26.zip" -OutFile ahk.zip
+          $h = (Get-FileHash ahk.zip -Algorithm SHA256).Hash.ToLower()
+          if ($h -ne "43522aa3122a57784ac5db30abf85c2244475c36acd7796e2c993355f9e926ae") { Write-Error "Controlewaarde AutoHotkey klopt niet: $h"; exit 1 }
           Expand-Archive ahk.zip -DestinationPath "$env:RUNNER_TEMP\ahk"
 
       - name: Script controleren (syntax)

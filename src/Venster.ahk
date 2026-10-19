@@ -478,6 +478,9 @@ class Venster {
         D .= "Koppeling actief: " (Ph.Verbonden ? "ja (" Jab.dll ")" : "nee") "`n"
         D .= "Instellingen: " Inst.Bestand "`n"
         D .= "Updates: " (Inst.UpdateMap != "" ? "map " Inst.UpdateMap : "geen map") ", " (Update.GitHub != "" ? "GitHub " Update.GitHub : "geen GitHub") "`n"
+        D .= "Gegevens: " Opslag.Hoofdmap() "`n"
+        if (W := Opslag.MapWaarschuwing()) != ""
+            D .= "LET OP: " W "`n"
         D .= "`n" Opslag.FoutOverzicht(30)
         if Ph.Verbonden {
             Ap := Ph.LeesApotheek()

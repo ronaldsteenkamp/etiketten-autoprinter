@@ -30,6 +30,18 @@ class Opslag {
         try FileDelete A_ScriptDir "\Gegevens\Etiketten_autoprinter_log.txt"   ; oud log (v5.3-5.6)
     }
 
+    ; Staan de gegevens (rapporten met naam en geboortedatum, logs, register)
+    ; in dezelfde map als de app of de updatemap? Dan kan iedereen die de app
+    ; mag starten of bijwerken ook de rapporten lezen. Geeft "" of een
+    ; waarschuwing (voor het log en de diagnose). Zie docs\ICT.md.
+    static MapWaarschuwing() {
+        Data := RTrim(this.Hoofdmap(), "\")
+        for Naam, Map_ in Map("de map van de app", A_ScriptDir, "de updatemap", Inst.UpdateMap)
+            if Map_ != "" && Data = RTrim(Map_, "\")
+                return "de gegevens (rapporten met namen en geboortedata, logs, register) staan in " Naam " (" Data "). Zet ze in een aparte, afgeschermde map: [Opslag] Map= in de ini (zie docs\ICT.md)"
+        return ""
+    }
+
     ; Bewaartermijnen: rapporten bevatten naam en geboortedatum (AVG), het
     ; register alleen Pat.nr's en is na de dag zelf niet meer nodig. Bij het
     ; starten en elke 6 uur (zie hoofdbestand, niet tijdens een ronde), zodat
@@ -158,23 +170,11 @@ class Opslag {
                 return {fout: "map " this.ClaimMap " niet bereikbaar"}
         }
         Bestand := this.ClaimBestand(Patnr)
-        ; GENERIC_WRITE, geen delen, CREATE_NEW
-        h := DllCall("CreateFileW", "Str", Bestand, "UInt", 0x40000000, "UInt", 0, "Ptr", 0, "UInt", 1, "UInt", 0x80, "Ptr", 0, "Ptr")
-        if h != -1 {
-            Tekst := this.Eigenaar " " A_Now
-            Buf := Buffer(StrPut(Tekst, "UTF-8"))
-            n := StrPut(Tekst, Buf, "UTF-8") - 1
-            Geschreven := 0
-            Ok := DllCall("WriteFile", "Ptr", h, "Ptr", Buf, "UInt", n, "UInt*", &Geschreven, "Ptr", 0)
-            DllCall("CloseHandle", "Ptr", h)
-            if Ok && Geschreven = n
-                return {ok: true}
-            try FileDelete Bestand
-            return {fout: "claim kon niet geschreven worden"}
-        }
-        Fout := A_LastError
+        Fout := NieuwBestand(Bestand, this.Eigenaar " " A_Now)
+        if Fout = 0
+            return {ok: true}
         if Fout != 80 && Fout != 32   ; ERROR_FILE_EXISTS, ERROR_SHARING_VIOLATION (wordt net aangemaakt)
-            return {fout: "Windows-fout " Fout}
+            return {fout: Fout = -1 ? "claim kon niet geschreven worden" : "Windows-fout " Fout}
         try Wie := Trim(FileRead(Bestand, "UTF-8"))
         catch
             Wie := ""

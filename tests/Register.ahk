@@ -56,6 +56,29 @@ T("Claim van een andere computer blijft staan", FileExist(Opslag.ClaimBestand("4
 DirDelete Opslag.ClaimMap, true
 T("Claimmap weg = opnieuw aangemaakt", Opslag.Claim("555").HasProp("ok"))
 
+; --- Slot op de gedeelde ini (Inst.Schrijf / Inst.Wis) ---
+Inst.Bestand := Basis "\gedeeld.ini"
+Slot := Inst.Bestand ".slot"
+Inst.Schrijf("waarde", "Test", "a")
+T("Ini: geschreven", IniRead(Inst.Bestand, "Test", "a", "") = "waarde")
+T("Ini: slot weer weg", !FileExist(Slot))
+Inst.Wis("Test", "a")
+T("Ini: gewist", IniRead(Inst.Bestand, "Test", "a", "") = "")
+; Oud slot (andere computer liep vast): wordt weggehaald, schrijven lukt
+FileAppend "ANDERE-PC 20261019", Slot
+FileSetTime DateAdd(A_Now, -5, "Minutes"), Slot, "M"
+Inst.Schrijf("b", "Test", "b")
+T("Ini: oud slot weggehaald en geschreven", IniRead(Inst.Bestand, "Test", "b", "") = "b" && !FileExist(Slot))
+; Vers slot van een andere computer: kort wachten, dan toch schrijven; zijn slot blijft
+FileAppend "ANDERE-PC 20261019", Slot
+Inst.MaxSlotWacht := 300
+Begin := A_TickCount
+Inst.Schrijf("c", "Test", "c")
+T("Ini: na wachten toch geschreven", IniRead(Inst.Bestand, "Test", "c", "") = "c" && A_TickCount - Begin >= 300)
+T("Ini: slot van de ander blijft staan", FileExist(Slot) != "")
+FileDelete Slot
+T("NieuwBestand: bestaat al = 80", NieuwBestand(Inst.Bestand, "x") = 80)
+
 try DirDelete Basis, true
 ; Zonder melding (bijv. op GitHub): met /ci de uitkomst als exitcode
 if A_Args.Length && A_Args[1] = "/ci"

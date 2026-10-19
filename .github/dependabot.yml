@@ -1,0 +1,9 @@
+# Houdt de vastgepinde GitHub Actions (op commit-SHA) bij: Dependabot maakt een
+# pull request als er een nieuwe versie is. (De controlewaarden van AutoHotkey en
+# Ahk2Exe in de workflows werk je bij een nieuwe versie met de hand bij.)
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

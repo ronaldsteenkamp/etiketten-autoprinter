@@ -64,7 +64,7 @@ class Inst {
         ; (behalve de printinstellingen) teruggezet naar de standaard.
         if this.Getal(this.Lees1("Wachttijden", "Versie", 1), 1) < 2 {
             for k in ["SleepNaCtrlB", "SleepNaF4", "SleepNaOmhoog", "SleepNaScherm", "SleepNavigatie", "SleepNaEscape", "MaxWachtScherm"]
-                try IniDelete this.Bestand, "Wachttijden", k
+                this.Wis("Wachttijden", k)
             this.Schrijf(2, "Wachttijden", "Versie")
         }
         for w in this.Wachttijden {
@@ -106,8 +106,53 @@ class Inst {
         return Standaard
     }
 
+    ; Schrijven en wissen in de ini gaan via een slot (MetSlot): de ini staat
+    ; vaak in de netwerkmap en wordt door meer computers gedeeld, en IniWrite
+    ; herschrijft het hele bestand. Twee computers tegelijk = een wijziging kwijt.
     static Schrijf(Waarde, Sectie, Sleutel) {
-        try IniWrite Waarde, this.Bestand, Sectie, Sleutel
+        B := this.Bestand
+        this.MetSlot(() => IniWrite(Waarde, B, Sectie, Sleutel))
+    }
+
+    static Wis(Sectie, Sleutel) {
+        B := this.Bestand
+        this.MetSlot(() => IniDelete(B, Sectie, Sleutel))
+    }
+
+    ; Voert Fn uit terwijl deze app het slot <ini>.slot heeft (exclusief
+    ; aangemaakt, zie NieuwBestand). Wacht tot 5 s op een andere computer; een
+    ; slot ouder dan 30 s (app vastgelopen tijdens het schrijven) wordt
+    ; weggehaald. Lukt het slot niet, dan toch schrijven (een wijziging laten
+    ; vallen is erger) en dat loggen. Fouten van Fn zelf worden genegeerd,
+    ; zoals voorheen.
+    static MaxSlotWacht := 5000, OudSlot := 30
+
+    static MetSlot(Fn) {
+        Slot := this.Bestand ".slot", Gelukt := false
+        Eind := A_TickCount + this.MaxSlotWacht
+        loop {
+            Fout := NieuwBestand(Slot, A_ComputerName " " A_Now)
+            if Fout = 0 {
+                Gelukt := true
+                break
+            }
+            if Fout != 80 && Fout != 32
+                break   ; map niet schrijfbaar of iets anders: zonder slot
+            try {
+                if DateDiff(A_Now, FileGetTime(Slot, "M"), "Seconds") > this.OudSlot {
+                    FileDelete Slot
+                    continue
+                }
+            }
+            if A_TickCount > Eind
+                break
+            Sleep 100
+        }
+        if !Gelukt
+            try Log("LET OP: geen slot op " this.Bestand " (" Fout "); toch geschreven")
+        try Fn()
+        if Gelukt
+            try FileDelete Slot
     }
 
     static Getal(v, Standaard) => IsInteger(v) ? Integer(v) : Standaard

@@ -156,11 +156,11 @@ class Planning {
     static Verwijder(Id) {
         if IsInteger(Id) && Integer(Id) > Inst.Getal(Inst.Lees1(this.Sectie, "_laatsteid", 0), 0)
             Inst.Schrijf(Integer(Id), this.Sectie, "_laatsteid")
-        try IniDelete Inst.Bestand, this.Sectie, Id
+        Inst.Wis(this.Sectie, Id)
         Staat.Wis("Planning gedraaid", Inst.Apotheek "-" Id)
         Staat.Wis("Planning status", Inst.Apotheek "-" Id)
-        try IniDelete Inst.Bestand, "Planning gedraaid", A_ComputerName "-" Inst.Apotheek "-" Id   ; oud (tot v6.8)
-        try IniDelete Inst.Bestand, "Planning status", A_ComputerName "-" Inst.Apotheek "-" Id
+        Inst.Wis("Planning gedraaid", A_ComputerName "-" Inst.Apotheek "-" Id)   ; oud (tot v6.8)
+        Inst.Wis("Planning status", A_ComputerName "-" Inst.Apotheek "-" Id)
         for k in this.Uitgesteld.Clone()
             if k = Id
                 this.Uitgesteld.Delete(k)

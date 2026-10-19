@@ -59,7 +59,7 @@ var Afdelingen = {
 // Per patiënt: soort bepaalt de medicatiehistorie:
 //   ok = bovenste AN-regel met ASB: Deelbaar; geenAN = alleen andere apotheek;
 //   leeg = lege historie; geenDeelbaar = AN zonder ASB: Deelbaar
-// Foutscenario's (instelling T3, elk een eigen afdeling; verwachte uitkomst in de LEESMIJ):
+// Foutscenario's (instelling T3, elk een eigen afdeling; verwachte uitkomst in docs\ontwikkeling.md):
 //   anderDossier = dossier toont een ander Pat.nr            -> stop [P08]
 //   popup        = Ctrl+B opent een melding i.p.v. dossier    -> stop [P07]
 //   hersorteer   = historie krijgt bij het selecteren een

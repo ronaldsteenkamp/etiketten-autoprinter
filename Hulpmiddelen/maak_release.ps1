@@ -18,7 +18,7 @@
 param([switch]$Lokaal)
 $ErrorActionPreference = "Stop"
 $Map = Split-Path $PSScriptRoot -Parent
-# Draagbare git/gh (zie LEESMIJ) ook vinden als ze niet in PATH staan
+# Draagbare git/gh (zie docs\ontwikkeling.md) ook vinden als ze niet in PATH staan
 $env:Path = "$env:LOCALAPPDATA\Programs\MinGit\cmd;$env:LOCALAPPDATA\Programs\gh\bin;" + $env:Path
 foreach ($c in "git", "gh") { if (!(Get-Command $c -ErrorAction SilentlyContinue)) { throw "$c niet gevonden" } }
 Push-Location $Map

@@ -26,7 +26,8 @@ jobs:
     env:
       SIGNPATH_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      # Actions vastgepind op een commit (niet op een tag die kan verschuiven)
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Versie controleren (tag = AppVersie)
         id: versie
@@ -38,12 +39,17 @@ jobs:
           if ($tag -ne $app) { Write-Error "Tag v$tag past niet bij AppVersie $app"; exit 1 }
           "versie=$app" >> $env:GITHUB_OUTPUT
 
-      - name: AutoHotkey v2.0.26 en Ahk2Exe 1.1.37.02 ophalen
+      - name: AutoHotkey v2.0.26 en Ahk2Exe 1.1.37.02 ophalen (met controlewaarden)
         shell: pwsh
         run: |
-          Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.26/AutoHotkey_2.0.26.zip" -OutFile ahk.zip
+          function Haal($Url, $Uit, $Sha) {
+            Invoke-WebRequest $Url -OutFile $Uit
+            $h = (Get-FileHash $Uit -Algorithm SHA256).Hash.ToLower()
+            if ($h -ne $Sha) { Write-Error "Controlewaarde van $Uit klopt niet: $h"; exit 1 }
+          }
+          Haal "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.26/AutoHotkey_2.0.26.zip" ahk.zip "43522aa3122a57784ac5db30abf85c2244475c36acd7796e2c993355f9e926ae"
           Expand-Archive ahk.zip -DestinationPath "$env:RUNNER_TEMP\ahk"
-          Invoke-WebRequest "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a2/Ahk2Exe1.1.37.02a2.zip" -OutFile ahk2exe.zip
+          Haal "https://github.com/AutoHotkey/Ahk2Exe/releases/download/Ahk2Exe1.1.37.02a2/Ahk2Exe1.1.37.02a2.zip" ahk2exe.zip "c29b8c3a5124850d79fc9e66e2ca79677c377d7f31631ad3022ba159c5d9e3be"
           Expand-Archive ahk2exe.zip -DestinationPath "$env:RUNNER_TEMP\ahk2exe"
 
       - name: Unit-tests
@@ -64,14 +70,14 @@ jobs:
       - name: Niet-ondertekende versie bewaren (voor SignPath)
         if: env.SIGNPATH_TOKEN != ''
         id: upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: onondertekend
           path: Bouw/Etiketten_autoprinter.exe
 
       - name: Ondertekenen via SignPath
         if: env.SIGNPATH_TOKEN != ''
-        uses: signpath/github-action-submit-signing-request@v1
+        uses: signpath/github-action-submit-signing-request@ced31329c0317e779dad2eec2a7c3bb46ea1343e # v1
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
@@ -99,7 +105,7 @@ jobs:
           Write-Host "SHA-256: $h"
 
       - name: Herkomstbewijs (attestation)
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: Bouw/Etiketten_autoprinter.exe
 
