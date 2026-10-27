@@ -1,4 +1,4 @@
-; =====================================================================
+﻿; =====================================================================
 ; Updates en lokaal installeren
 ;
 ; Een nieuwe versie komt van GitHub (release met .exe en .sha256) of, als
@@ -8,18 +8,38 @@
 ; af; beperk de schrijfrechten op de updatemap tegen kwaadwillenden).
 ; =====================================================================
 
-; Starten met Windows: snelkoppeling in de map Opstarten van de gebruiker
+; Starten met Windows: snelkoppeling in de map Opstarten van de gebruiker.
+; De snelkoppeling geeft /opstart mee: zo weet de app dat hij met Windows
+; gestart is en sluit hij weer als er vandaag niets gepland is (zie
+; Planning.SluitAlsNietsGepland). Met de hand gestart blijft hij altijd open.
 class Opstart {
     static Snelkoppeling => A_Startup "\Etiketten autoprinter.lnk"
+    static Argument := "/opstart"
 
     static Aan() => FileExist(this.Snelkoppeling) != ""
+    static Gestart => A_Args.Length && A_Args[1] = this.Argument
+
+    static Maak(Exe, Werkmap) => FileCreateShortcut(Exe, this.Snelkoppeling, Werkmap, this.Argument, "Etiketten printen vanuit de aanschrijfbuffer van Pharmacom")
+
+    ; Snelkoppeling van vóór v6.16 (zonder /opstart) bijwerken
+    static Bijwerken() {
+        if !A_IsCompiled || !this.Aan()
+            return
+        try {
+            FileGetShortcut this.Snelkoppeling, &Exe, &Werkmap, &Args
+            if Args = this.Argument
+                return
+            this.Maak(Exe, Werkmap)
+            Log("Starten met Windows: snelkoppeling bijgewerkt (" this.Argument ")")
+        }
+    }
 
     static Zet(Aan) {
         if Aan {
             if !A_IsCompiled
                 return Venster.Melding("Starten met Windows", "Dit kan alleen vanuit de gecompileerde .exe.", "waarschuwing")
             try {
-                FileCreateShortcut A_ScriptFullPath, this.Snelkoppeling, A_ScriptDir, , "Etiketten printen vanuit de aanschrijfbuffer van Pharmacom"
+                this.Maak(A_ScriptFullPath, A_ScriptDir)
                 Log("Starten met Windows: aan (" A_ScriptFullPath ")")
             } catch as e
                 Venster.Melding("Starten met Windows", "De snelkoppeling kon niet gemaakt worden: " e.Message, "fout")
@@ -351,7 +371,7 @@ class Update {
         FileCreateShortcut Exe, A_Programs "\Etiketten autoprinter.lnk", Doel, , "Etiketten printen vanuit de aanschrijfbuffer van Pharmacom"
         ; Starten met Windows voortaan de lokale versie
         if Opstart.Aan()
-            FileCreateShortcut Exe, Opstart.Snelkoppeling, Doel, , "Etiketten printen vanuit de aanschrijfbuffer van Pharmacom"
+            Opstart.Maak(Exe, Doel)
         Log("Lokaal ge" Teken.IUml "nstalleerd in " Doel)
         Venster.Melding("Ge" Teken.IUml "nstalleerd", "De app staat nu op deze computer, met een snelkoppeling op het bureaublad en in het startmenu.`n`nDe lokale versie wordt nu gestart. Gebruik voortaan de snelkoppeling.")
         Run '"' Exe '"', Doel

@@ -413,9 +413,54 @@ class Planning {
         return false
     }
 
+    ; Staat er vandaag nog een ronde voor deze computer op de planning? Telt
+    ; ook een die nu in zijn startvenster zit of uitgesteld is; niet wat
+    ; vandaag al gedraaid heeft.
+    static NogVandaag(Lijst, Nu := "") {
+        Nu := Nu = "" ? A_Now : Nu
+        if this.Uitgesteld.Count
+            return true
+        Van := DateAdd(Nu, -this.MaxMinuten, "Minutes")
+        Tot := SubStr(Nu, 1, 8) "235959"
+        for it in Lijst {
+            if !it.aan || it.computer != A_ComputerName
+                continue
+            Laatst := this.LaatstGedraaid(it)
+            for m in this.Momenten(it, Van, Tot)
+                if SubStr(Laatst, 1, 8) != SubStr(m, 1, 8)
+                    return true
+        }
+        return false
+    }
+
+    ; Met Windows gestart (zie Opstart) en vandaag niets meer te printen op
+    ; deze computer: 30 seconden aftellen (met Openhouden), dan afsluiten.
+    ; Niet als de apotheek nog onbekend is (dan is de planning niet te lezen),
+    ; als er gemiste rondes te melden zijn of als iemand de app al gebruikt.
+    static SluitAlsNietsGepland() {
+        if Inst.Apotheek = "" || this.Bezig || Ronde.Bezig || Ronde.Gereserveerd
+            return
+        ; Staat er een andere vraag open (bijv. een update of Wat is er nieuw),
+        ; dan eerst die afwachten
+        if Venster.DialoogAntwoord.Count
+            return SetTimer(ObjBindMethod(Planning, "SluitAlsNietsGepland"), -5000)
+        if this.ControleerGemist() || this.NogVandaag(this.Lees())
+            return
+        Log("Met Windows gestart en vandaag niets op de planning: afsluiten over 30 s")
+        Keuze := Venster.Dialoog({soort: "planning", titel: "Vandaag niets gepland"
+            , tekst: "Vandaag staat er voor deze computer niets (meer) op de planning. De app sluit over 30 seconden.`n`nWil je vandaag met de hand printen, klik dan op Openhouden."
+            , knoppen: [{t: "Openhouden", v: "0"}, {t: "Nu afsluiten", v: "1", hoofd: 1}]}, 30000, "1")
+        if Keuze != "1" || this.Bezig || Ronde.Bezig || Ronde.Gereserveerd {
+            Log("  blijft open")
+            return
+        }
+        Venster.Sluit()
+    }
+
     ; Momenten die buiten het startvenster zijn geraakt zonder dat de planning
     ; draaide (pc uit, app dicht, slaapstand, of een lange ronde). Elk moment
     ; wordt één keer bekeken: tot en met Tot (= nu - 15 min) wordt onthouden.
+    ; Geeft true als er iets gemeld is.
     static ControleerGemist(Nu := "") {
         Nu := Nu = "" ? A_Now : Nu
         Tot := DateAdd(Nu, -this.MaxMinuten, "Minutes")
@@ -438,10 +483,11 @@ class Planning {
             }
         }
         if Regels = ""
-            return
+            return false
         Melder.Toon("Er zijn geplande rondes niet uitgevoerd. Zie de planning.", , 2, ObjBindMethod(Planning, "Toon"))
         Tekst := "Deze geplande rondes zijn niet uitgevoerd (de app draaide niet, de computer stond uit of sliep, of er liep al een ronde):`n`n" Regels "`nPrint deze groepen zo nodig met de hand, of gebruik in de planning het driehoekje (nu uitvoeren)."
         SetTimer () => Venster.Melding("Planning niet uitgevoerd", Tekst, "waarschuwing"), -300
+        return true
     }
 
     ; --- Uitvoeren ------------------------------------------------------------

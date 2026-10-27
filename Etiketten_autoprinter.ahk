@@ -49,7 +49,7 @@ global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
 global AppGitHub := "ronaldsteenkamp/etiketten-autoprinter"                        ; GitHub-repository voor updates ("eigenaar/naam"); leeg = alleen de updatemap
-global AppVersie := "6.15"
+global AppVersie := "6.16"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%.0.0
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -125,6 +125,10 @@ SetTimer () => Update.Periodiek(), Update.Interval
 SetTimer () => Update.ControleerLokaal(), -2500
 SetTimer () => Wijzigingen.BijStart(), -3500
 SetTimer PlanningTik, 20000
+Opstart.Bijwerken()
+; Met Windows gestart en vandaag niets te printen: weer afsluiten
+if Opstart.Gestart && !Inst.Test
+    SetTimer () => Planning.SluitAlsNietsGepland(), -10000
 
 ; Draait elke 3 seconden (als er niet geprint wordt): zoekt Pharmacom,
 ; leest de aanschrijfbuffer in zodra er (opnieuw) verbinding is en werkt de

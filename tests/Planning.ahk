@@ -81,6 +81,20 @@ Planning.Uitgesteld[1] := {moment: "20261001080000", reden: "test"}
 T("Wakker: zolang iets uitgesteld is", Planning.BijnaAanDeBeurt(L, "20261001120000"))
 Planning.Uitgesteld := Map()
 
+; --- Vandaag nog iets gepland? (afsluiten na starten met Windows) ---
+T("Nog vandaag: 06:00, ronde om 08:00", Planning.NogVandaag(L, "20261001060000"))
+T("Nog vandaag: 08:10 (in het startvenster)", Planning.NogVandaag(L, "20261001081000"))
+T("Niets meer vandaag: 08:20 (venster voorbij)", !Planning.NogVandaag(L, "20261001082000"))
+T("Niets vandaag: andere dag", !Planning.NogVandaag([It({dagen: "1"})], "20261001060000"))
+T("Niets vandaag: oneven-planning in even week", !Planning.NogVandaag([It({weken: "oneven"})], "20261001060000"))
+T("Niets vandaag: uitgezet", !Planning.NogVandaag([It({aan: 0})], "20261001060000"))
+T("Niets vandaag: andere computer", !Planning.NogVandaag([It({computer: "ANDERE-PC"})], "20261001060000"))
+T("Niets vandaag: lege planning", !Planning.NogVandaag([], "20261001060000"))
+T("Nog vandaag: tweede ronde om 23:30", Planning.NogVandaag([It(), It({id: 2, tijd: "23:30"})], "20261001120000"))
+Planning.Uitgesteld[1] := {moment: "20261001080000", reden: "test"}
+T("Nog vandaag: zolang iets uitgesteld is", Planning.NogVandaag(L, "20261001120000"))
+Planning.Uitgesteld := Map()
+
 ; --- Vooraf-controle (een minuut vóór 08:00, do 1-10) ---
 T("SecondenTot: 07:59:00 = 60", Planning.SecondenTot(It(), "20261001075900") = 60)
 T("SecondenTot: 08:00:30 = -30", Planning.SecondenTot(It(), "20261001080030") = -30)

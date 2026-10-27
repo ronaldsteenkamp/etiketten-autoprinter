@@ -62,6 +62,13 @@ dagen, tijd en elke week / even weken / oneven weken (ISO-weeknummer).
   terug), met een melding en bij het icoon bij de klok.
 - Zet **Starten met Windows** aan (Instellingen) als je de planning gebruikt:
   de app maakt dan een snelkoppeling in de map Opstarten van Windows.
+- **Niets gepland vandaag:** is de app met Windows gestart (de snelkoppeling geeft
+  `/opstart` mee) en staat er vandaag voor deze computer niets (meer) op de planning,
+  dan toont hij na 10 seconden "Vandaag niets gepland" en sluit hij 30 seconden later
+  (met **Openhouden** blijft hij open). Hij blijft wel open als de apotheek nog niet
+  bekend is, als er gemiste rondes te melden zijn of als er al een ronde loopt. Met de
+  hand gestart blijft de app altijd open. Een oude snelkoppeling zonder `/opstart`
+  werkt de app zelf bij.
 - De aanschrijfbuffer hoeft niet open te staan: staat Pharmacom op een ander
   scherm (bijv. het dashboard), dan opent de planning hem zelf met Ctrl+F11 (de
   knop *Aanschrijfbuffer* in de werkbalk). Na de ronde blijft hij open. De
