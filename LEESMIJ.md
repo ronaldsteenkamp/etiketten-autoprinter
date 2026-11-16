@@ -78,7 +78,11 @@ dagen, tijd en elke week / even weken / oneven weken (ISO-weeknummer).
   niemand is ingelogd, dan wacht hij (status
   *uitgesteld*) en start hij zodra het kan, tot 2 uur na de ingestelde tijd.
   Daarna: *mislukt* met de reden, en een melding. Na ontgrendelen kijkt de app
-  meteen. Ook na het aftellen wordt dit nog een keer gecontroleerd.
+  meteen (een extra controle; de planning blijft daarnaast elke 20 s kijken).
+  Ook na het aftellen wordt dit nog een keer gecontroleerd.
+- **Planning-timer bewaakt:** heeft de planning 2 minuten niet gekeken (de timer
+  is gestopt), dan zet de bewaking hem weer aan en staat in het log
+  `Planning-timer hersteld`.
 - **Zelf verder na een hapering:** stopt een geplande ronde (niet door Esc/Stop,
   niet omdat Pharmacom dicht of niet actief was) en staat Pharmacom daarna weer op
   de aanschrijfbuffer, dan gaat de app na 3 seconden zelf verder, tot 3 keer. Wie al

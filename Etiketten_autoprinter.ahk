@@ -49,7 +49,7 @@ global AppTitel := "Etiketten autoprinter"
 global AppMaker := "Ronald Steenkamp"          ; credits (Over-venster)
 global AppContact := "rsteenkamp@benu.nl"      ; vragen en verbetervoorstellen
 global AppGitHub := "ronaldsteenkamp/etiketten-autoprinter"                        ; GitHub-repository voor updates ("eigenaar/naam"); leeg = alleen de updatemap
-global AppVersie := "6.16"
+global AppVersie := "6.17"
 ;@Ahk2Exe-Let U_Versie = %A_PriorLine~U)^.*"(.+)".*$~$1%
 ;@Ahk2Exe-SetVersion %U_Versie%.0.0
 ; Ahk2Exe neemt het versienummer over uit de AppVersie-regel (de Let-regel
@@ -124,7 +124,7 @@ SetTimer () => Update.Controleer(true), -1500
 SetTimer () => Update.Periodiek(), Update.Interval
 SetTimer () => Update.ControleerLokaal(), -2500
 SetTimer () => Wijzigingen.BijStart(), -3500
-SetTimer PlanningTik, 20000
+SetTimer PlanningTik, Planning.Interval   ; vaste timer: nooit met PlanningTik een eenmalige zetten (zie SessieWijziging)
 Opstart.Bijwerken()
 ; Met Windows gestart en vandaag niets te printen: weer afsluiten
 if Opstart.Gestart && !Inst.Test
@@ -146,6 +146,7 @@ Bewaking() {
     if Ronde.Bezig || Ronde.Gereserveerd || Bezig || Planning.Bezig
         return
     Bezig := true
+    try Planning.BewaakTimer()   ; loopt de planning-timer nog?
     try {
         WasVerbonden := Ph.Verbonden
         St := Venster.Verbind()

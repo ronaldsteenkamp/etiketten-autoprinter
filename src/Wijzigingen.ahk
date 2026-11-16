@@ -5,7 +5,8 @@
 
 class Wijzigingen {
     static Lijst := [
-        ["6.16", ["Starten met Windows: staat er vandaag voor deze computer niets (meer) op de planning, dan sluit de app na 30 seconden weer (met Openhouden blijft hij open). Met de hand gestart blijft hij altijd open."]]
+        ["6.17", ["Planning: geplande rondes starten weer na het ontgrendelen van de computer (de planning stopte daarna). Stopt de planning toch een keer, dan zet de app hem zelf weer aan."]]
+        , ["6.16", ["Starten met Windows: staat er vandaag voor deze computer niets (meer) op de planning, dan sluit de app na 30 seconden weer (met Openhouden blijft hij open). Met de hand gestart blijft hij altijd open."]]
         , ["6.15", ["Veiliger: het dossier wordt altijd op Pat.nr gecontroleerd, en vlak voor het printen kijkt de app nog een keer of de gekozen regel klopt. Klopt iets niet, dan stopt hij."
             , "Geen dubbele etiketten: is de netwerkmap even weg, dan print de app niet; en twee computers kunnen nooit tegelijk dezelfde patiënt printen."
             , "Staat een patiënt op 'bezig' bij een andere computer (of liep de app daar vast), dan staat hij in de lijst als Controleren: kijk of er een etiket is."

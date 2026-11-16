@@ -134,6 +134,14 @@ draagbaar in `%LOCALAPPDATA%\Programs\MinGit` en `...\gh`; het script vindt ze z
 Tests zonder melding (zoals op GitHub):
 `powershell -ExecutionPolicy Bypass -File tests\alle_tests.ps1 -Ahk "<pad>\AutoHotkey32.exe"`.
 
+**Let op bij `SetTimer`:** met dezelfde functie past `SetTimer` de bestaande timer
+aan. `SetTimer PlanningTik, -3000` maakte zo van de vaste planning-timer (20 s) een
+eenmalige (tot 6.16: na ontgrendelen stopte de planning). Een extra, eenmalige
+aanroep krijgt daarom een eigen functie: `SetTimer () => Planning.Tik(), -3000`.
+`Planning.Tik` laat een tweede aanroep die binnenkomt terwijl de eerste nog loopt
+niets doen, en de bewaking zet de timer weer aan als de planning 2 minuten niet
+gekeken heeft (log: `Planning-timer hersteld`).
+
 ### Ondertekenen (SignPath Foundation)
 
 Gratis voor open source; haalt de SmartScreen-waarschuwing ("Windows heeft uw pc

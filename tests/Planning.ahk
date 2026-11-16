@@ -8,6 +8,7 @@
 #Include ..\src\Planning.ahk
 #Include ..\src\Groepen.ahk
 #Include ..\src\Opslag.ahk
+#Include ..\src\Systeem.ahk
 
 Uit := A_ScriptDir "\uitvoer_planning.txt"
 try FileDelete Uit
@@ -111,6 +112,51 @@ T("Groep: onbekende afdeling", InStr(Planning.GroepFout("T1", "T1XX", B), "niet 
 T("Groep: onbekende instelling", InStr(Planning.GroepFout("T9", "T1HA", B), "instelling T9 is niet bekend"))
 T("Groep: instelling zonder afdelingen = niet afkeuren", Planning.GroepFout("GI", "IETS", B) = "")
 T("Groep: niets opgehaald = niet afkeuren", Planning.GroepFout("T1", "T2HA", {instellingen: Map(), afdelingen: Map()}) = "")
+
+; --- Planning-timer (v6.17) ---------------------------------------------------
+; Na ontgrendelen stopte de vaste timer: "SetTimer PlanningTik, -3000" maakte
+; van de timer van 20 s een eenmalige. Nagebootst met een korte timer; het
+; log gaat naar een lijst, de apotheek is leeg (Tik doet dan verder niets).
+Logregels := []
+Opslag.DefineProp("Log", {call: (this, Msg) => Logregels.Push(Msg)})
+Inst.Apotheek := ""
+Planning.Interval := 200
+SetTimer PlanningTik, Planning.Interval
+SessieWijziging(8)                 ; WTS_SESSION_UNLOCK
+Sleep 3500                         ; de extra controle na 3 s is geweest
+Planning.LaatsteTik := 0
+Sleep 1000
+T("Timer: planning loopt nog na ontgrendelen", Planning.LaatsteTik != 0)
+T("Timer: ontgrendelen gelogd", Logregels.Length && Logregels[Logregels.Length] = "Computer ontgrendeld")
+
+; Bewaking: 2 minuten geen Tik = timer gestopt -> opnieuw zetten en loggen
+T("Bewaking: timer loopt = niets doen", !Planning.BewaakTimer())
+SetTimer PlanningTik, 0            ; timer gestopt
+Planning.LaatsteTik := A_TickCount - Planning.MaxStil - 1000
+T("Bewaking: stille timer hersteld", Planning.BewaakTimer())
+T("Bewaking: herstel gelogd", InStr(Logregels[Logregels.Length], "Planning-timer hersteld"))
+Sleep 300
+Planning.LaatsteTik := 0
+Sleep 600
+T("Bewaking: timer loopt weer", Planning.LaatsteTik != 0)
+SetTimer PlanningTik, 0
+
+; Twee Tiks vlak na elkaar (vaste timer + controle na ontgrendelen): een
+; tweede Tik tijdens de eerste doet niets, dus nooit twee keer dezelfde ronde
+Uitgevoerd := 0
+NepTik(this, *) {
+    global Uitgevoerd
+    Uitgevoerd++
+    Planning.Tik()                 ; de andere timer, terwijl deze nog loopt
+    if Uitgevoerd = 1
+        throw Error("testfout")
+}
+Planning.DefineProp("TikUitvoeren", {call: NepTik})
+try Planning.Tik()
+T("Dubbel: tweede Tik tijdens de eerste doet niets", Uitgevoerd = 1)
+T("Dubbel: na een fout weer vrij", !Planning.InTik)
+Planning.Tik()
+T("Dubbel: volgende Tik loopt gewoon", Uitgevoerd = 2 && !Planning.InTik)
 
 ; Zonder melding (bijv. op GitHub): met /ci de uitkomst als exitcode
 if A_Args.Length && A_Args[1] = "/ci"

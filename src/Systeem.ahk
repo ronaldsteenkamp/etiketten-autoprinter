@@ -40,7 +40,9 @@ SessieWijziging(wParam, *) {
         Log("Computer vergrendeld")
     else if wParam = 8 {   ; WTS_SESSION_UNLOCK
         Log("Computer ontgrendeld")
-        SetTimer PlanningTik, -3000
+        ; Eigen, eenmalige timer. NIET "SetTimer PlanningTik, -3000": dat past
+        ; de vaste timer van 20 s aan (zelfde functie), die dan nooit meer loopt.
+        SetTimer () => Planning.Tik(), -3000
     }
 }
 

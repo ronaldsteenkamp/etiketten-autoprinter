@@ -272,10 +272,42 @@ class Planning {
         return {soort: d[1], tijd: d[2], tekst: d.Length >= 3 ? d[3] : ""}
     }
 
+    ; --- Timer ------------------------------------------------------------------
+    static Interval := 20000     ; ms: zo vaak kijkt de planning (SetTimer PlanningTik)
+    static MaxStil := 120000     ; ms zonder Tik voordat de bewaking de timer opnieuw zet
+    static LaatsteTik := A_TickCount
+    static InTik := false
+
+    ; Vanuit de bewaking: heeft de planning de laatste 2 minuten niet
+    ; gekeken, dan is de timer gestopt. Opnieuw zetten en loggen.
+    static BewaakTimer() {
+        if this.InTik || A_TickCount - this.LaatsteTik < this.MaxStil
+            return false
+        Log("Planning-timer hersteld (planning keek " (A_TickCount - this.LaatsteTik) // 1000 " s niet)")
+        this.LaatsteTik := A_TickCount
+        SetTimer PlanningTik, this.Interval
+        return true
+    }
+
     ; Elke 20 s: gemiste momenten melden, en starten wat nu aan de beurt is.
     ; Kan het nu niet (pc vergrendeld, Pharmacom bezet), dan wordt de ronde
     ; uitgesteld en start hij zodra het wel kan, tot 2 uur na de ingestelde tijd.
+    ; Ook aangeroepen via een eigen timer (na ontgrendelen). Loopt er al een
+    ; Tik (die wacht bijv. op Pharmacom of op het aftellen), dan doet een
+    ; tweede niets: zo start dezelfde ronde nooit twee keer.
     static Tik(Nu := "") {
+        this.LaatsteTik := A_TickCount
+        if this.InTik
+            return
+        this.InTik := true
+        try this.TikUitvoeren(Nu)
+        finally {
+            this.InTik := false
+            this.LaatsteTik := A_TickCount   ; na een lange ronde niet als "stil" zien
+        }
+    }
+
+    static TikUitvoeren(Nu := "") {
         if Inst.Apotheek = ""
             return
         Nu := Nu = "" ? A_Now : Nu
